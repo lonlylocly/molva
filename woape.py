@@ -19,8 +19,9 @@ c.request('GET', '/1.1/statuses/user_timeline.json?screen_name=%s&count=100'%use
 resp = c.getresponse()
 
 s = resp.read()
-#print s
+#print s 
 s1 = json.loads(s)
+
 for t in s1:
     if t["in_reply_to_status_id"] is not None:
         print t["text"]
