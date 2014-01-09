@@ -84,7 +84,17 @@ def mark_user_done(cur, username):
     print "%s" % username
     cur.execute("update users set user_done = 1 where username = ?", (username, ))
 
-def iteration(cur, username, replys_only=True):
+def try_several_times(f, times, error_return=[]):
+    tries = 0
+    while tries < times:
+        try:
+            res = f()
+            return res
+        except Exception as e:
+            print "[%s] [ERROR] %s" % (time.ctime(), e)
+    return error_return
+
+def iteration(cur, username, replys_only=False):
     if username is None:
         print "[ERROR] got None username"
         return []
@@ -125,6 +135,7 @@ def iteration(cur, username, replys_only=True):
    
 
 def main():
+    print "[%s] Startup" % time.ctime()
     con = sqlite3.connect('replys.db')
     con.isolation_level = None
 
@@ -139,14 +150,16 @@ def main():
             break 
         username = users[0]
         users = users[1:]
-        
-        talked_to_users = iteration(cur, username)
+   
+        f = lambda :  iteration(cur, username)
+        talked_to_users = try_several_times(f, 3, [])
        
         # try best to get full chains  
         for talked_to_user in talked_to_users:
             if talked_to_user == username:
                 continue
-            iteration(cur, talked_to_user, replys_only=False)
+            f2 = lambda : iteration(cur, talked_to_user)
+            try_several_times(f2, 3)
 
         chains = get_chains(cur)     
         if len(chains) >= CHAINS_GOAL:
