@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import sqlite3
-import subprocess
+from subprocess import Popen, PIPE
 import sys,codecs
 import re
 import hashlib
@@ -37,11 +37,21 @@ def create_tables(cur):
     """)
     cur.execute("insert or ignore into progress (fake_key, last_id, last_reply_id) values (0, 0, 0)")
 
+def show_text(cur):
+    return cur.execute("""
+        select r.count, n1.noun, n2.noun from noun_relations as r
+        inner join nouns n1 on r.post_noun_md5 = n1.noun_md5
+        inner join nouns n2 on r.reply_noun_md5 = n2.noun_md5
+        where r.count > 3
+    """).fetchall()
+
 def fetch_list(cur, query):
     return map(lambda x: x[0], cur.execute(query).fetchall())
 
 def tomitize(s):
-    facts = subprocess.check_output("echo '%s' | ./tomita-mac config.proto 2>/dev/null" % s.encode('utf-8'), shell=True)    
+    s = s.replace('\n', ' ').replace("'", "\\'")
+    p = Popen("./tomita-mac config.proto 2>/dev/null", stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    facts = p.communicate(input=s.encode('utf-8'))[0]
     facts = facts.decode('utf-8')
     nouns = re.findall("^.*Noun = (.*)$", facts, flags= re.M) 
     nouns = map(lambda x: x.lower(), nouns)
@@ -109,9 +119,6 @@ def main():
         post = cur.execute("select tw_text from tweets where id = ?", (c[1],)).fetchone()
         reply = cur.execute("select tw_text from tweets where id = ?", (c[0],)).fetchone()
 
-        # better to skip pair than to sum twice, or incorrectly sum        
-        cur.execute("update progress set last_id = ?, last_reply_id = ?", c)
-
         if post is not None and reply is not None:
             #print "post: %s\nreply: %s" % (post[0], reply[0])
             post_nouns = tomitize(post[0])
@@ -123,6 +130,9 @@ def main():
 
             cnt = cnt + 1
             print "[%s] Done chain: (post id, reply id) (%s, %s)" % (time.ctime(), c[1], c[0])
+            cur.execute("update progress set last_id = ?, last_reply_id = ?", c)
+
+
                 
 if __name__ == "__main__":
     main()
