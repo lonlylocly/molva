@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import sqlite3
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 import sys,codecs
 import re
 import hashlib
@@ -9,7 +9,7 @@ import time
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-db = 'replys_40k.db'
+db = 'replys.db'
 
 def create_tables(cur):
     cur.execute("""
@@ -37,20 +37,12 @@ def create_tables(cur):
     """)
     cur.execute("insert or ignore into progress (fake_key, last_id, last_reply_id) values (0, 0, 0)")
 
-def show_text(cur):
-    return cur.execute("""
-        select r.count, n1.noun, n2.noun from noun_relations as r
-        inner join nouns n1 on r.post_noun_md5 = n1.noun_md5
-        inner join nouns n2 on r.reply_noun_md5 = n2.noun_md5
-        where r.count > 3
-    """).fetchall()
-
 def fetch_list(cur, query):
     return map(lambda x: x[0], cur.execute(query).fetchall())
 
 def tomitize(s):
     s = s.replace('\n', ' ').replace("'", "\\'")
-    p = Popen("./tomita-mac config.proto 2>/dev/null", stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    p = Popen(["./tomita", "config.proto"], stdout=PIPE, stdin=PIPE, stderr=PIPE)
     facts = p.communicate(input=s.encode('utf-8'))[0]
     facts = facts.decode('utf-8')
     nouns = re.findall("^.*Noun = (.*)$", facts, flags= re.M) 
@@ -91,6 +83,15 @@ def save_relations(cur, post_nouns, reply_nouns):
                 where post_noun_md5 = ? and reply_noun_md5 = ? 
             """, (pmd5, rmd5))
 
+def show_text(cur):
+    return cur.execute("""
+        select r.count, n1.noun, n2.noun from noun_relations as r
+        inner join nouns n1 on r.post_noun_md5 = n1.noun_md5
+        inner join nouns n2 on r.reply_noun_md5 = n2.noun_md5
+        where r.count > 3
+    """).fetchall()
+
+
 def main():
     print "[%s] Startup" % time.ctime() 
 
@@ -103,17 +104,20 @@ def main():
     last_id, last_reply_id = cur.execute("select last_id, last_reply_id from progress").fetchone()
 
     chains = cur.execute("""
-        select id, in_reply_to_id 
-        from tweets 
+        select t1.id, t2.id 
+        from tweets as t1
+        inner join tweets as t2
+        on t1.in_reply_to_id = t2.id
         where 
-            in_reply_to_id not Null
+            t1.in_reply_to_id not Null
         and 
-            id > ?
+            t1.id > ?
         and
-            in_reply_to_id > ?
-        order by id, in_reply_to_id 
+            t2.id > ?
+        order by t1.id, t2.id  
     """, (last_id, last_reply_id)).fetchall()
 
+    print "[%s] Done fetching chains: %s" % (time.ctime(), len(chains)) 
     cnt = 0
     for c in chains:
         post = cur.execute("select tw_text from tweets where id = ?", (c[1],)).fetchone()
@@ -133,6 +137,7 @@ def main():
             cur.execute("update progress set last_id = ?, last_reply_id = ?", c)
 
 
+	    print "[%s] Chains left: %s" % (time.ctime(), len(chains) - cnt) 
                 
 if __name__ == "__main__":
     main()
