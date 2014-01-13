@@ -120,24 +120,27 @@ def main():
     print "[%s] Done fetching chains: %s" % (time.ctime(), len(chains)) 
     cnt = 0
     for c in chains:
-        post = cur.execute("select tw_text from tweets where id = ?", (c[1],)).fetchone()
-        reply = cur.execute("select tw_text from tweets where id = ?", (c[0],)).fetchone()
+	try:
+            post = cur.execute("select tw_text from tweets where id = ?", (c[1],)).fetchone()
+            reply = cur.execute("select tw_text from tweets where id = ?", (c[0],)).fetchone()
+         
+            if post is not None and reply is not None:
+                #print "post: %s\nreply: %s" % (post[0], reply[0])
+                post_nouns = tomitize(post[0])
+                reply_nouns = tomitize(reply[0])
+                if len(post_nouns) == 0 or len(reply_nouns) == 0:
+                    continue
+                save_nouns(cur, post_nouns + reply_nouns)
+                save_relations(cur, post_nouns, reply_nouns)
+         
+                cnt = cnt + 1
+                print "[%s] Done chain: (post id, reply id) (%s, %s)" % (time.ctime(), c[1], c[0])
+                cur.execute("update progress set last_id = ?, last_reply_id = ?", c)
+         
+         
+                print "[%s] Chains left: %s" % (time.ctime(), len(chains) - cnt) 
+     	except Exception as e:
+	    print "[%s] ERROR. chain: (%s, %s) error: %s" % (time.ctime(), c[0], c[1], e ) 
 
-        if post is not None and reply is not None:
-            #print "post: %s\nreply: %s" % (post[0], reply[0])
-            post_nouns = tomitize(post[0])
-            reply_nouns = tomitize(reply[0])
-            if len(post_nouns) == 0 or len(reply_nouns) == 0:
-                continue
-            save_nouns(cur, post_nouns + reply_nouns)
-            save_relations(cur, post_nouns, reply_nouns)
-
-            cnt = cnt + 1
-            print "[%s] Done chain: (post id, reply id) (%s, %s)" % (time.ctime(), c[1], c[0])
-            cur.execute("update progress set last_id = ?, last_reply_id = ?", c)
-
-
-	    print "[%s] Chains left: %s" % (time.ctime(), len(chains) - cnt) 
-                
 if __name__ == "__main__":
     main()
