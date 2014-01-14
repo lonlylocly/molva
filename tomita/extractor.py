@@ -91,6 +91,16 @@ def show_text(cur):
         where r.count > 3
     """).fetchall()
 
+def get_post_nouns(cur, post_id):
+    res = cur.execute("""
+        select n.noun from nouns as n
+        inner join tweets_nouns as t
+        on t.noun_md5 = n.noun_md5
+        where 
+            t.id = ?
+    """, (post_id,)).fetchall()
+    
+    return map(lambda x: x[0], res)
 
 def main():
     print "[%s] Startup" % time.ctime() 
@@ -120,27 +130,76 @@ def main():
     print "[%s] Done fetching chains: %s" % (time.ctime(), len(chains)) 
     cnt = 0
     for c in chains:
+	#try:
+        post_nouns = get_post_nouns(cur, c[1]) 
+        reply_nouns = get_post_nouns(cur, c[0]) 
+        
+        if len(post_nouns) == 0 or len(reply_nouns) == 0:
+            print "[%s] no nouns for: %s, %s"% (time.ctime(), c[1], c[0])
+            continue
+        save_relations(cur, post_nouns, reply_nouns)
+        
+        cnt = cnt + 1
+        print "[%s] Done chain: (post id, reply id) (%s, %s)" % (time.ctime(), c[1], c[0])
+        cur.execute("update progress set last_id = ?, last_reply_id = ?", c)
+        
+        
+        print "[%s] Chains left: %s" % (time.ctime(), len(chains) - cnt) 
+     	#except Exception as e:
+	#    print "[%s] ERROR. chain: (%s, %s) error: %s" % (time.ctime(), c[0], c[1], e ) 
+
+def strip(s):
+    s = s.replace('\n', ' ').replace("'", "\\'")
+    return s
+ 
+def main2():
+    print "[%s] Startup" % time.ctime() 
+
+    con = sqlite3.connect(db)
+    con.isolation_level = None
+    
+    cur = con.cursor()
+    create_tables(cur)
+
+    chains = cur.execute("""
+        select t1.id, t2.id 
+        from tweets as t1
+        inner join tweets as t2
+        on t1.in_reply_to_id = t2.id
+        where 
+            t1.in_reply_to_id not Null
+        order by t1.id, t2.id  
+    """).fetchall()
+
+    print "[%s] Done fetching chains: %s" % (time.ctime(), len(chains)) 
+    cnt = 0
+    fp = open('posts.txt', 'w')
+    fr = open('ids.txt', 'w')
+    for c in chains:
 	try:
             post = cur.execute("select tw_text from tweets where id = ?", (c[1],)).fetchone()
             reply = cur.execute("select tw_text from tweets where id = ?", (c[0],)).fetchone()
          
             if post is not None and reply is not None:
+		
+                fp.write(strip(post[0]).encode('utf-8') + "\n") 
+                fp.write(strip(reply[0]).encode('utf-8') + "\n") 
+		fr.write("%s\n" % c[1]) 
+		fr.write("%s\n" % c[0]) 
                 #print "post: %s\nreply: %s" % (post[0], reply[0])
-                post_nouns = tomitize(post[0])
-                reply_nouns = tomitize(reply[0])
-                if len(post_nouns) == 0 or len(reply_nouns) == 0:
-                    continue
-                save_nouns(cur, post_nouns + reply_nouns)
-                save_relations(cur, post_nouns, reply_nouns)
-         
-                cnt = cnt + 1
-                print "[%s] Done chain: (post id, reply id) (%s, %s)" % (time.ctime(), c[1], c[0])
-                cur.execute("update progress set last_id = ?, last_reply_id = ?", c)
+                #post_nouns = tomitize(post[0])
+                #reply_nouns = tomitize(reply[0])
+                #if len(post_nouns) == 0 or len(reply_nouns) == 0:
+                #    continue
+                #save_nouns(cur, post_nouns + reply_nouns)
+                #save_relations(cur, post_nouns, reply_nouns)
+             
          
          
-                print "[%s] Chains left: %s" % (time.ctime(), len(chains) - cnt) 
      	except Exception as e:
 	    print "[%s] ERROR. chain: (%s, %s) error: %s" % (time.ctime(), c[0], c[1], e ) 
+    fp.close()
+    fr.close()
 
 if __name__ == "__main__":
     main()
