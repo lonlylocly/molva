@@ -202,8 +202,8 @@ def _count_similarity(n1_replys, n2_replys):
     return (0.0 + int_cnt) / sup_cnt 
 
 def count_similarity(nouns_replys, n1, n2):
-    n1_replys = set(nouns_replys[n1])
-    n2_replys = set(nouns_replys[n2])
+    n1_replys = set(nouns_replys[n1] if n1 in nouns_replys else [])
+    n2_replys = set(nouns_replys[n2] if n2 in nouns_replys else [])
 
     similar = _count_similarity(n1_replys, n2_replys) 
     
@@ -242,23 +242,12 @@ def main2():
 
     print "Nouns len: %s" % len(nouns)
 
-    for i in xrange(0, len(nouns)):
-        n1 = nouns[i]
-        #n2_index = i if n2_last == 0 else nouns.index(n2_last)
-
+    for n1 in nouns_replys.keys():
         sim_buffer = []
-        for j in xrange(i + 1, len(nouns)):
-            n2 = nouns[j]
-            #print "i=%s, j=%s, n1=%s, n2=%s" % (i, j, n1, n2)
-            #if int(n2) < int(n2_last):
-                #print "skip"
-            #    continue
+        for n2 in nouns_replys[n1]:
             similar = count_similarity(nouns_replys, n1, n2)
             sim_buffer.append((n1, n2, similar))
-            #n2_last = n2
 
-            #cur.execute("update sim_progress set n1_md5 = ?, n2_md5 = ?", (n1, n2))
-       
         cur.executemany("""
             insert or ignore into noun_similar
             (noun1_md5, noun2_md5, similar)
@@ -266,9 +255,8 @@ def main2():
             (?, ?, ?)
         """, sim_buffer )
         
-        #n2_last = 0
-        cnt = cnt + len(sim_buffer)
-        print "[%s] Saved %s similarities" %(time.ctime(), cnt)   
+        cnt = cnt + 1 
+        print "[%s] Saved %s of %s post nouns" %(time.ctime(), cnt, len(nouns))   
 
 
 if __name__ == "__main__":
