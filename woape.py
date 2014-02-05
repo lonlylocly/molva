@@ -18,7 +18,7 @@ headers = {"Authorization":"Bearer AAAAAAAAAAAAAAAAAAAAAEBgVAAAAAAAxZcUIQhxg"+
 #c.request('GET', '/1.1/statuses/show.json?id=%s'%tweet_id, '', headers)
 
 CHAINS_GOAL = 1000000
-TWEETS_START_DAY = datetime.now() - timedelta (days = 40)
+TWEETS_START_DAY = datetime(2013, 12, 25, 0, 0, 0) #datetime.now() - timedelta (days = 40)
 DB_FILENAME = 'more_replys2.db'
 
 class WoapeException(Exception):
@@ -197,6 +197,7 @@ def main():
     cur = con.cursor()
     create_tables(cur)
 
+    cnt = 1
     while True:
         users = fetch_list(cur, "select username from users where user_done = 0 order by reply_cnt desc limit 1")
     
@@ -215,13 +216,14 @@ def main():
         #        continue
         #    f2 = lambda : iteration(cur, talked_to_user)
         #    try_several_times(f2, 3)
-
-        chains = get_chains(cur)     
-        if len(chains) >= CHAINS_GOAL:
-            print "Got enough chains, breaking"
-            break
-        else:
-            print "Has %s chains, need %s, continue" % (len(chains), CHAINS_GOAL)
+        cnt = cnt + 1
+        if (cnt % 10) == 1:
+            chains = get_chains(cur)     
+            if len(chains) >= CHAINS_GOAL:
+                print "Got enough chains, breaking"
+                break
+            else:
+                print "Has %s chains, need %s, continue" % (len(chains), CHAINS_GOAL)
 
 
     

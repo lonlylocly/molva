@@ -192,7 +192,7 @@ def main():
     con.isolation_level = None
     
     cur = con.cursor()
-    k_map = klusterize(cur, 50)
+    k_map = klusterize(cur, 100)
     f = open('klusters.json', 'w')     
     f.write(json.dumps(k_map, indent=4))
     f.close()
