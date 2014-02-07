@@ -1,16 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import libxml2
 
 import hashlib
 import sqlite3
 import time
 import sys,codecs
 
+import xml.etree.cElementTree as ElementTree
+
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 
-db = 'replys.db'
+db = 'more_replys2.db'
 
 def create_tables(cur):
     cur.execute("""
@@ -63,22 +64,52 @@ def main():
     cur = con.cursor()
     create_tables(cur)   
 
-    doc = libxml2.parseFile('facts.xml')
-    c = doc.xpathNewContext()
-    res = c.xpathEval("//document")
+    ids = open('tweets_index.txt', 'r').read().split("\n")
+    print "Got ids"
 
-    ids = open('ids.txt', 'r').read().split("\n")
+    tree = ElementTree.iterparse(sys.argv[1], events = ('start', 'end'))
+    cur_doc = None
+    cur_nouns = []
+    cnt = 1
+    for event, elem in tree:
+        if event == 'end':
+            if elem.tag == 'document':
+                post_id = ids[int(cur_doc) -1]
+                #nouns = map(lambda x: x.decode('utf-8'), cur_nouns)
+                nouns = map(lambda x: x.lower(), cur_nouns)
+                save_nouns(cur, nouns)
+                save_tweet_nouns(cur, post_id, nouns)
+                cur_doc = None
+                cur_nouns = []
+                elem.clear()
+            if elem.tag == 'Noun':
+                cur_nouns.append(elem.attrib['val'])
+        if event == 'start':
+            if elem.tag == 'document':
+                cur_doc = elem.attrib['di']
+                if int(cur_doc) > cnt * 10000:
+                    print "[%s] seen %s docid" % (time.ctime(), cur_doc)
+                    cnt = cnt + 1
+    return
 
-    for d in res:
-        c.setContextNode(d)
-        doc_id = c.xpathEval("./@di")[0].content
-        post_id = ids[int(doc_id) - 1]
-        nouns = map(lambda x: x.content,  c.xpathEval("./facts/SimpleFact/Noun/@val"))
-	nouns = map(lambda x: x.decode('utf-8'), nouns)
-	nouns = map(lambda x: x.lower(), nouns)
-	print "[%s] postId %s nouns %s" % (time.ctime(), post_id, ",".join(nouns))
-	save_nouns(cur, nouns)
-	save_tweet_nouns(cur, post_id, nouns)
+#    print "At least i can parse"
+#    c = doc.xpathNewContext()
+#    res = c.xpathEval("//document")
+#
+#    
+#    cnt = 0
+#    for d in res:
+#        c.setContextNode(d)
+#        doc_id = c.xpathEval("./@di")[0].content
+#        post_id = ids[int(doc_id) - 1]
+#        nouns = map(lambda x: x.content,  c.xpathEval("./facts/SimpleFact/Noun/@val"))
+#	nouns = map(lambda x: x.decode('utf-8'), nouns)
+#	nouns = map(lambda x: x.lower(), nouns)
+#	save_nouns(cur, nouns)
+#	save_tweet_nouns(cur, post_id, nouns)
+#        cnt = cnt + 1
+#        if cnt % 10000 == 0:
+#            print "[%s] done %s documents" % (time.ctime(), cnt)
 
 
 if __name__ == "__main__":
