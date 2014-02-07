@@ -9,7 +9,7 @@ import time
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-db = 'replys.db'
+db = 'more_replys2.db'
 
 def create_tables(cur):
     cur.execute("""
@@ -121,7 +121,6 @@ def get_post_nouns(cur, post_id):
 
 def main():
     print "[%s] Startup" % time.ctime() 
-
     con = sqlite3.connect(db)
     con.isolation_level = None
     
@@ -131,21 +130,18 @@ def main():
     last_id, last_reply_id = cur.execute("select last_id, last_reply_id from progress").fetchone()
 
     chains = cur.execute("""
-        select t1.id, t2.id 
-        from tweets as t1
-        inner join tweets as t2
-        on t1.in_reply_to_id = t2.id
-        where 
-            t1.in_reply_to_id not Null
-        and 
-            t1.id > ?
+        select reply_id, post_id
+        from tweet_chains 
+        where
+            reply_id > ?
         and
-            t2.id > ?
-        order by t1.id, t2.id  
+            post_id > ?
+        order by reply_id, post_id 
     """, (last_id, last_reply_id)).fetchall()
 
     print "[%s] Done fetching chains: %s" % (time.ctime(), len(chains)) 
     cnt = 0
+    
     for c in chains:
 	#try:
         post_nouns = get_post_nouns(cur, c[1]) 
@@ -153,6 +149,7 @@ def main():
         
         if len(post_nouns) == 0 or len(reply_nouns) == 0:
             print "[%s] no nouns for: %s, %s"% (time.ctime(), c[1], c[0])
+            
             continue
         save_relations(cur, post_nouns, reply_nouns)
         
@@ -161,7 +158,7 @@ def main():
         cur.execute("update progress set last_id = ?, last_reply_id = ?", c)
         
         
-        print "[%s] Chains left: %s" % (time.ctime(), len(chains) - cnt) 
+        print "[%s] Chains done: %s" % (time.ctime(), cnt) 
      	#except Exception as e:
 	#    print "[%s] ERROR. chain: (%s, %s) error: %s" % (time.ctime(), c[0], c[1], e ) 
 
@@ -260,4 +257,4 @@ def main2():
 
 
 if __name__ == "__main__":
-    main2()
+    main()
