@@ -4,8 +4,8 @@ import sqlite3
 from subprocess import Popen, PIPE, STDOUT
 import sys,codecs
 import re
-import hashlib
 import time
+from util import digest
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -36,47 +36,9 @@ def create_tables(cur):
         )
     """)
     cur.execute("insert or ignore into progress (fake_key, last_id, last_reply_id) values (0, 0, 0)")
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS noun_similar (
-            noun1_md5 integer,
-            noun2_md5 integer,
-            similar float default 0,
-            PRIMARY KEY(noun1_md5, noun2_md5)
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS sim_progress (
-            fake_key integer,
-            n1_md5 integer,
-            n2_md5 integer,
-            PRIMARY KEY (fake_key)
-        )
-    """)
-    cur.execute("insert or ignore into sim_progress (fake_key, n1_md5, n2_md5) values (0, 0, 0)")
 
 def fetch_list(cur, query):
     return map(lambda x: x[0], cur.execute(query).fetchall())
-
-def tomitize(s):
-    s = s.replace('\n', ' ').replace("'", "\\'")
-    p = Popen(["./tomita", "config.proto"], stdout=PIPE, stdin=PIPE, stderr=PIPE)
-    facts = p.communicate(input=s.encode('utf-8'))[0]
-    facts = facts.decode('utf-8')
-    nouns = re.findall("^.*Noun = (.*)$", facts, flags= re.M) 
-    nouns = map(lambda x: x.lower(), nouns)
-
-    return nouns
-
-def digest(s):
-    large = int(hashlib.md5(s.encode('utf-8')).hexdigest(), 16)
-
-    b1 = large & (2 ** 32 - 1)
-    b2 = large >> 32 & (2 ** 32 - 1)
-    b3 = large >> 64 & (2 ** 32 - 1)
-    b4 = large >> 96 & (2 ** 32 - 1)
-    small = b1 ^ b2 ^ b3 ^ b4
-
-    return small
 
 def save_nouns(cur, nouns):
     for n in nouns:
@@ -175,22 +137,6 @@ def get_noun_replys(cur, n):
 
     return map(lambda x: x[0], n_replys)
 
-def get_nouns_replys(cur):
-    r = cur.execute("""
-        select post_noun_md5, reply_noun_md5 
-        from noun_relations
-    """).fetchall()
-
-    nouns_replys = {}
-    for i in r:
-        post = i[0]
-        reply = i[1]
-        if post in nouns_replys:
-            nouns_replys[post].append(reply)
-        else:
-            nouns_replys[post] = [reply]
-
-    return nouns_replys
 
 def _count_similarity(n1_replys, n2_replys):
     sup_cnt = len(n1_replys | n2_replys)
@@ -214,47 +160,6 @@ def save_similarity(cur, n1, n2, similar):
         (?, ?, ?)
     """, (n1, n2, similar))
          
-def main2():
-    print "[%s] Startup" % time.ctime() 
-
-    con = sqlite3.connect(db)
-    con.isolation_level = None
-    
-    cur = con.cursor()
-    create_tables(cur)
-
-    n1_last, n2_last = cur.execute("select n1_md5, n2_md5 from sim_progress").fetchone()
-
-    nouns = cur.execute("""
-        select noun_md5 from nouns
-        where noun_md5 > ?
-        order by noun_md5
-    """, (n1_last, )).fetchall()
-    nouns = map(lambda x: x[0], nouns)
-
-    cnt = 0
-    nouns_replys = get_nouns_replys(cur)
-
-    nouns = nouns_replys.keys()
-
-    print "Nouns len: %s" % len(nouns)
-
-    for n1 in nouns_replys.keys():
-        sim_buffer = []
-        for n2 in nouns_replys[n1]:
-            similar = count_similarity(nouns_replys, n1, n2)
-            sim_buffer.append((n1, n2, similar))
-
-        cur.executemany("""
-            insert or ignore into noun_similar
-            (noun1_md5, noun2_md5, similar)
-            values
-            (?, ?, ?)
-        """, sim_buffer )
-        
-        cnt = cnt + 1 
-        print "[%s] Saved %s of %s post nouns" %(time.ctime(), cnt, len(nouns))   
-
 
 if __name__ == "__main__":
     main()
