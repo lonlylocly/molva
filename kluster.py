@@ -8,10 +8,11 @@ import hashlib
 import time
 import json
 import random
+import simdict
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-db = 'replys.db'
+db = 'more_replys2.db'
 
 # союзы всякие несчастные
 blocklist = [127460222,194911016,348664285,522559933,1543116322,1928061337,2860766309,3235057763,3534832033,3759046491]
@@ -19,46 +20,46 @@ bl = ",".join(map(lambda x: str(x), blocklist))
 
 MAX_DIST = 1
 
-def get_distances(cur):
-    res = cur.execute("""
-        select n1_md5, n2_md5, 1 / (similar * (p.sum_count + p2.sum_count)) as sim_k 
-        from ns_view s   
-        inner join post_sum_count p 
-        on s.n1_md5 = p.noun_md5  
-        inner join post_sum_count p2 
-        on s.n2_md5 = p2.noun_md5
-        where 
-        s.n1_md5 < s.n2_md5
-        and s.n1_md5 not in (%s)  
-        and s.n2_md5 not in (%s)
-        and similar > 0 
-        order by sim_k asc  
-    """ % (bl, bl)).fetchall()
-    min_dist = 1000
-    max_dist = 0    
-    dists = {} 
-    for r in res:
-        n1, n2, dist = r
-        if dist > max_dist:
-            max_dist = dist
-        if dist < min_dist:
-            min_dist = dist
-
-        if n1 not in dists:
-            dists[n1] = {}
-        if n2 not in dists:
-            dists[n2] = {}
-        dists[n1][n2] = dist        
-        dists[n2][n1] = dist        
-        dists[n1][n1] = 0
-        dists[n2][n2] = 0
-
-    print "max dist: %s; min dist: %s" % (max_dist, min_dist)
-
-    for b in blocklist:  
-        assert b not in dists
-
-    return dists
+#def get_distances(cur):
+#    res = cur.execute("""
+#        select n1_md5, n2_md5, 1 / (similar * (p.sum_count + p2.sum_count)) as sim_k 
+#        from ns_view s   
+#        inner join post_sum_count p 
+#        on s.n1_md5 = p.noun_md5  
+#        inner join post_sum_count p2 
+#        on s.n2_md5 = p2.noun_md5
+#        where 
+#        s.n1_md5 < s.n2_md5
+#        and s.n1_md5 not in (%s)  
+#        and s.n2_md5 not in (%s)
+#        and similar > 0 
+#        order by sim_k asc  
+#    """ % (bl, bl)).fetchall()
+#    min_dist = 1000
+#    max_dist = 0    
+#    dists = {} 
+#    for r in res:
+#        n1, n2, dist = r
+#        if dist > max_dist:
+#            max_dist = dist
+#        if dist < min_dist:
+#            min_dist = dist
+#
+#        if n1 not in dists:
+#            dists[n1] = {}
+#        if n2 not in dists:
+#            dists[n2] = {}
+#        dists[n1][n2] = dist        
+#        dists[n2][n1] = dist        
+#        dists[n1][n1] = 0
+#        dists[n2][n2] = 0
+#
+#    print "max dist: %s; min dist: %s" % (max_dist, min_dist)
+#
+#    for b in blocklist:  
+#        assert b not in dists
+#
+#    return dists
 
 def get_k_top_nouns(cur, k):
     res = cur.execute("""
@@ -89,22 +90,22 @@ def get_nouns(cur):
 
     return nouns
 
-def get_dist(n1, n2, dist):
-    if n1 in dist:
-        try:
-            if n2 in dist[n1]:
-                return dist[n1][n2]
-        except Exception as e:
-            print e
-            print dist[n1]
-    return MAX_DIST 
+#def get_dist(n1, n2, dist):
+#    if n1 in dist:
+#        try:
+#            if n2 in dist[n1]:
+#                return dist[n1][n2]
+#        except Exception as e:
+#            print e
+#            print dist[n1]
+#    return MAX_DIST 
 
 def pick_best_kluster(noun, klusters, dist):
     best_k = 0
     best_dist = MAX_DIST 
     for k_i in range(len(klusters)):
         k_noun = klusters[k_i]
-        dist_n_k = get_dist(noun, k_noun, dist)
+        dist_n_k = simdict.get_dist(noun, k_noun, dist)
         if dist_n_k < best_dist:
             best_k = k_i
             best_dist = dist_n_k
@@ -115,6 +116,7 @@ def elect_leader(k_map, dist, klusters):
     leaders = []
     #print "klusters: %s" % str(klusters)
     for k_i in range(len(k_map)):
+        print "[%s] for kluster %s = %s" % (time.ctime(), k_i, k_map[i])
         k_list = k_map[k_i]
         if len(k_list) == 0:
             leaders.append(klusters[k_i])
@@ -126,7 +128,7 @@ def elect_leader(k_map, dist, klusters):
             sum_dist = 0
             n = k_list[i]
             for n2 in k_list:
-                sum_dist += get_dist(n,n2,dist)    
+                sum_dist += simdict.get_dist(n,n2,dist)    
             if sum_dist < best_sum_dist:
                 best_leader = i
                 best_sum_dist = sum_dist
@@ -151,7 +153,7 @@ def get_k_random_nouns(k, nouns):
 
 def klusterize(cur, k):
     #klusters = get_k_top_nouns(cur, k)
-    dist = get_distances(cur)
+    dist = simdict.get_dists('_noun_sim_reduced.dump')  
     nouns_m = get_nouns(cur)
     nouns = nouns_m.keys()
     
@@ -181,7 +183,7 @@ def klusterize(cur, k):
             continue
         k_noun = nouns_m[klusters[i]]
         k_map_fin[k_noun] = {'len': len(k_map_prev[i]),
-        'top10': map(lambda x: nouns_m[x], k_map_prev[i][0:10])}
+        'top100': map(lambda x: nouns_m[x], k_map_prev[i][0:100])}
 
     return k_map_fin
 
@@ -192,7 +194,7 @@ def main():
     con.isolation_level = None
     
     cur = con.cursor()
-    k_map = klusterize(cur, 100)
+    k_map = klusterize(cur, 10)
     f = open('klusters.json', 'w')     
     f.write(json.dumps(k_map, indent=4))
     f.close()
