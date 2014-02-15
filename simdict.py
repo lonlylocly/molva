@@ -22,7 +22,7 @@ def save_noun(n1, val_list, sim_dict):
     sim_dict[n1] = buf          
 
 
-def get_dists(sim_file):
+def get_dists(sim_file,max_dists=None):
     print "[%s] get_dists startup" % time.ctime() 
 
     cnt = 0
@@ -56,6 +56,8 @@ def get_dists(sim_file):
         if cnt > log_cnt * 5e5:
             log_cnt = log_cnt + 1
             print "[%s] Done so far %s" %(time.ctime(), cnt)   
+            if max_dists is not None and cnt > max_dists:
+                break
 
     print "[%s] get_dists done. Count %s" %(time.ctime(), cnt)   
 
