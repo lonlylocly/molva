@@ -8,7 +8,9 @@ import hashlib
 import time
 import json
 import random
+
 import simdict
+from util import digest
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -32,21 +34,60 @@ def get_k_top_nouns(cur, k):
     
     return map(lambda x: x[0], res)
 
+def get_nouns_replys(cur):
+    r = cur.execute("""
+        select post_noun_md5, reply_noun_md5 
+        from noun_relations
+    """).fetchall()
+
+    nouns_replys = {}
+    replys_nouns = {}
+    for i in r:
+        post = i[0]
+        reply = i[1]
+        if post in nouns_replys:
+            nouns_replys[post].append(reply)
+        else:
+            nouns_replys[post] = [reply]
+        if reply in replys_nouns:
+            replys_nouns[reply].append(post)
+        else:
+            replys_nouns[reply] = [post]
+
+    return (nouns_replys, replys_nouns)
+
+
 
 def get_nouns(cur):
     res = cur.execute("""
         select noun_md5, noun from nouns
-        where noun_md5 not in (%s) 
-    """ % bl).fetchall()
+    """ ).fetchall()
     
     nouns = {}
     for r in res:
         nouns[r[0]] = r[1]
    
-    for b in blocklist:  
-        assert b not in nouns
-
     return nouns
+
+def get_tweets_nouns(cur):
+    res = cur.execute("""
+        select id, noun_md5 
+        from tweets_nouns
+    """).fetchall()
+   
+    ns_tw = {}
+    for r in res:
+        t_id, n = r
+        n = int (n)
+        t_id = int(t_id)
+        if n not in ns_tw:
+            ns_tw[n] = [t_id]
+        else:
+            ns_tw[n].append(t_id) 
+    return ns_tw
+
+def get_common_tweets(n1, n2, ns_tw):
+    return set(ns_tw[n1]) & set(ns_tw[n2])
 
 def pick_best_kluster(noun, klusters, dist):
     best_k = 0
@@ -99,6 +140,56 @@ def get_k_random_nouns(k, nouns):
             rlist.append(n)
     return rlist
 
+def klusterize_rand(cur, dists_file):
+    #klusters = get_k_top_nouns(cur, k)
+    dist = simdict.get_dists(dists_file)  
+    #dist = simdict.get_dists('test.dump')  
+    nouns_m = get_nouns(cur)
+    nouns = nouns_m.keys()
+    
+    kluster_nouns = []
+    klusters = []
+    
+    print "[%s] Start klusterize_rand" % (time.ctime())
+
+    iter_cnt = 0
+
+    while len(nouns) > 0:
+        print "[%s] Iteration %s" % (time.ctime(), iter_cnt)
+        iter_cnt = iter_cnt + 1
+        next_noun, next_kluster, trash_k = klusterize_0(nouns, dist)
+        nouns = trash_k
+        kluster_nouns.append(next_noun)
+        klusters.append(next_kluster)
+
+    print "[%s] Done klusterize_rand" % (time.ctime())
+
+    for i in range(0, len(klusters)):
+        print "%s %s" % (kluster_nouns[i], len(klusters[i]))
+
+    return [kluster_nouns, klusters]
+
+def klusterize_0(nouns, dist):
+    if len(nouns) == 0:
+        return None 
+    next_noun = get_k_random_nouns(1, nouns)[0]
+    next_kluster = []
+    trash_k = []
+    
+    print "[%s] Nouns len: %s " % (time.ctime(), len(nouns))
+
+    for noun in nouns:
+        dist_n = simdict.get_dist(noun, next_noun, dist)
+        if dist_n < 1.0 and dist_n >= 0.0:
+            next_kluster.append(noun)
+        else:
+            trash_k.append(noun)
+    
+    print "[%s] Kluster done. K: %s. Len(K): %s. Len(Trash): %s" % (time.ctime(), next_noun,
+    len(next_kluster), len(trash_k))
+
+    return [next_noun, next_kluster, trash_k]
+
 def klusterize(cur, k):
     #klusters = get_k_top_nouns(cur, k)
     dist = simdict.get_dists('_noun_sim_reduced.dump')  
@@ -139,18 +230,123 @@ def klusterize(cur, k):
 
     return k_map_fin
 
-def main():
+def main_k():
     print "[%s] Startup" % time.ctime() 
 
+    dists_file = '_noun_sim_reduced.dump'
     con = sqlite3.connect(db)
     con.isolation_level = None
     
     cur = con.cursor()
-    k_map = klusterize(cur, 10)
+    k_map = klusterize_rand(cur, dists_file)
     f = open('klusters.json', 'w')     
     f.write(json.dumps(k_map, indent=4))
     f.close()
     print "[%s] End " % time.ctime() 
 
+def elect_leaders(kls, dist):
+    print "[%s] Reelect" % (time.ctime())
+    kls2 = {}
+    cnt = 0
+    kls_keys_len = len(kls.keys())
+    for k in kls.keys():
+        print "[%s] Klusters %s of %s" % (time.ctime(), cnt, kls_keys_len)
+        cnt += 1
+        max_tot_dist = len(kls[k])
+        print "[%s] Kluster power: %s " % (time.ctime(),max_tot_dist )
+        leader = k
+      
+        for n1_i in range(0, len(kls[k]) - 1):
+            n1 = kls[k][n1_i]
+            tot_dist = 0
+            for n2_i in range(n1_i + 1, len(kls[k])):
+                n2 = kls[k][n2_i]
+                tot_dist += simdict.get_dist(n1, n2, dist)            
+            if tot_dist < max_tot_dist:
+                max_tot_dist = tot_dist
+                leader = n1
+        kls2[leader] = kls[k]
+    return kls2
+        
+def main_i(kl_file):
+    print "[%s] Startup" % time.ctime() 
+    #dist = simdict.get_dists('_noun_sim_reduced.dump')  
+    kl = json.loads(open(kl_file, 'r').read())
+
+    kls = {}
+    for ind in range(0, len(kl[0])):
+        k = kl[0][ind]
+        val = kl[1][ind]
+        if len(val) > 1:
+            kls[k] = val
+    
+    #kls = elect_leaders(kls, dist)
+    f = open('klusters-noleader.json','w')
+    f.write(json.dumps(kls, indent=4))
+    print "[%s] Done" % time.ctime() 
+
+def get_common_replys(n1, n2, nouns_replys, nouns):
+    n1_r = nouns_replys[n1]
+    n2_r = nouns_replys[n2]
+    n12_r = set(n1_r) & set(n2_r)
+    
+    n12_r = list(n12_r)
+    n12_r = map(lambda x: nouns[x] if x in nouns else str(x), n12_r)
+
+    return n12_r
+
+def main_s(input_file,output_file):
+    con = sqlite3.connect(db)
+    con.isolation_level = None
+    
+    cur = con.cursor()
+    nouns = get_nouns(cur)
+    kls = json.loads(open(input_file, 'r').read())
+
+    ns_tw = get_tweets_nouns(cur)
+    nouns_replys, replys_nouns = get_nouns_replys(cur)
+
+    kls_nouns = {}
+    for k in kls.keys():
+        k_n = nouns[int(k)]
+        k_n = k_n.encode('utf-8')
+        k_n_nouns = {} 
+        for i in kls[k]:
+            if k == i:
+                continue 
+            t_ids = get_common_tweets(int(k), int(i), ns_tw)
+            noun_text = nouns[int(i)].encode('utf-8')
+            t_ids = list(t_ids)
+            if len(t_ids) > 0:
+                continue
+            com_repl = get_common_replys(int(k), int(i), nouns_replys, nouns)
+            repl = ", ".join(com_repl)
+            repl = repl.encode('utf-8')
+            if repl not in k_n_nouns:
+                k_n_nouns[repl] = []
+            k_n_nouns[repl].append(noun_text)
+            #k_n_nouns[noun_text] = com_repl.encode('utf-8')
+        if len(k_n_nouns) > 0:
+            kls_nouns[k_n] = k_n_nouns
+    f = open(output_file,'w')
+    f.write("<html><head><meta charset=\"UTF-8\"></head><body>\n<table border=\"1\">")
+    for k in kls_nouns.keys():
+        for repl in kls_nouns[k]:
+            f.write("<tr><td>%s</td><td>(%s)</td>" % (k, repl))
+            f.write("<td><ul>")
+            for i in kls_nouns[k][repl]:
+                f.write("<li>%s</li>\n" % i)
+            f.write("</ul></td></tr>\n")
+    f.write("</table></body></html>")
+    f.close()
+    #f.write(json.dumps(kls_nouns, indent=4, ensure_ascii=False))
+ 
+
 if __name__ == "__main__":
-    main()
+    cmd = sys.argv[1]
+    if cmd == 'kluster0':
+        main_k()
+    elif cmd == 'reelect':
+        main_i(sys.argv[2])
+    elif cmd == 'show':
+        main_s(sys.argv[2], sys.argv[3])
