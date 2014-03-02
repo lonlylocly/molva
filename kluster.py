@@ -295,58 +295,9 @@ def get_common_replys(n1, n2, nouns_replys, nouns):
 
     return n12_r
 
-def main_s(input_file,output_file):
-    con = sqlite3.connect(db)
-    con.isolation_level = None
-    
-    cur = con.cursor()
-    nouns = get_nouns(cur)
-    kls = json.loads(open(input_file, 'r').read())
-
-    ns_tw = get_tweets_nouns(cur)
-    nouns_replys, replys_nouns = get_nouns_replys(cur)
-
-    kls_nouns = {}
-    for k in kls.keys():
-        k_n = nouns[int(k)]
-        k_n = k_n.encode('utf-8')
-        k_n_nouns = {} 
-        for i in kls[k]:
-            if k == i:
-                continue 
-            t_ids = get_common_tweets(int(k), int(i), ns_tw)
-            noun_text = nouns[int(i)].encode('utf-8')
-            t_ids = list(t_ids)
-            if len(t_ids) > 0:
-                continue
-            com_repl = get_common_replys(int(k), int(i), nouns_replys, nouns)
-            repl = ", ".join(com_repl)
-            repl = repl.encode('utf-8')
-            if repl not in k_n_nouns:
-                k_n_nouns[repl] = []
-            k_n_nouns[repl].append(noun_text)
-            #k_n_nouns[noun_text] = com_repl.encode('utf-8')
-        if len(k_n_nouns) > 0:
-            kls_nouns[k_n] = k_n_nouns
-    f = open(output_file,'w')
-    f.write("<html><head><meta charset=\"UTF-8\"></head><body>\n<table border=\"1\">")
-    for k in kls_nouns.keys():
-        for repl in kls_nouns[k]:
-            f.write("<tr><td>%s</td><td>(%s)</td>" % (k, repl))
-            f.write("<td><ul>")
-            for i in kls_nouns[k][repl]:
-                f.write("<li>%s</li>\n" % i)
-            f.write("</ul></td></tr>\n")
-    f.write("</table></body></html>")
-    f.close()
-    #f.write(json.dumps(kls_nouns, indent=4, ensure_ascii=False))
- 
-
 if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == 'kluster0':
         main_k()
     elif cmd == 'reelect':
         main_i(sys.argv[2])
-    elif cmd == 'show':
-        main_s(sys.argv[2], sys.argv[3])

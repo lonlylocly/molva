@@ -11,7 +11,7 @@ import os
 import ctypes
 import struct
 
-sys.stdout = codecs.getwriter('utf8')(sys.stdout)
+#sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 def save_noun(n1, val_list, sim_dict):
     buf = ctypes.create_string_buffer(len(val_list) * 8)
