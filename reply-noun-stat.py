@@ -27,6 +27,25 @@ def get_nouns(cur):
    
     return nouns
 
+def get_tweets_nouns(cur):
+    print "[%s] fetch tweets_nouns " % (time.ctime())
+    res = cur.execute("""
+        select id, noun_md5 
+        from tweets_nouns    
+    """).fetchall()
+    
+    tweets_nouns = {}
+    for r in res:
+        i = str(r[0])
+        n = r[1]
+        if n not in tweets_nouns:
+            tweets_nouns[n] = []
+        tweets_nouns[n].append(i)
+
+    print "[%s] fetch tweets_nouns (done)" % (time.ctime())
+
+    return tweets_nouns
+    
 
 def main():
     con = sqlite3.connect(db)
@@ -38,18 +57,19 @@ def main():
     f = open("reply-noun-stat.json", "w")
 
     posts_replys = {}
+    tweets_nouns = get_tweets_nouns(cur) 
     cnt = 0
     long_cnt = 0
 
     print "[%s] Startup" % (time.ctime())
+    
     for n in nouns:
-        post_ids = cur.execute("""
-            select id 
-            from tweets_nouns
-            where noun_md5 = %s
-        """ % n).fetchall()
-        post_ids = map(lambda x: str(x[0]), post_ids)    
+        if n not in tweets_nouns:
+            print "%d (%s) not in tweets_nouns" % (n, nouns[n])
+            continue
 
+        post_ids = tweets_nouns[n]
+        
         reply_ids = cur.execute("""
             select id from tweets
             where in_reply_to_id in (%s)
@@ -73,7 +93,7 @@ def main():
             print "[%s] done %d nouns" % (time.ctime(), cnt)
             long_cnt += 1
         
-    f.write(json.dumps(post_replys))
+    f.write(json.dumps(posts_replys))
     f.close()
     
 if __name__ == '__main__':
