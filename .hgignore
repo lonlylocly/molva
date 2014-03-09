@@ -1,0 +1,4 @@
+syntax: glob
+
+reply-nouns/*html
+*.pyc
