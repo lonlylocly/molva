@@ -3,15 +3,19 @@
 import sqlite3
 import sys,codecs
 import time
+import math
+import json
 
-from stats import get_tweets_nouns, get_post_replys_tweets 
+from stats import get_tweets_nouns, get_post_replys_tweets, get_nouns 
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 db = 'more_replys2.db'
 
 POST_MIN_FREQ = 30
-REPLY_MIN_FREQ = 20
+REPLY_MIN_FREQ = 1 
+
+REPLY_REL_MIN = 0.01
 
 def get_noun_cnt(cur):
     stats = cur.execute("""
@@ -60,50 +64,45 @@ def get_noun_profiles(cur):
         if post not in stats_dict:
             stats_dict[post] = {reply: cnt}
         stats_dict[post][reply] = cnt
-  
-    print "[%s] Lookup noise stats " % (time.ctime())
-    noise_stats = cur.execute("""
-        select p.post_md5, p.reply_md5, r.reply_id
-        from post_reply_cnt p
-        inner join post_reply_tweet_chains r
-        on p.post_md5 = r.post_md5 and p.reply_md5 = r.reply_md5
-        where p.post_cnt > %d
-        and p.reply_cnt <= %d
-    """ % (POST_MIN_FREQ, REPLY_MIN_FREQ)).fetchall()
-
-    print "[%s] Lookup noise stats (fetch done)" % (time.ctime())
-
-    noise_dict = {} 
-    for s in noise_stats:
-        post = int(s[0])
-        reply = int(s[1])
-        reply_id = int(s[2])
-        if post not in noise_dict:
-            noise_dict[post] = [] 
-        noise_dict[post].append(reply_id)
-
-    for post in noise_dict:
-        reply_cnt = len(set(noise_dict[post]))
-        if post not in stats_dict:
-            stats_dict[post] = {}
-        stats_dict[post][0] = reply_cnt
-   
-    print "[%s] Lookup noise stats (done)" % (time.ctime())
 
     return stats_dict
-
-def get_post_cnt(cur):
-    stats = cur.execute("""
-        select post_md5, reply_cnt
-        from post_cnt
-    """).fetchall()
-
+ 
+def get_noun_profiles_noise(cur):
     stats_dict = {}
-    for s in stats:
+
+    noise_stats = cur.execute("""
+        select post_md5, sum(reply_cnt)
+        from post_reply_cnt
+        where post_cnt > %d
+        and reply_cnt <= %d
+        group by post_md5
+    """ % (POST_MIN_FREQ, REPLY_MIN_FREQ )).fetchall()
+
+    for s in noise_stats:
         post = int(s[0])
         reply_cnt = int(s[1])
+        if post not in stats_dict:
+            stats_dict[post] = {}
         stats_dict[post] = reply_cnt
 
+    return stats_dict
+ 
+def get_noun_profiles_total(cur):
+    stats_dict = {}
+    total_stats = cur.execute("""
+        select post_md5, sum(reply_cnt)
+        from post_reply_cnt
+        where post_cnt > %d
+        group by post_md5
+    """ % (POST_MIN_FREQ)).fetchall()
+
+    for s in total_stats:
+        post = int(s[0])
+        reply_cnt = int(s[1])
+        if post not in stats_dict:
+            stats_dict[post] = {}
+        stats_dict[post] = reply_cnt 
+    
     return stats_dict
 
 def print_stats_row(key, row):       
@@ -116,24 +115,110 @@ def print_stats_row(key, row):
             noise_cnt += row[reply]
         else:
             ok_cnt += row[reply]
-
-    print "\ttotal ok: %s" % ok_cnt
-    print "\ttotal nouse: %s" % noise_cnt
-    print "\tsum: %s" % (ok_cnt + noise_cnt)
-
-    
+    print "\tnoise\t%s" % noise_cnt
+    print "\tok\t%s" % ok_cnt
  
-def get_rel_stats(abs_stats, post_reply_cnt):
+    assert (ok_cnt + noise_cnt) <= 1.001 
+    assert (ok_cnt + noise_cnt) > 0.999
+
+
+def get_rel_stats(abs_stats, total_stats):
     rel_stats = {}
     for post in abs_stats:
-        replys_cnt = post_reply_cnt[post]
+        total = total_stats[post]
         rel_stats[post] = {}
+        rel_stats[post][0] = 0.0
         for reply in abs_stats[post]:
-            repl_portion = (abs_stats[post][reply] + 0.0)/ replys_cnt
-            rel_stats[post][reply] = repl_portion
-        print_stats_row(post, rel_stats[post])
+            repl_portion = (abs_stats[post][reply] + 0.0)/ total
+            if repl_portion <= REPLY_REL_MIN:
+                rel_stats[post][0] += repl_portion
+            else:
+                rel_stats[post][reply] = repl_portion
 
     return rel_stats
+
+def compare_profiles(prof1, prof2):
+    total = 0
+    for reply in (set(prof1.keys()) | set(prof2.keys())):
+        x1 = prof1[reply] if reply in prof1 else 0 
+        x2 = prof2[reply] if reply in prof2 else 0 
+        total += math.fabs(x1 - x2)
+    
+    total = total /2
+
+    return total
+
+def get_sim_map(rel_stats):
+    sim_map = {}
+
+    posts = rel_stats.keys()
+
+    cnt = 0
+    long_cnt = 0
+    max_cnt = len(posts) * len(posts) / 2
+
+    f = open("noun-profiles.txt", "w")
+    print "[%s] Todo:  %s" % (time.ctime(), max_cnt)
+    for i in range(0, len(posts)):
+        post1 = posts[i]
+        sim_map[post1] = {}
+        for j in range(i + 1, len(posts)):
+            post2 = posts[j]
+            cmp_prof = compare_profiles(rel_stats[post1], rel_stats[post2])
+            #sim_map[post1][post2] 
+            cnt += 1
+            f.write("%s\t%s\t%s\n" % (post1, post2, cmp_prof))
+        if long_cnt * 5e5 < cnt:
+            print "[%s] done so far %s" % (time.ctime(), cnt)
+            long_cnt += 1
+        sim_map = {}
+    f.close()
+
+def debug_sim_net(rel_stats, nouns):
+    posts = rel_stats.keys()
+
+    cnt = 0
+    long_cnt = 0
+    max_cnt = len(posts) * len(posts) / 2
+
+    for i in range(0, len(posts)):
+        post1 = posts[i]
+        cmps = []
+        for j in range(0, len(posts)):
+            if i == j:
+                continue
+            post2 = posts[j]
+            cmp_prof = compare_profiles(rel_stats[post1], rel_stats[post2])
+            cnt += 1
+            cmps.append((post2, cmp_prof))
+        cmps = map(lambda x: x, reversed(sorted(cmps, key=lambda x: x[1])))
+
+        write_noun_sim_info(post1, cmps, nouns)
+
+def write_noun_sim_info(post, cmps, nouns):
+    filename = "./sim-net/" + str(post) + ".html"
+    print "[%s] write file %s " % (time.ctime(), filename)
+    fout = codecs.open(filename,'w',encoding='utf8')
+    fout.write("<html><head><meta charset=\"UTF-8\"><title>" + nouns[post] + "</title></head><body>\n<table border=\"1\">")
+
+    heading = """
+<html><head><meta charset=\"UTF-8\"></head><body>
+"""   
+    fout.write(heading)
+
+    fout.write("<h3>" + nouns[post] + "<h3>\n")
+
+    for i in cmps[0:10]:
+        post, cmp_prof = i
+        fout.write('<a href="./%d.html">%s</a> - %.6f <br/>\n' % (post, nouns[post], cmp_prof))
+    
+
+    footer = """
+</body></html>
+"""
+    fout.write(footer)    
+    fout.close() 
+
 
 def main():
     print "[%s] Startup " % (time.ctime())
@@ -141,12 +226,26 @@ def main():
     con.isolation_level = None
     
     cur = con.cursor()
+    nouns = get_nouns(cur)
 
     abs_stats = get_noun_profiles(cur)
-    post_cnt = get_post_cnt(cur)
-    rel_stats = get_rel_stats(abs_stats, post_cnt)
+    #noise_stats = get_noun_profiles_noise(cur)
+    total_stats = get_noun_profiles_total(cur)
+    #post_cnt = get_post_cnt(cur)
+    rel_stats = get_rel_stats(abs_stats, total_stats)
 
-    
+    noise_cnt = 0
+    for post in rel_stats:
+        #print_stats_row(post, rel_stats[post])  
+        if 0 in rel_stats[post] and rel_stats[post][0] >= 0.5:
+            noise_cnt += 1
+
+    print "Total: %s; noise: %s" % (len(rel_stats), noise_cnt)
+
+    #get_sim_map(rel_stats)
+
+    debug_sim_net(rel_stats, nouns)
     print "[%s] Done " % (time.ctime())
+
 if __name__ == '__main__':
     main()
