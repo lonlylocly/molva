@@ -1,4 +1,6 @@
 syntax: glob
 
 reply-nouns/*html
+sim-net/*
+profile-cmp/*
 *.pyc
