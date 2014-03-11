@@ -52,8 +52,7 @@ def get_noun_profiles(cur):
         select post_md5, reply_md5, reply_cnt
         from post_reply_cnt
         where post_cnt > %d
-        and reply_cnt > %d
-    """ % (POST_MIN_FREQ, REPLY_MIN_FREQ )).fetchall()
+    """ % (POST_MIN_FREQ)).fetchall()
 
     stats_dict = {}
 
@@ -66,7 +65,25 @@ def get_noun_profiles(cur):
         stats_dict[post][reply] = cnt
 
     return stats_dict
- 
+
+def get_noun_profiles_total(cur):
+    stats_dict = {}
+    total_stats = cur.execute("""
+        select post_md5, sum(reply_cnt)
+        from post_reply_cnt
+        where post_cnt > %d
+        group by post_md5
+    """ % (POST_MIN_FREQ)).fetchall()
+
+    for s in total_stats:
+        post = int(s[0])
+        reply_cnt = int(s[1])
+        if post not in stats_dict:
+            stats_dict[post] = {}
+        stats_dict[post] = reply_cnt 
+    
+    return stats_dict
+
 def get_noun_profiles_noise(cur):
     stats_dict = {}
 
@@ -87,40 +104,21 @@ def get_noun_profiles_noise(cur):
 
     return stats_dict
  
-def get_noun_profiles_total(cur):
-    stats_dict = {}
-    total_stats = cur.execute("""
-        select post_md5, sum(reply_cnt)
-        from post_reply_cnt
-        where post_cnt > %d
-        group by post_md5
-    """ % (POST_MIN_FREQ)).fetchall()
-
-    for s in total_stats:
-        post = int(s[0])
-        reply_cnt = int(s[1])
-        if post not in stats_dict:
-            stats_dict[post] = {}
-        stats_dict[post] = reply_cnt 
-    
-    return stats_dict
-
-def print_stats_row(key, row):       
-    print key 
+def check_stats_row(key, row):       
     ok_cnt = 0
     noise_cnt = 0
     for reply in row:
-        print "\t%s\t%s" % (reply, row[reply])
         if reply == 0:
             noise_cnt += row[reply]
         else:
             ok_cnt += row[reply]
-    print "\tnoise\t%s" % noise_cnt
-    print "\tok\t%s" % ok_cnt
- 
-    assert (ok_cnt + noise_cnt) <= 1.001 
-    assert (ok_cnt + noise_cnt) > 0.999
 
+    try: 
+        assert (ok_cnt + noise_cnt) <= 1.001 
+        assert (ok_cnt + noise_cnt) > 0.999
+    except Exception as e:
+        print "key: %s; ok_cnt: %s; noise_cnt: %s" % (key, ok_cnt, noise_cnt)
+        raise e
 
 def get_rel_stats(abs_stats, total_stats):
     rel_stats = {}
@@ -139,12 +137,26 @@ def get_rel_stats(abs_stats, total_stats):
 
 def compare_profiles(prof1, prof2):
     total = 0
+
+    #print json.dumps(prof1, indent=4)
+    #print json.dumps(prof2, indent=4)
+
+    #print "reply\tx1\tx2\tpart" 
+    damp1 = (1 - prof1[0]) if 0 in prof1 else 1
+    damp2 = (1 - prof2[0]) if 0 in prof2 else 1
+    
     for reply in (set(prof1.keys()) | set(prof2.keys())):
-        x1 = prof1[reply] if reply in prof1 else 0 
-        x2 = prof2[reply] if reply in prof2 else 0 
-        total += math.fabs(x1 - x2)
+        if reply == 0:
+            continue
+        x1 = damp1 * prof1[reply] if reply in prof1 else 0 
+        x2 = damp2 * prof2[reply] if reply in prof2 else 0 
+        part = math.fabs(x1 - x2)
+        #print "%s\t%s\t%s\t%s" % (reply, x1, x2, part)
+        total += part
     
     total = total /2
+    
+    #print "total: %s" % total
 
     return total
 
@@ -181,6 +193,7 @@ def debug_sim_net(rel_stats, nouns):
     long_cnt = 0
     max_cnt = len(posts) * len(posts) / 2
 
+    top_sims = {}
     for i in range(0, len(posts)):
         post1 = posts[i]
         cmps = []
@@ -191,9 +204,12 @@ def debug_sim_net(rel_stats, nouns):
             cmp_prof = compare_profiles(rel_stats[post1], rel_stats[post2])
             cnt += 1
             cmps.append((post2, cmp_prof))
-        cmps = map(lambda x: x, reversed(sorted(cmps, key=lambda x: x[1])))
+        cmps = map(lambda x: x, sorted(cmps, key=lambda x: x[1]))
 
         write_noun_sim_info(post1, cmps, nouns)
+        top_sims[post1] = cmps[0] 
+
+    return top_sims
 
 def write_noun_sim_info(post, cmps, nouns):
     filename = "./sim-net/" + str(post) + ".html"
@@ -219,6 +235,29 @@ def write_noun_sim_info(post, cmps, nouns):
     fout.write(footer)    
     fout.close() 
 
+def write_noun_sim_index(posts, nouns, top_sims):
+    filename = "./sim-net/index.html"
+    print "[%s] write file %s " % (time.ctime(), filename)
+    fout = codecs.open(filename,'w',encoding='utf8')
+    fout.write(u"<html><head><meta charset=\"UTF-8\"><title>Индекс словопостов</title></head><body>\n<table border=\"1\">")
+
+    heading = """
+<html><head><meta charset=\"UTF-8\"></head><body>
+"""   
+    fout.write(heading)
+
+    fout.write(u"<h3>Индекс словопостов<h3>\n")
+
+    for post in posts:
+        fout.write('<a href="./%d.html">%s</a> - %s<br/>\n' % (post, nouns[post], top_sims[post]))
+    
+
+    footer = """
+</body></html>
+"""
+    fout.write(footer)    
+    fout.close() 
+
 
 def main():
     print "[%s] Startup " % (time.ctime())
@@ -236,7 +275,7 @@ def main():
 
     noise_cnt = 0
     for post in rel_stats:
-        #print_stats_row(post, rel_stats[post])  
+        check_stats_row(post, rel_stats[post])  
         if 0 in rel_stats[post] and rel_stats[post][0] >= 0.5:
             noise_cnt += 1
 
@@ -244,7 +283,9 @@ def main():
 
     #get_sim_map(rel_stats)
 
-    debug_sim_net(rel_stats, nouns)
+    top_sims = debug_sim_net(rel_stats, nouns)
+    write_noun_sim_index(rel_stats.keys(), nouns, top_sims)
+
     print "[%s] Done " % (time.ctime())
 
 if __name__ == '__main__':
