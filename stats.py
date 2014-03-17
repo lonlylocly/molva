@@ -86,4 +86,18 @@ def get_post_tweets(cur, post_noun):
 
     return res
 
+def get_post_tweets_cnt(cur):
+    res = cur.execute("""
+        select noun_md5, count(*)
+        from tweets_nouns tn
+        inner join tweet_chains tc
+        on tn.id = tc.post_id
+        group by noun_md5
+    """)
 
+    post_tweets_cnt = {}
+    for post_cnt in res:
+        post, cnt = post_cnt
+        post_tweets_cnt[post] = cnt
+
+    return post_tweets_cnt

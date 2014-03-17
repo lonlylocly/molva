@@ -5,8 +5,10 @@ import sys,codecs
 import time
 import math
 import json
+import re
 
-from stats import get_tweets_nouns, get_post_replys_tweets, get_nouns 
+from stats import get_tweets_nouns, get_post_replys_tweets, get_nouns, get_post_tweets_cnt 
+from util import digest
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -15,7 +17,23 @@ db = 'more_replys2.db'
 POST_MIN_FREQ = 30
 REPLY_MIN_FREQ = 1 
 
-REPLY_REL_MIN = 0.01
+REPLY_REL_MIN = 0.005
+
+BLOCKED_NOUNS_LIST = u"""
+уж
+че
+ага
+нет
+чё
+эта
+чё-то
+оха
+до
+"""
+BLOCKED_NOUNS_LIST += u"\n".join(list(u"абвгдеёжзиклмнопрстуфхцчшщыьъэюя"))
+
+BLOCKED_NOUNS = ",".join(map( lambda x: str(digest(x)), BLOCKED_NOUNS_LIST.split("\n")))
+
 
 def get_noun_cnt(cur):
     stats = cur.execute("""
@@ -52,7 +70,8 @@ def get_noun_profiles(cur):
         select post_md5, reply_md5, reply_cnt
         from post_reply_cnt
         where post_cnt > %d
-    """ % (POST_MIN_FREQ)).fetchall()
+        and post_md5 not in (%s) and reply_md5 not in (%s)
+    """ % (POST_MIN_FREQ, BLOCKED_NOUNS, BLOCKED_NOUNS)).fetchall()
 
     stats_dict = {}
 
@@ -72,8 +91,9 @@ def get_noun_profiles_total(cur):
         select post_md5, sum(reply_cnt)
         from post_reply_cnt
         where post_cnt > %d
+        and reply_md5 not in (%s)
         group by post_md5
-    """ % (POST_MIN_FREQ)).fetchall()
+    """ % (POST_MIN_FREQ, BLOCKED_NOUNS)).fetchall()
 
     for s in total_stats:
         post = int(s[0])
@@ -135,6 +155,14 @@ def get_rel_stats(abs_stats, total_stats):
 
     return rel_stats
 
+def get_damping_coeff(profile):
+    coeff = 1
+    if 0 in profile and profile[0] != 1 :
+        coeff = 1 / (1 - profile[0])
+
+    return coeff
+         
+
 def compare_profiles(prof1, prof2):
     total = 0
 
@@ -142,9 +170,9 @@ def compare_profiles(prof1, prof2):
     #print json.dumps(prof2, indent=4)
 
     #print "reply\tx1\tx2\tpart" 
-    damp1 = (1 - prof1[0]) if 0 in prof1 else 1
-    damp2 = (1 - prof2[0]) if 0 in prof2 else 1
-    
+    damp1 = get_damping_coeff(prof1) 
+    damp2 = get_damping_coeff(prof2) 
+
     for reply in (set(prof1.keys()) | set(prof2.keys())):
         if reply == 0:
             continue
@@ -186,7 +214,7 @@ def get_sim_map(rel_stats):
         sim_map = {}
     f.close()
 
-def debug_sim_net(rel_stats, nouns):
+def debug_sim_net(rel_stats, nouns, post_tweets_cnt):
     posts = rel_stats.keys()
 
     cnt = 0
@@ -201,17 +229,18 @@ def debug_sim_net(rel_stats, nouns):
             if i == j:
                 continue
             post2 = posts[j]
+            #print "compare %s and %s" % (post1, post2)
             cmp_prof = compare_profiles(rel_stats[post1], rel_stats[post2])
             cnt += 1
             cmps.append((post2, cmp_prof))
         cmps = map(lambda x: x, sorted(cmps, key=lambda x: x[1]))
 
-        write_noun_sim_info(post1, cmps, nouns)
+        write_noun_sim_info(post1, cmps, nouns, rel_stats[post1], post_tweets_cnt[post1])
         top_sims[post1] = cmps[0] 
 
     return top_sims
 
-def write_noun_sim_info(post, cmps, nouns):
+def write_noun_sim_info(post, cmps, nouns, profile, post_tweet_cnt):
     filename = "./sim-net/" + str(post) + ".html"
     print "[%s] write file %s " % (time.ctime(), filename)
     fout = codecs.open(filename,'w',encoding='utf8')
@@ -222,12 +251,20 @@ def write_noun_sim_info(post, cmps, nouns):
 """   
     fout.write(heading)
 
-    fout.write("<h3>" + nouns[post] + "<h3>\n")
-
+    fout.write("<h2>" + nouns[post] + "<h2>\n")
+    fout.write(u"<p>Всего постов с этим словом: %d</p>" % post_tweet_cnt )
+    fout.write(u"<h3>Топ-10 похожих постов</h3>")
     for i in cmps[0:10]:
         post, cmp_prof = i
         fout.write('<a href="./%d.html">%s</a> - %.6f <br/>\n' % (post, nouns[post], cmp_prof))
     
+    fout.write(u"<h3>Профиль ответов на пост</h3>")
+    profile_parts = reversed(sorted(profile.keys(), key=lambda x: float(profile[x])))
+    
+    for reply in profile_parts:
+        p = profile[reply]    
+        reply_text = nouns[reply] if reply != 0 else u"<i>шум</i>"
+        fout.write('<a href="./%d.html">%s</a> - %.6f <br/>\n' % (reply, reply_text, p))
 
     footer = """
 </body></html>
@@ -248,9 +285,12 @@ def write_noun_sim_index(posts, nouns, top_sims):
 
     fout.write(u"<h3>Индекс словопостов<h3>\n")
 
-    for post in posts:
-        fout.write('<a href="./%d.html">%s</a> - %s<br/>\n' % (post, nouns[post], top_sims[post]))
-    
+    top_sims2 = map(lambda x: (x, top_sims[x][0], top_sims[x][1]), posts)
+    top_sims2 = sorted(top_sims2, key=lambda x: x[2])
+
+    for t in top_sims2:
+        post1, post2, cmp_prof = t
+        fout.write('<a href="./%d.html">%s</a>: %s - %s<br/>\n' % (post1, nouns[post1], nouns[post2], cmp_prof))
 
     footer = """
 </body></html>
@@ -273,6 +313,8 @@ def main():
     #post_cnt = get_post_cnt(cur)
     rel_stats = get_rel_stats(abs_stats, total_stats)
 
+    post_tweets_cnt = get_post_tweets_cnt(cur)
+
     noise_cnt = 0
     for post in rel_stats:
         check_stats_row(post, rel_stats[post])  
@@ -283,7 +325,7 @@ def main():
 
     #get_sim_map(rel_stats)
 
-    top_sims = debug_sim_net(rel_stats, nouns)
+    top_sims = debug_sim_net(rel_stats, nouns, post_tweets_cnt)
     write_noun_sim_index(rel_stats.keys(), nouns, top_sims)
 
     print "[%s] Done " % (time.ctime())
