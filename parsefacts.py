@@ -8,10 +8,12 @@ import sys,codecs
 
 import xml.etree.cElementTree as ElementTree
 
+from util import digest
+
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 
-db = 'more_replys2.db'
+db = 'replys_sharper.db'
 
 def create_tables(cur):
     cur.execute("""
@@ -37,16 +39,6 @@ def create_tables(cur):
     )
     """) 
 
-def digest(s):
-    large = int(hashlib.md5(s.encode('utf-8')).hexdigest(), 16)
-
-    b1 = large & (2 ** 32 - 1)
-    b2 = large >> 32 & (2 ** 32 - 1)
-    b3 = large >> 64 & (2 ** 32 - 1)
-    b4 = large >> 96 & (2 ** 32 - 1)
-    small = b1 ^ b2 ^ b3 ^ b4
-
-    return small
 
 def save_nouns(cur, nouns):
     cur.executemany("insert or ignore into nouns (noun_md5, noun) values (?, ?)", 
@@ -91,25 +83,6 @@ def main():
                     print "[%s] seen %s docid" % (time.ctime(), cur_doc)
                     cnt = cnt + 1
     return
-
-#    print "At least i can parse"
-#    c = doc.xpathNewContext()
-#    res = c.xpathEval("//document")
-#
-#    
-#    cnt = 0
-#    for d in res:
-#        c.setContextNode(d)
-#        doc_id = c.xpathEval("./@di")[0].content
-#        post_id = ids[int(doc_id) - 1]
-#        nouns = map(lambda x: x.content,  c.xpathEval("./facts/SimpleFact/Noun/@val"))
-#	nouns = map(lambda x: x.decode('utf-8'), nouns)
-#	nouns = map(lambda x: x.lower(), nouns)
-#	save_nouns(cur, nouns)
-#	save_tweet_nouns(cur, post_id, nouns)
-#        cnt = cnt + 1
-#        if cnt % 10000 == 0:
-#            print "[%s] done %s documents" % (time.ctime(), cnt)
 
 
 if __name__ == "__main__":
