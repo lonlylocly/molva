@@ -11,11 +11,11 @@ import random
 
 import simdict
 from util import digest
-import stats
+from stats import get_nouns, get_tweets_nouns, get_post_tweets, get_post_reply_tweets
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-db = 'more_replys2.db'
+db = 'replys_sharper.db'
 
 def get_tweet_link( tweet_id, username):
     link = "http://twitter.com/%s/status/%s" % (username, tweet_id)
@@ -105,6 +105,16 @@ def main():
     cur = con.cursor()
     nouns = get_nouns(cur)
     tweets_nouns = get_tweets_nouns(cur) 
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS post_reply_cnt ( 
+        post_md5 integer, 
+        reply_md5 integer, 
+        post_cnt integer, 
+        reply_cnt integer, 
+        PRIMARY KEY(post_md5, reply_md5)
+    )
+    """)
 
     f = open("reply-noun-stat.json", "r")
     posts_replys = json.load(f)
