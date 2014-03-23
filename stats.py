@@ -101,3 +101,35 @@ def get_post_tweets_cnt(cur):
         post_tweets_cnt[post] = cnt
 
     return post_tweets_cnt
+
+def get_noun_cnt(cur):
+    stats = cur.execute("""
+        select post_md5, post_cnt 
+        from post_cnt        
+    """).fetchall()
+
+    stats_dict = {}
+    for s in stats:
+        post, cnt = s
+        stats_dict[post] = cnt
+
+    return stats_dict 
+
+def set_post_replys_cnt(cur):
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS post_cnt
+        ( post_md5 integer, reply_cnt integer , PRIMARY KEY(post_md5))
+    """)
+
+    tw_n = get_tweets_nouns(cur)
+
+    post_md5s = cur.execute("select distinct post_md5 from post_reply_cnt").fetchall()
+
+    cnt = 0 
+    max_cnt = len(post_md5s)
+    for post in set(map(lambda x: x[0], post_md5s)):
+        replys = get_post_replys_tweets(cur, tw_n, post)
+        cur.execute("insert into post_cnt values (?, ?)" , (post, len(replys)))
+        print "[%s] done %d of %d " % (time.ctime(), cnt, max_cnt)
+
+

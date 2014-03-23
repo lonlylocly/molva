@@ -23,14 +23,7 @@ def create_tables(cur):
             PRIMARY KEY(noun_md5)
         )
     """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS noun_relations (
-            post_noun_md5 integer,
-            reply_noun_md5 integer,
-            count integer default 0,
-            PRIMARY KEY(post_noun_md5, reply_noun_md5)
-        )
-    """)
+
     cur.execute("""
     CREATE TABLE IF NOT EXISTS tweets_nouns(
 	id integer,

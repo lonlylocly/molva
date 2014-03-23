@@ -11,41 +11,11 @@ import random
 
 import simdict
 from util import digest
+from stats import get_tweets_nouns, get_nouns
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-db = 'more_replys2.db'
-
-def get_nouns(cur):
-    res = cur.execute("""
-        select noun_md5, noun from nouns
-    """ ).fetchall()
-    
-    nouns = {}
-    for r in res:
-        nouns[r[0]] = r[1]
-   
-    return nouns
-
-def get_tweets_nouns(cur):
-    print "[%s] fetch tweets_nouns " % (time.ctime())
-    res = cur.execute("""
-        select id, noun_md5 
-        from tweets_nouns    
-    """).fetchall()
-    
-    tweets_nouns = {}
-    for r in res:
-        i = str(r[0])
-        n = r[1]
-        if n not in tweets_nouns:
-            tweets_nouns[n] = []
-        tweets_nouns[n].append(i)
-
-    print "[%s] fetch tweets_nouns (done)" % (time.ctime())
-
-    return tweets_nouns
-    
+db = 'replys_sharper.db'
 
 def main():
     con = sqlite3.connect(db)
