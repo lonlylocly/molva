@@ -213,11 +213,11 @@ def main():
 
     profiles_dict = get_noun_profiles(cur)
 
-    p_new = {}
-    for p in profiles_dict.keys()[0:1000]:
-        p_new[p] = profiles_dict[p]
+    #p_new = {}
+    #for p in profiles_dict.keys()[0:1000]:
+    #    p_new[p] = profiles_dict[p]
 
-    profiles_dict = p_new
+    #profiles_dict = p_new
 
     set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
 
