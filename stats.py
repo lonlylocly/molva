@@ -3,6 +3,14 @@
 import sqlite3
 import time
 
+def get_cursor(db):
+    con = sqlite3.connect(db)
+    con.isolation_level = None
+    
+    cur = con.cursor()
+
+    return cur 
+
 def get_nouns(cur):
     res = cur.execute("""
         select noun_md5, noun from nouns

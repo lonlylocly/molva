@@ -214,7 +214,7 @@ def main():
     profiles_dict = get_noun_profiles(cur)
 
     p_new = {}
-    for p in profiles_dict.keys()[0:500]:
+    for p in profiles_dict.keys()[0:1000]:
         p_new[p] = profiles_dict[p]
 
     profiles_dict = p_new
