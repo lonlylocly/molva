@@ -87,6 +87,9 @@ class SmartDict:
         self.min_edge = GraphEdge(None, None, None)
         long_cnt = 0
         cnt = 0
+
+        ps = set()
+ 
         while True:
             l = f.readline()
             cnt += 1
@@ -107,21 +110,33 @@ class SmartDict:
                     self.min_edge.p1 = p1
                     self.min_edge.p2 = p2
 
-                if p1 not in d:
-                    d[p1] = {}
-                if p2 not in d:
-                    d[p2] = {}
+                ps.add(p1) 
+                ps.add(p2)
+                if p1 > p2:
+                    if p2 not in d:
+                        d[p2] = {}
 
-                d[p1][p2] = s
-                d[p2][p1] = s 
+                    d[p2][p1] = s
+                else:
+                    if p1 not in d:
+                        d[p1] = {}
+
+                    d[p1][p2] = s                   
+
             except Exception as e:
                 print l
                 raise e
-        
-        for p in d.keys():
+        ps_list = list(ps) 
+        for i in range(0, len(ps_list)):
+            p = ps_list[i]
             l = []
-            for p2 in d[p].keys():
-                l.append(GraphEdge(p, p2, d[p][p2]))
+
+            for j in range(i + 1, len(ps_list)):
+                p2 = ps_list[j]
+                if p > p2:
+                    l.append(GraphEdge(p, p2, d[p2][p]))
+                else: 
+                    l.append(GraphEdge(p, p2, d[p][p2]))
             self.d[p] = sorted(l, key=lambda x: x.s)
 
         print "[%s] _init_dict (done)" % (time.ctime())
