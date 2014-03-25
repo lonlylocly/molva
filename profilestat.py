@@ -23,7 +23,6 @@ TIMESTAMP = time.strftime("%m_%d_%H_%M_%S", time.gmtime())
 
 BASE_DIR = "./sim-net/ver7/"
 
-os.mkdir(BASE_DIR)
 
 REPLY_REL_MIN = 0.005
 POST_MIN_FREQ = 30
@@ -200,8 +199,19 @@ def write_noun_sim_index(posts, nouns, top_sims):
     fout.write(footer)    
     fout.close() 
 
+def setup_noun_profiles(cur, tweets_nouns):
+    profiles_dict = get_noun_profiles(cur)
+
+    set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
+
+    set_noun_profiles_total(cur, profiles_dict)
+
+    set_rel_stats(profiles_dict)
+
+    return profiles_dict
 
 def main():
+    os.mkdir(BASE_DIR)
     print "[%s] Startup " % (time.ctime())
     con = sqlite3.connect(db)
     con.isolation_level = None
@@ -211,20 +221,8 @@ def main():
 
     tweets_nouns = get_tweets_nouns(cur)
 
-    profiles_dict = get_noun_profiles(cur)
-
-    #p_new = {}
-    #for p in profiles_dict.keys()[0:1000]:
-    #    p_new[p] = profiles_dict[p]
-
-    #profiles_dict = p_new
-
-    set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
-
-    set_noun_profiles_total(cur, profiles_dict)
-
-    set_rel_stats(profiles_dict)
-
+    profiles_dict = setup_profiles_dict(cur, tweets_nouns)
+    
     top_sims = debug_sim_net(profiles_dict, nouns, tweets_nouns)
 
     write_noun_sim_index(profiles_dict.keys(), nouns, top_sims)

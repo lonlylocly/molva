@@ -8,13 +8,21 @@ import json
 
 class GraphEdge:
 
-    def __init__(self, p1, p2, s):
+    def __init__(self, p1=None, p2=None, s=None):
         self.p1 = p1
         self.p2 = p2
         self.s = s
 
     def __str__(self):
         return json.dumps({"p1": self.p1, "p2": self.p2, "s": self.s}) 
+
+    def from_json(self, s):
+        j = json.loads(s)
+        self.p1 = j["p1"]
+        self.p2 = j["p2"]
+        self.s = j["s"]
+        
+        return self
 
 class SmartDict:
 
@@ -67,17 +75,7 @@ class SmartDict:
         if min_edge is not None:
             self.d[min_edge.p1].pop(0)
 
-        #if min_edge is not None:
-        #    print min_edge.__str__()
-
         return min_edge
-        #l = sorted(l, key=lambda x: x.s)
-
-        #if len(l) == 0:
-        #    return None
-        #else:
-        #    return l[0]
-         
         
     def _init_dict(self, filename):
         print "[%s] _init_dict " % (time.ctime())
@@ -163,6 +161,17 @@ def write_json(g, nouns, f):
     for edge in g:
         f.write(edge.__str__())
         f.write("\n")
+
+def read_json( f):
+    g = []
+    while True:
+        l = f.readline()
+        if l is None or l == "":
+            break
+        g.append(GraphEdge().from_json(l))
+
+    return g
+
 
 def write_stats(g, nouns, f):
     ll = [] 
