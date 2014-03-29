@@ -34,6 +34,7 @@ def write_index(g, nouns):
     for noun in ps:
         l = filter(lambda e: e.p1 == noun or e.p2 == noun, g)
         ll.append((noun, l))
+    fout.write(u"<table border=1><tr><th>Словопост</th><th>Всего похожих</th><th>Самый похожий</th></tr>")
 
     ll = sorted(ll, key=lambda x: len(x[1]), reverse=True)
     for l in ll:
@@ -43,8 +44,11 @@ def write_index(g, nouns):
         edges = sorted(l[1], key=lambda x: x.s)
         edge = edges[0]
         post2 = edge.p1 if edge.p1 != post1 else edge.p2
-        fout.write(u'<a href="./%d.html">%s</a> Всего похожих: %d. Самый похожий: %s, %s<br/>\n' % (post1, nouns[post1], len(edges), nouns[post2], edge.s))
+        if edge.s > 0.5:
+            continue
+        fout.write(u'<tr><td><a href="./%d.html">%s</a></td><td>%d</td><td>%s</td><td>%s</td></tr>\n' % (post1, nouns[post1], len(edges), nouns[post2], edge.s))
 
+    fout.write(u"</table>")
     footer = """
 </body></html>
 """
