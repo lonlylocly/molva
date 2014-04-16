@@ -43,7 +43,6 @@ def get_tweets_nouns(cur):
 
 def get_post_reply_tweets(cur, post_noun, reply_noun, tweets_nouns):
 
-    #print "[%s] get_post_reply_tweets %s, %s " % (time.ctime(), post_noun, reply_noun)
     post_ids = tweets_nouns[int(post_noun)]
     reply_ids = tweets_nouns[int(reply_noun)]
     res = cur.execute("""
@@ -53,21 +52,11 @@ def get_post_reply_tweets(cur, post_noun, reply_noun, tweets_nouns):
         and id in ( %s )
     """ % (",".join(post_ids), ",".join(reply_ids))).fetchall()
 
-    #print "[%s] get_post_reply_tweets %s, %s (done)" % (time.ctime(), post_noun, reply_noun)
     return res
 
-    #"""
-    #    select pr.post_md5, count(tw.id) as replys_cnt 
-    #    from post_reply_cnt pr
-    #    inner join tweets_nouns tn
-    #    on pr.post_md5 = tn.noun_md5
-    #    inner join tweets tw
-    #    on tw.in_reply_to_id = tn.id
-    #"""
 
 def get_post_replys_tweets(cur, tweets_nouns, post_noun):
 
-    #print "[%s] get_post_reply_tweets %s, %s " % (time.ctime(), post_noun, reply_noun)
     post_ids = tweets_nouns[int(post_noun)]
     res = cur.execute("""
         select distinct id
@@ -75,7 +64,6 @@ def get_post_replys_tweets(cur, tweets_nouns, post_noun):
         where in_reply_to_id in ( %s )
     """ % ",".join(post_ids)).fetchall()
 
-    #print "[%s] get_post_reply_tweets %s, %s (done)" % (time.ctime(), post_noun, reply_noun)
     return res
 
 
@@ -140,4 +128,81 @@ def set_post_replys_cnt(cur):
         cur.execute("insert into post_cnt values (?, ?)" , (post, len(replys)))
         print "[%s] done %d of %d " % (time.ctime(), cnt, max_cnt)
 
+def create_tables(cur):
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS post_reply_cnt (
+            post_md5 integer,
+            reply_md5 integer, 
+            reply_cnt integer,
+            PRIMARY KEY(post_md5, reply_md5)
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS post_cnt ( 
+            post_md5 integer, 
+            post_cnt integer, 
+            primary key(post_md5)
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE tweet_chains (
+            post_id integer,
+            reply_id integer,
+            PRIMARY KEY (post_id, reply_id)
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE chains_nouns(
+            p_id integer,
+            p_md5 integer,
+            r_id integer,
+            r_md5 integer,
+            PRIMARY KEY (p_id, p_md5, r_id, r_md5)
+        )
+    """)
+
+def fill_tables(cur):
+    print "[%s]  fill tweet_chains" % (time.ctime())
+
+    cur.execute("""
+        insert into tweet_chains
+        select t1.id, t2.id 
+        from tweets t1
+        inner join tweets t2
+        on t1.id = t2.in_reply_to_id
+    """)
+
+    print "[%s]  fill chains_nouns" % (time.ctime())
+
+    cur.execute("""
+        insert or ignore into chains_nouns 
+        select tc.post_id, n1.noun_md5, tc.reply_id, n2.noun_md5 
+        from tweet_chains tc 
+        inner join tweets_nouns n1 on n1.id = tc.post_id 
+        inner join tweets_nouns n2 on n2.id = tc.reply_id
+    """)
+
+    print "[%s] fill post_reply_cnt" % (time.ctime())
+
+    cur.execute("""
+        insert or ignore into post_reply_cnt (post_md5, reply_md5, reply_cnt) 
+        select p_md5, r_md5, count(*) 
+        from chains_nouns 
+        group by p_md5, r_md5;
+    """)
+
+    print "[%s] fill post_cnt" % (time.ctime())
+
+    cur.execute("""
+        insert or ignore into post_cnt 
+        select p_md5,  count(*) 
+        from (
+            select p_id, p_md5 
+            from chains_nouns 
+            group by p_md5, p_id
+        ) group by p_md5
+    """)
 
