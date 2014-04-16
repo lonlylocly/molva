@@ -1,16 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import math
-
-NOISE_POSITIVE_MATCH_RATE = 0.1 
-
-def compare_floats(f1, f2):
-    delta = f1 - f2
-
-    if math.fabs(delta) == 0.0:
-        return 0
-    else:
-        return -1 if delta < 0 else 1
+import numpy
 
 
 class ProfileCompare:
@@ -25,8 +16,10 @@ class ProfileCompare:
         self.common_replys = None
 
         if one is not None and other is not None:
-            self.do_compare(one, other)
-            self.sim = self.get_sim()
+            #self.do_compare(one, other)
+            #self.get_spearman(one, other)
+            self.dist = self.cosine(one, other)
+            self.sim = self.dist
 
     def do_compare(self, one, other):
         total_uncommon = 0
@@ -49,6 +42,53 @@ class ProfileCompare:
         
         total_uncommon = total_uncommon /2 # do i need this ?
         self.dist = total_uncommon # / len(com_set)  
+
+    def vect_norm(self, vect):
+        norm = 0
+        for i in vect:
+            norm += math.sqrt(i ** 2)
+
+        return norm
+
+    def cosine(self, one, other):
+            
+        com_set = (set(one.replys.keys()) | set(other.replys.keys()))
+        x1 = []
+        x2 = []
+       
+        for reply in com_set:
+            if reply == 0:
+                continue
+            x1.append(one.replys[reply] if reply in one.replys else 0) 
+            x2.append(other.replys[reply] if reply in other.replys else 0)
+        
+        cos = numpy.dot(x1, x2) / (numpy.linalg.norm(x1) * numpy.linalg.norm(x2))
+        #print x1
+        #print x2
+        #print cos
+
+        #raise Exception("stop")
+
+        return 1 - cos
+
+    def get_spearman(self, one, other):
+        sum_spearman = 0
+        
+        com_set = (set(one.replys_rel.keys()) | set(other.replys_rel.keys()))
+        k = 6.0 / (len(com_set) * (len(com_set)**2  -1 ))
+        for reply in com_set:
+            if reply == 0:
+                continue
+            x1 = one.replys_rel[reply] if reply in one.replys_rel else 0 
+            x2 = other.replys_rel[reply] if reply in other.replys_rel else 0
+            
+            sum_spearman += (x1 - x2 ) ** 2
+
+        rs = 1 - k * sum_spearman 
+        
+        self.dist = rs
+        return  rs
+
 
     def get_sim(self):
         return self.dist # + self.common_tweets
@@ -76,13 +116,13 @@ class NounProfile:
         self.replys_rel[0] = 0.0
         for reply in self.replys:
             repl_portion = (self.replys[reply] + 0.0)/ self.total
-            if repl_portion <= self.rel_min:
+            if repl_portion <= self.rel_min: #or self.post == reply:
                 self.replys_rel[0] += repl_portion
             else:
                 self.replys_rel[reply] = repl_portion
 
-        if self.post in self.replys_rel:
-            del self.replys_rel[self.post]
+        #if self.post in self.replys_rel:
+        #    del self.replys_rel[self.post]
         damp = self.get_damping_coeff()
         for reply in self.replys_rel:
             if reply == 0:

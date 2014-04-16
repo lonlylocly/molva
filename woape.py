@@ -18,8 +18,9 @@ headers = {"Authorization":"Bearer AAAAAAAAAAAAAAAAAAAAAEBgVAAAAAAAxZcUIQhxg"+
 #c.request('GET', '/1.1/statuses/show.json?id=%s'%tweet_id, '', headers)
 
 CHAINS_GOAL = 1000000
-TWEETS_START_DAY = datetime(2013, 12, 25, 0, 0, 0) #datetime.now() - timedelta (days = 40)
-DB_FILENAME = 'more_replys2.db'
+#TWEETS_START_DAY = datetime(20114, 12, 25, 0, 0, 0) #datetime.now() - timedelta (days = 40)
+TWEETS_START_DAY = datetime.now() - timedelta (days = 2)
+DB_FILENAME = 'tweets_16_04.db'
 
 class WoapeException(Exception):
     def __init__(self, value):
@@ -198,6 +199,7 @@ def main():
     create_tables(cur)
 
     cnt = 1
+    cur.execute("insert or ignore into users values ('lonlylocly', 0, 0) ")
     while True:
         users = fetch_list(cur, "select username from users where user_done = 0 order by reply_cnt desc limit 1")
     

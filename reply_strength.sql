@@ -1,2 +1,0 @@
-create table reply_strength ( post_md5 integer, reply_md5 integer, sub_replys_cnt integer, PRIMARY KEY (post_md5, reply_md5));
-insert into reply_strength (post_md5, reply_md5, sub_replys_cnt) select tn.noun_md5 as post_md5, rn.noun_md5 as reply_md5, count(*) from tweets_nouns tn inner join tweet_chains tc on tc.post_id = tn.id  inner join reply_nouns rn on rn.in_reply_to_id = tc.post_id group by post_md5, reply_md5 ;
