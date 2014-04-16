@@ -164,7 +164,7 @@ def create_tables(cur):
         )
     """)
 
-def fill_tables(cur):
+def fill_tweet_chains(cur):
     print "[%s]  fill tweet_chains" % (time.ctime())
 
     cur.execute("""
@@ -175,6 +175,9 @@ def fill_tables(cur):
         on t1.id = t2.in_reply_to_id
     """)
 
+    print "[%s] done fill tweet_chains" % (time.ctime())
+
+def fill_post_reply(cur):
     print "[%s]  fill chains_nouns" % (time.ctime())
 
     cur.execute("""
@@ -206,3 +209,4 @@ def fill_tables(cur):
         ) group by p_md5
     """)
 
+    print "[%s] done filling" % (time.ctime())

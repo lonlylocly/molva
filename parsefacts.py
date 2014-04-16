@@ -5,6 +5,7 @@ import hashlib
 import sqlite3
 import time
 import sys,codecs
+import os
 
 import xml.etree.cElementTree as ElementTree
 
@@ -13,7 +14,7 @@ from util import digest
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 
-db = 'replys_sharper.db'
+db = os.environ["MOLVA_DB"]
 
 def create_tables(cur):
     cur.execute("""
@@ -43,16 +44,19 @@ def save_tweet_nouns(cur, post_id, nouns):
 
 
 def main():
+    tweet_index = sys.argv[1]
+    facts = sys.argv[2]
+
     con = sqlite3.connect(db)
     con.isolation_level = None
     
     cur = con.cursor()
     create_tables(cur)   
 
-    ids = open('tweets_index.txt', 'r').read().split("\n")
+    ids = open(tweet_index, 'r').read().split("\n")
     print "Got ids"
 
-    tree = ElementTree.iterparse(sys.argv[1], events = ('start', 'end'))
+    tree = ElementTree.iterparse(facts, events = ('start', 'end'))
     cur_doc = None
     cur_nouns = []
     cnt = 1
