@@ -19,7 +19,7 @@ db = 'replys_sharper.db'
 
 TIMESTAMP = time.strftime("%m_%d_%H_%M_%S", time.gmtime())
 
-BASE_DIR = "./sim-net/cluster2-100/"
+BASE_DIR = "./sim-net/cosine/"
 
 
 REPLY_REL_MIN = 0.005
@@ -27,10 +27,11 @@ POST_MIN_FREQ = 100
 REPLY_MIN_FREQ = 1 
 
 BLOCKED_NOUNS_LIST = u"""
-до
-ли
 """
 BLOCKED_NOUNS_LIST2 = u"""
+до
+ли
+
 уж
 че
 ага
@@ -138,7 +139,7 @@ def set_rel_stats(profiles_dict):
         profiles_dict[post].setup_rel_profile() 
          
 def debug_sim_net(profiles_dict, nouns, tweets_nouns):
-    #f = open("sim.txt", "r")
+    f = open("sim.txt", "r")
 
     posts = profiles_dict.keys()
 
@@ -173,7 +174,7 @@ def debug_sim_net(profiles_dict, nouns, tweets_nouns):
     f.close()
     #f.close()
 
-    return total_sims 
+    return top_sims 
 
 def get_common_tweet_ratio(post1, post2, tweet_nouns):
     t1 = tweet_nouns[post1]
@@ -281,7 +282,7 @@ def write_noun_sim_info(post_profile, cmps, nouns, tweets_nouns):
     for reply in profile_parts:
         p = profile[reply]    
         reply_text = nouns[reply] if reply != 0 else u"<i>шум</i>"
-        fout.write('<a href="./%d.html">%s</a> - %.6f <br/>\n' % (reply, reply_text, p))
+        fout.write('<a href="./%d.html">%s</a> - %.6f (%d)<br/>\n' % (reply, reply_text, p, post_profile.replys[reply]))
 
     footer = """
 </body></html>
@@ -299,13 +300,8 @@ def write_noun_sim_index(posts, nouns, top_sims):
 
     fout.write(u"<h3>Индекс словопостов<h3>\n")
 
-    #top_sims2 = map(lambda x: (x, top_sims[x]), posts)
-    #top_sims2 = sorted(top_sims2, key=lambda x: x[1].sim)
-
-    for t in sorted(top_sims.keys(), key=lambda x: top_sims[x]):
-        #post1, post2, cmp_prof = (t[0], t[1].right.post, t[1].sim)
-        #fout.write('<a href="./%d.html">%s</a>: %s - %s<br/>\n' % (post1, nouns[post1], nouns[post2], cmp_prof))
-        fout.write('<a href="./%d.html">%s</a>: %s<br/>\n' % (t, nouns[t], top_sims[t]))
+    for t in sorted(posts, key=lambda x: top_sims[x]):
+        fout.write('<a href="./%d.html">%s</a> %f<br/>\n' % (t, nouns[t], top_sims[t].sim))
 
     footer = """
 </body></html>
@@ -357,7 +353,26 @@ def add_none_noun(profiles_dict):
     profiles_dict[0] = NounProfile(0, 0, [])
     profiles_dict[0].replys_rel = synt_profile
 
-   
+def show_reply_freqs():
+    reply_freqs = {}
+    for post in profiles_dict:
+        profile = profiles_dict[post]
+        for reply in profile.replys:
+            freq = int(math.log10(profile.replys[reply]))
+            if reply not in reply_freqs:
+                reply_freqs[reply] = {}
+                reply_freqs[reply]["all"]= 0
+            if freq not in reply_freqs[reply]:
+                reply_freqs[reply][freq] = 1
+            else:
+                reply_freqs[reply][freq] += 1
+            reply_freqs[reply]["all"] += 1
+
+    for r in sorted(reply_freqs.keys(), key=lambda x: reply_freqs[x]["all"], reverse=True):
+        print u"%s" % (nouns[r])
+        for f in sorted(reply_freqs[r].keys(), reverse=True):
+            print u"\t%s\t%d" % (f, reply_freqs[r][f])
+    
 
 def main():
     try:
@@ -377,15 +392,16 @@ def main():
     profiles_dict = setup_noun_profiles(cur, tweets_nouns)
     synt_profile = get_synt_common_profile(profiles_dict)
 
-    for k in profiles_dict:
-        filename  = BASE_DIR + "/profiles/" + str(k) +".json"
-        f = open(filename, "w")
-        json.dump(profiles_dict[k].replys_rel, f, indent=4)
+    #for k in profiles_dict:
+    #    filename  = BASE_DIR + "/profiles/" + str(k) +".json"
+    #    f = open(filename, "w")
+    #    json.dump(profiles_dict[k].replys_rel, f, indent=4)
 
     total_sims = debug_sim_net(profiles_dict, nouns, tweets_nouns)
 
     write_noun_sim_index(profiles_dict.keys(), nouns, total_sims)
-
+    
+    
     #target_dict = setup_noun_profiles(cur, tweets_nouns, post_min_freq = POST_MIN_FREQ / 10)
 
     #write_noun_sim_index2(profiles_dict, target_dict, nouns)
