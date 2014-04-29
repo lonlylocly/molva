@@ -10,7 +10,7 @@ import stats
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-db = 'replys_sharper.db'
+db = os.environ["MOLVA_DB"]
 
 def get_best_cluster(post, clusters, sim_dict):
     cluster_sims = map( lambda x: (x, sim_dict[post][x]), clusters.keys())
@@ -63,15 +63,32 @@ def choose_centers(clusters, sim_dict):
 
     return new_clusters
 
-def get_groups_matrix(clusters, nouns, k=4):
+def get_cluster_dists(clusters, sim_dict):
+    dists = {} 
+    for c in clusters:
+        cluster = clusters[c]
+        ds = []
+        for i in range(0, len(cluster)):
+            for j in range (i + 1, len(cluster)):
+               ds.append(sim_dict[cluster[i]][cluster[j]])
+
+        dists[c] = reduce(lambda x, y: x+y, ds) / len(ds)
+
+    return dists 
+        
+        
+
+def get_groups_matrix(clusters, nouns, dists, k=4):
     groups = []
     for i in clusters:
-        groups.append(map(lambda x: nouns[int(x)], clusters[i]))
+        group = [str(dists[i])]
+        group += map(lambda x: nouns[int(x)], clusters[i])
+        groups.append(group)
 
     return _get_groups_matrix(groups, nouns, k)
 
 def _get_groups_matrix(groups, nouns, k=4):
-    groups = sorted(groups, key=lambda x: len(x))
+    groups = sorted(groups, key=lambda x: float(x[0]))
     groups2 = []
     for i in range(0, len(groups) / k + 1):
         groups2.append([])
@@ -114,58 +131,87 @@ def write_groups_matrix(groups, output_file):
     fout.write("</table></body></html>")
     fout.close()
 
-def main(input_file, clusters_num, output_file):
-    sim_dict = json.load(open(input_file, "r"))
-    for p1 in sim_dict:
-        sim_dict[p1][p1] = 0
+def average_similarity(sim_dict, post):
+    avg = 0
+    for k in sim_dict[post]:
+        avg += sim_dict[post][k]
 
-    clusters = {}
+    avg = avg / len(sim_dict[post])
+
+    return avg
+
+def good_similarity(sim_dict, post, goodness=0.4):
+    avg = 0
+    for k in sim_dict[post]:
+        if sim_dict[post][k] < goodness:
+            avg += 1
+
+    avg = float(avg) / len(sim_dict[post])
+
+    return 1.0 - avg
+
+def init_clusters(sim_dict, clusters_num):
     init_clusters = sim_dict.keys()
-    random.shuffle(init_clusters) 
-    for c in init_clusters:
-        clusters[c] = []
+    random.shuffle(init_clusters)
 
+    return init_clusters[:clusters_num]
+    #return init_clusters
+
+def build_clusters_from_init(sim_dict, init_clusters):
+    clusters = {}
+    for p1 in sim_dict:
+       sim_dict[p1][p1] = 0
+
+    for c in init_clusters:
+       clusters[c] = []
+ 
     while True:
         new_clusters = iteration(clusters, sim_dict)
         new_clusters = choose_centers(new_clusters, sim_dict)
 
-        #print new_clusters
-        #print clusters
         if new_clusters == clusters:
             break
         clusters = new_clusters
 
-    clusters = new_clusters
-
-   
-    while True: 
-        empty_cluster = None
-        for c in clusters.keys():
-            if len(clusters[c]) == 1:
-                empty_cluster = c
+        while True: 
+            empty_cluster = None
+            for c in clusters.keys():
+                if len(clusters[c]) == 1:
+                    empty_cluster = c
+                    break
+            if empty_cluster is not None:
+                del clusters[empty_cluster]
+                best_cluster = get_best_cluster(empty_cluster, clusters, sim_dict) 
+                clusters[best_cluster].append(empty_cluster)
+            else:
                 break
-        if empty_cluster is not None:
-            del clusters[empty_cluster]
-            best_cluster = get_best_cluster(empty_cluster, clusters, sim_dict) 
-            clusters[best_cluster].append(empty_cluster)
-        else:
-            break
-                        
   
     return new_clusters
+
+def build_clusters(sim_dict, clusters_num):
+    cl = init_clusters(sim_dict, clusters_num) 
+
+    return build_clusters_from_init(sim_dict, cl)
+   
+def main(input_file, clusters_num):
+    sim_dict = json.load(open(input_file, "r"))
+    return build_clusters(sim_dict, clusters_num)
 
 if __name__ == '__main__':
     input_file = sys.argv[1]
     clusters_num = int(sys.argv[2])
     output_file = sys.argv[3]
 
-    cl1 = main(input_file, clusters_num, output_file)
+    sim_dict = json.load(open(input_file, "r"))
+    cl1 = build_clusters(sim_dict, clusters_num)
     #cl2 = main(input_file, clusters_num, output_file)
 
-    cur = stats.get_cursor('replys_sharper.db')
+    cur = stats.get_cursor(db)
     nouns = stats.get_nouns(cur)
  
-    groups = get_groups_matrix(cl1, nouns, k=8)
+    dists = get_cluster_dists(cl1, sim_dict)
+
+    groups = get_groups_matrix(cl1, nouns, dists, k=8)
     write_groups_matrix(groups, output_file)
 
     json.dump(cl1, open("clusters.json", "w"))

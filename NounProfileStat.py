@@ -8,22 +8,23 @@ import json
 import re
 import os
 
-from stats import get_tweets_nouns, get_post_replys_tweets, get_nouns, get_post_tweets_cnt 
+from stats import get_tweets_nouns, get_post_replys_tweets, get_nouns, get_post_tweets_cnt, get_cursor 
 from util import digest
 
 from profile import NounProfile, ProfileCompare
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-db = 'replys_sharper.db'
+db = os.environ["MOLVA_DB"] 
+date_db = os.environ["DATE_DB"] 
 
 TIMESTAMP = time.strftime("%m_%d_%H_%M_%S", time.gmtime())
 
-BASE_DIR = "./sim-net/cosine/"
+BASE_DIR = os.environ["MOLVA_DIR"] 
 
 
 REPLY_REL_MIN = 0.005
-POST_MIN_FREQ = 100
+POST_MIN_FREQ = 30
 REPLY_MIN_FREQ = 1 
 
 BLOCKED_NOUNS_LIST = u"""
@@ -139,8 +140,6 @@ def set_rel_stats(profiles_dict):
         profiles_dict[post].setup_rel_profile() 
          
 def debug_sim_net(profiles_dict, nouns, tweets_nouns):
-    f = open("sim.txt", "r")
-
     posts = profiles_dict.keys()
 
     cnt = 0
@@ -381,16 +380,14 @@ def main():
         print e
 
     print "[%s] Startup " % (time.ctime())
-    con = sqlite3.connect(db)
-    con.isolation_level = None
-    
-    cur = con.cursor()
-    nouns = get_nouns(cur)
+    cur = get_cursor(date_db)
+    main_cur = get_cursor(db)
+    nouns = get_nouns(main_cur)
 
-    tweets_nouns = get_tweets_nouns(cur)
+    tweets_nouns = get_tweets_nouns(main_cur)
 
     profiles_dict = setup_noun_profiles(cur, tweets_nouns)
-    synt_profile = get_synt_common_profile(profiles_dict)
+    #synt_profile = get_synt_common_profile(profiles_dict)
 
     #for k in profiles_dict:
     #    filename  = BASE_DIR + "/profiles/" + str(k) +".json"
