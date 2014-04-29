@@ -4,6 +4,7 @@ import sqlite3
 import time
 
 def get_cursor(db):
+    print "get cursor for " + db
     con = sqlite3.connect(db)
     con.isolation_level = None
     
@@ -147,7 +148,7 @@ def create_tables(cur):
     """)
 
     cur.execute("""
-        CREATE TABLE tweet_chains (
+        CREATE TABLE IF NOT EXISTS tweet_chains (
             post_id integer,
             reply_id integer,
             PRIMARY KEY (post_id, reply_id)
@@ -155,7 +156,7 @@ def create_tables(cur):
     """)
 
     cur.execute("""
-        CREATE TABLE chains_nouns(
+        CREATE TABLE IF NOT EXISTS chains_nouns(
             p_id integer,
             p_md5 integer,
             r_id integer,
@@ -164,16 +165,17 @@ def create_tables(cur):
         )
     """)
 
-def fill_tweet_chains(cur):
+def fill_tweet_chains(cur, date):
     print "[%s]  fill tweet_chains" % (time.ctime())
 
     cur.execute("""
         insert into tweet_chains
         select t1.id, t2.id 
         from tweets t1
-        inner join tweets t2
+        inner join molva.tweets t2
         on t1.id = t2.in_reply_to_id
-    """)
+        where t2.date LIKE "%s%%"
+    """ % (date))
 
     print "[%s] done fill tweet_chains" % (time.ctime())
 

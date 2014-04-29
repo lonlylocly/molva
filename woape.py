@@ -8,6 +8,7 @@ import time
 from sets import Set
 import sys,codecs
 from datetime import datetime, timedelta
+import os
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -17,10 +18,13 @@ headers = {"Authorization":"Bearer AAAAAAAAAAAAAAAAAAAAAEBgVAAAAAAAxZcUIQhxg"+
 #c.request('GET', '/1.1/search/tweets.json?%s'%params, '', headers)
 #c.request('GET', '/1.1/statuses/show.json?id=%s'%tweet_id, '', headers)
 
-CHAINS_GOAL = 1000000
+CHAINS_GOAL = 10000000
 #TWEETS_START_DAY = datetime(20114, 12, 25, 0, 0, 0) #datetime.now() - timedelta (days = 40)
-TWEETS_START_DAY = datetime.now() - timedelta (days = 2)
-DB_FILENAME = 'tweets_16_04.db'
+#TWEETS_START_DAY = datetime.now() - timedelta (days = 2)
+DB_FILENAME = os.environ["MOLVA_DB"] 
+
+def get_tweet_start_time():
+    return datetime.now() - timedelta (days = 2)
 
 class WoapeException(Exception):
     def __init__(self, value):
@@ -142,7 +146,7 @@ def iteration(cur, username, replys_only=False):
     minid = None
     cnt = 0
 
-    while oldest_tweet_time > TWEETS_START_DAY:
+    while oldest_tweet_time > get_tweet_start_time():
         resp = get_more(cur, username, minid) 
 
         content = resp.read()
@@ -153,7 +157,7 @@ def iteration(cur, username, replys_only=False):
             ct = get_tw_create_time(t) 
             if ct < oldest_tweet_time:
                 oldest_tweet_time = ct
-            if ct < TWEETS_START_DAY:
+            if ct < get_tweet_start_time():
                 oldest_tweet_time = ct
                 break
             if replys_only and t["in_reply_to_status_id"] is None :
@@ -199,7 +203,7 @@ def main():
     create_tables(cur)
 
     cnt = 1
-    cur.execute("insert or ignore into users values ('lonlylocly', 0, 0) ")
+    cur.execute("insert or ignore into users values ('incubos', 0, 0) ")
     while True:
         users = fetch_list(cur, "select username from users where user_done = 0 order by reply_cnt desc limit 1")
     
