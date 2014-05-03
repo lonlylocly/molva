@@ -127,7 +127,31 @@ def set_post_replys_cnt(cur):
     for post in set(map(lambda x: x[0], post_md5s)):
         replys = get_post_replys_tweets(cur, tw_n, post)
         cur.execute("insert into post_cnt values (?, ?)" , (post, len(replys)))
+
         print "[%s] done %d of %d " % (time.ctime(), cnt, max_cnt)
+
+def cr(cur):
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS tweets
+        (
+            id integer,
+            tw_text text,
+            username text,
+            in_reply_to_username text,
+            in_reply_to_id integer,
+            created_at text,
+            PRIMARY KEY (id)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users
+        (
+            username text,
+            user_done integer default 0,
+            reply_cnt integer default 0,
+            PRIMARY KEY (username)
+        )
+    """)
 
 def create_tables(cur):
     cur.execute("""
