@@ -1,4 +1,4 @@
-﻿#!/usr/bin/python
+#!/usr/bin/python
 import httplib, urllib
 import base64
 import json
@@ -9,6 +9,8 @@ from sets import Set
 import sys,codecs
 from datetime import datetime, timedelta
 import os
+
+import util
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -79,11 +81,6 @@ def get_tweet_text(tweet_id) :
         if "text" in s:
             return s["text"]
     return None
-
-def got_russian_letters(s):
-    res = re.match(u".*[а-яА-Я]+.*", s) is not None
-    #print "got russian letters: %s %s" % (res, s)
-    return res
 
 def fetch_list(cur, query):
     return map(lambda x: x[0], cur.execute(query).fetchall())
@@ -162,7 +159,7 @@ def iteration(cur, username, replys_only=False):
                 break
             if replys_only and t["in_reply_to_status_id"] is None :
                 continue
-            if not got_russian_letters(t["text"]):
+            if not util.got_russian_letters(t["text"]):
                 continue
             if minid is None or minid > int(t["id"]):
                 minid = int(t["id"])
@@ -216,12 +213,6 @@ def main():
         f = lambda :  iteration(cur, username)
         talked_to_users = try_several_times(f, 3, [])
        
-        # try best to get full chains  
-        #for talked_to_user in talked_to_users:
-        #    if talked_to_user == username:
-        #        continue
-        #    f2 = lambda : iteration(cur, talked_to_user)
-        #    try_several_times(f2, 3)
         cnt = cnt + 1
         if (cnt % 10) == 1:
             chains = get_chains(cur)     

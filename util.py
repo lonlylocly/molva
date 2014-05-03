@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 import hashlib
 
 def digest(s):
@@ -10,5 +12,10 @@ def digest(s):
     small = b1 ^ b2 ^ b3 ^ b4
 
     return small
+
+def got_russian_letters(s, k=3):
+    # has k or more russian letters
+    res = re.match(u".*([а-яА-Я])+.*" , s) is not None
+    return res
 
 
