@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import cProfile, pstats, StringIO
 import httplib, urllib
 import base64
 import json
@@ -9,6 +10,8 @@ from sets import Set
 import sys,codecs
 from datetime import datetime, timedelta
 import os
+import traceback
+import copy
 
 import util
 
@@ -56,14 +59,24 @@ def create_tables(cur):
             PRIMARY KEY (username)
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS id_queue 
+        (
+            id integer default 0,
+            done integer default 0,
+            PRIMARY KEY (id)
+        )
+    """)
 
-def save_tweet(cur, reply, username):
+def save_tweet(cur, reply):
     try:
+        mysql_time = to_mysql_timestamp(get_tw_create_time(reply))
         cur.execute("""
             INSERT OR IGNORE INTO tweets
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (reply["id"], reply["text"], username, reply["in_reply_to_screen_name"], reply["in_reply_to_status_id"], reply["created_at"]))
+        """, (reply["id"], reply["text"], reply["user"]["screen_name"], reply["in_reply_to_screen_name"], reply["in_reply_to_status_id"], mysql_time))
     except Exception as e:
+        traceback.print_exc()
         print "[ERROR] %s "  % e
 
 def get_path(path):
@@ -72,6 +85,19 @@ def get_path(path):
     print "[%s] Open path: %s" % (time.ctime(), path)
     resp = c.request('GET', path, '', headers)
     return c.getresponse()
+
+def post_path(path, params):
+    c = httplib.HTTPSConnection('api.twitter.com')
+    c.set_debuglevel(0)
+    params_encoded = urllib.urlencode(params)
+    headers_post = copy.deepcopy(headers)
+    headers_post["Content-type"] = "application/x-www-form-urlencoded"
+    headers_post["Accept"] = "text/plain"
+
+    print "[%s] Open path: %s, body: %s" % (time.ctime(), path, params_encoded)
+    resp = c.request("POST", path, params_encoded, headers_post)
+    return c.getresponse()
+
 
 def get_tweet_text(tweet_id) :
     path = '/1.1/statuses/show.json?id=%s'%tweet_id
@@ -107,6 +133,7 @@ def try_several_times(f, times, error_return=[]):
             print "[%s] Stop trying, WoapeException: %s" % (time.ctime(), e)
             break
         except Exception as e:
+            traceback.print_exc()
             print "[%s] [ERROR] %s" % (time.ctime(), e)
     return error_return
 
@@ -114,8 +141,11 @@ def get_tw_create_time(t):
     create_time = t["created_at"]
     create_time = re.sub("[+-]\d\d\d\d", "", create_time)
     dt = datetime.strptime(create_time, "%a %b %d %H:%M:%S  %Y")
-    
+   
     return dt
+
+def to_mysql_timestamp(dt):
+    return dt.strftime("%Y%m%d_%H%M%S")
 
 def get_more(cur, username, maxid=None):
     resp = None
@@ -164,8 +194,7 @@ def iteration(cur, username, replys_only=False):
             if minid is None or minid > int(t["id"]):
                 minid = int(t["id"])
  
-            #print "Got reply-tweet: %s '%s'" % (t["id"], t["text"])
-            save_tweet(cur, t, username)
+            save_tweet(cur, t)
             cnt = cnt + 1
 
             fellow = t["in_reply_to_screen_name"]
@@ -189,9 +218,28 @@ def iteration(cur, username, replys_only=False):
     print "Saved %s tweets" % cnt
 
     return new_users
+  
+def main_loop_iteration(cur):
+    cnt = 0
+    users = fetch_list(cur, "select username from users where user_done = 0 order by reply_cnt desc limit 1")
+
+    if len(users) == 0:
+        print "No users left"
+        return cnt 
+
+    username = users[0]
+    users = users[1:]
+
+    f = lambda :  iteration(cur, username)
+    talked_to_users = try_several_times(f, 3, [])
    
+    return 1 
+
+
 
 def main():
+    start_users = sys.argv[1:]
+
     print "[%s] Startup" % time.ctime()
     con = sqlite3.connect(DB_FILENAME)
     con.isolation_level = None
@@ -199,30 +247,33 @@ def main():
     cur = con.cursor()
     create_tables(cur)
 
+    pr = cProfile.Profile()
+    sortby = 'cumulative'
+
     cnt = 1
-    cur.execute("insert or ignore into users values ('incubos', 0, 0) ")
+    for user in start_users:
+        cur.execute("replace into users values ('%s', 0, 0) " % user)
+
     while True:
-        users = fetch_list(cur, "select username from users where user_done = 0 order by reply_cnt desc limit 1")
-    
-        if len(users) == 0:
-            print "No users left"
-            break 
-        username = users[0]
-        users = users[1:]
-   
-        f = lambda :  iteration(cur, username)
-        talked_to_users = try_several_times(f, 3, [])
-       
-        cnt = cnt + 1
+        pr.enable()
+        res = main_loop_iteration(cur)
+        pr.disable()
+        cnt += res
         if (cnt % 10) == 1:
+            s = StringIO.StringIO()
+            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            ps.print_stats(30)
+            print s.getvalue()
+
             chains = get_chains(cur)     
             if len(chains) >= CHAINS_GOAL:
                 print "Got enough chains, breaking"
-                break
+                return  
             else:
                 print "Has %s chains, need %s, continue" % (len(chains), CHAINS_GOAL)
 
-
+        if res == 0:
+            break
     
 if __name__ == "__main__":
     main()

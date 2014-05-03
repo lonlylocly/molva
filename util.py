@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import hashlib
+import re
 
 def digest(s):
     large = int(hashlib.md5(s.encode('utf-8')).hexdigest(), 16)
