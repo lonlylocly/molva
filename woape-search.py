@@ -6,6 +6,7 @@ import os
 import sys
 import json
 import util
+import random
 
 import woape
 from woape import get_tw_create_time, try_several_times, WoapeException, mark_user_done
@@ -74,6 +75,34 @@ def main_loop_iteration(cur):
    
     return 1 
 
+def find_some_followers(cur):
+    users = woape.fetch_list(cur, "select username from users")
+
+    i = random.randint(0, len(users))
+
+    log.info("Find followers for %s" % users[i])
+    resp = woape.get_path("/1.1/followers/ids.json?screen_name=" + users[i])
+    content = json.loads(resp.read())
+    f_ids = content["ids"]
+    
+    followers = []
+    f_ids_short = f_ids[:100]
+    while len(f_ids_short)> 0:
+        resp = woape.post_path("/1.1/users/lookup.json", {"user_id": ",".join(map(str, f_ids_short))})
+        for f in json.loads(resp.read()):
+            if f["screen_name"] not in users:
+                followers.append((f["screen_name"],))
+
+        if len(f_ids) > 100:
+            f_ids = f_ids[100:]
+            f_ids_short = f_ids[:100]
+        else:
+            f_ids_short = []
+       
+    log.info("Got %d new usernames" % len(followers))
+
+    cur.executemany("insert or ignore into users (username) values (?)", followers)
+    
 
 
 def main():
@@ -99,7 +128,7 @@ def main():
                 log.info("Has %s chains, need %s, continue" % (len(chains), CHAINS_GOAL))
 
         if res == 0:
-            break
+            find_some_followers(cur)
     
 if __name__ == "__main__":
     main()

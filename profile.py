@@ -169,3 +169,10 @@ class NounProfile:
             print "key: %s; ok_cnt: %s; noise_cnt: %s" % (self.post, ok_cnt, noise_cnt)
             raise e
 
+    def apply_log(self):
+        for r in self.replys:
+            self.replys[r] = math.log(self.replys[r] + 1, 2) 
+
+    def print_replys(self, nouns):
+        for r in self.replys:
+            print "%s: %s" % (nouns[r], self.replys[r])

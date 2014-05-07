@@ -24,7 +24,7 @@ BASE_DIR = os.environ["MOLVA_DIR"]
 
 
 REPLY_REL_MIN = 0.005
-POST_MIN_FREQ = 30
+POST_MIN_FREQ = 100
 REPLY_MIN_FREQ = 1 
 
 BLOCKED_NOUNS_LIST = u"""
@@ -276,12 +276,10 @@ def write_noun_sim_info(post_profile, cmps, nouns, tweets_nouns):
     fout.write(u"<p>Сумма всех похожестей: %f</p>" % total_sim)
 
     fout.write(u"<h3>Профиль ответов на пост</h3>")
-    profile_parts = reversed(sorted(profile.keys(), key=lambda x: float(profile[x])))
-    
-    for reply in profile_parts:
-        p = profile[reply]    
+    for reply in sorted(post_profile.replys.keys(), key=lambda x: post_profile.replys[x], reverse=True):
+        p = post_profile.replys[reply]    
         reply_text = nouns[reply] if reply != 0 else u"<i>шум</i>"
-        fout.write('<a href="./%d.html">%s</a> - %.6f (%d)<br/>\n' % (reply, reply_text, p, post_profile.replys[reply]))
+        fout.write('<a href="./%d.html">%s</a> %.6f<br/>\n' % (reply, reply_text, p))
 
     footer = """
 </body></html>
@@ -299,7 +297,7 @@ def write_noun_sim_index(posts, nouns, top_sims):
 
     fout.write(u"<h3>Индекс словопостов<h3>\n")
 
-    for t in sorted(posts, key=lambda x: top_sims[x]):
+    for t in sorted(posts, key=lambda x: top_sims[x].sim):
         fout.write('<a href="./%d.html">%s</a> %f<br/>\n' % (t, nouns[t], top_sims[t].sim))
 
     footer = """
@@ -335,7 +333,50 @@ def write_noun_sim_index2(sample_profiles, target_profiles, nouns):
     fout.write(footer)    
     fout.close() 
 
-def setup_noun_profiles(cur, tweets_nouns, post_min_freq = POST_MIN_FREQ):
+def count_freq(d, freq):
+    if freq in d:
+        d[freq] += 1
+    else:
+        d[freq] = 1
+
+def count_entropy(profile, repl_p, tot_profiles):
+    entropy = 0
+    for r in profile.replys:
+        freq = profile.replys[r]
+        p = (repl_p[r][freq] + 0.0) / tot_profiles
+        entropy += p * math.log(p)
+
+    entropy *= -1
+
+    for r in profile.replys:
+        profile.replys[r] = profile.replys[r] / entropy
+
+    return entropy
+        
+
+def weight_profiles_with_entropy(profiles_dict, nouns):
+    replys = [] 
+    for p in profiles_dict:
+        profiles_dict[p].apply_log()
+        replys += profiles_dict[p].replys.keys()
+
+    replys = list(set(replys))
+    repl_ps = {}
+    # посчитаем сколько раз заданная частота ответа встречается в профилях
+    for r in replys:
+        repl_p = {}
+        repl_ps[r] = repl_p 
+        for pr in profiles_dict:
+            if r in profiles_dict[pr].replys:
+                count_freq(repl_p, profiles_dict[pr].replys[r])
+            else:
+                count_freq(repl_p, 0)
+
+    # на основе этих частот посчитаем энтропию, и нормируем ею все profile.replys 
+    for pr in profiles_dict:
+        count_entropy(profiles_dict[pr], repl_ps, len(profiles_dict.keys()))
+
+def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq = POST_MIN_FREQ):
     profiles_dict = get_noun_profiles(cur, post_min_freq)
 
     set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
@@ -343,7 +384,9 @@ def setup_noun_profiles(cur, tweets_nouns, post_min_freq = POST_MIN_FREQ):
     set_noun_profiles_total(cur, profiles_dict, post_min_freq)
 
     set_rel_stats(profiles_dict)
-
+    
+    weight_profiles_with_entropy(profiles_dict, nouns) 
+   
     return profiles_dict
 
 def add_none_noun(profiles_dict):
@@ -386,22 +429,12 @@ def main():
 
     tweets_nouns = get_tweets_nouns(main_cur)
 
-    profiles_dict = setup_noun_profiles(cur, tweets_nouns)
-    #synt_profile = get_synt_common_profile(profiles_dict)
-
-    #for k in profiles_dict:
-    #    filename  = BASE_DIR + "/profiles/" + str(k) +".json"
-    #    f = open(filename, "w")
-    #    json.dump(profiles_dict[k].replys_rel, f, indent=4)
-
+    profiles_dict = setup_noun_profiles(cur, tweets_nouns, nouns)
+    
     total_sims = debug_sim_net(profiles_dict, nouns, tweets_nouns)
 
     write_noun_sim_index(profiles_dict.keys(), nouns, total_sims)
     
-    
-    #target_dict = setup_noun_profiles(cur, tweets_nouns, post_min_freq = POST_MIN_FREQ / 10)
-
-    #write_noun_sim_index2(profiles_dict, target_dict, nouns)
     print "[%s] Done " % (time.ctime())
 
 if __name__ == '__main__':
