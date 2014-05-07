@@ -10,8 +10,6 @@ import stats
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-db = os.environ["MOLVA_DB"]
-
 def get_best_cluster(post, clusters, sim_dict):
     cluster_sims = map( lambda x: (x, sim_dict[post][x]), clusters.keys())
     best_cluster = sorted(cluster_sims, key= lambda x: x[1])[0][0]
@@ -75,8 +73,6 @@ def get_cluster_dists(clusters, sim_dict):
         dists[c] = reduce(lambda x, y: x+y, ds) / len(ds)
 
     return dists 
-        
-        
 
 def get_groups_matrix(clusters, nouns, dists, k=4):
     groups = []
@@ -188,6 +184,22 @@ def build_clusters_from_init(sim_dict, init_clusters):
   
     return new_clusters
 
+def get_clusters(sim_dict, clusters_num, nouns):
+    cl = build_clusters(sim_dict, clusters_num)
+
+    dists = get_cluster_dists(cl, sim_dict)
+
+    cl2 = []
+    for c in cl:
+        struct = {  
+            'members': map(lambda x: {'id': x, 'text': nouns[int(x)]}, cl[c]), 
+            'members_len': len(cl[c]),
+            'avg_dist': "%.2f" % dists[c]
+        }
+        cl2.append(struct)
+
+    return cl2
+
 def build_clusters(sim_dict, clusters_num):
     cl = init_clusters(sim_dict, clusters_num) 
 
@@ -205,6 +217,8 @@ if __name__ == '__main__':
     sim_dict = json.load(open(input_file, "r"))
     cl1 = build_clusters(sim_dict, clusters_num)
     #cl2 = main(input_file, clusters_num, output_file)
+
+    db = os.environ["MOLVA_DB"]
 
     cur = stats.get_cursor(db)
     nouns = stats.get_nouns(cur)

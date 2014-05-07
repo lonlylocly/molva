@@ -83,9 +83,15 @@ def get_path(path):
     c = httplib.HTTPSConnection('api.twitter.com')
     c.set_debuglevel(0)
     print "[%s] Open path: %s" % (time.ctime(), path)
-    resp = c.request('GET', path, '', headers)
-    return c.getresponse()
+    c.request('GET', path, '', headers)
+    resp = c.getresponse()
 
+    if resp.status == 429:
+        print "[%s] Limit exceeded; waiting 60 sec" 
+        time.sleep(60)
+
+    return resp
+ 
 def post_path(path, params):
     c = httplib.HTTPSConnection('api.twitter.com')
     c.set_debuglevel(0)
