@@ -130,8 +130,8 @@ def set_post_replys_cnt(cur):
 
         print "[%s] done %d of %d " % (time.ctime(), cnt, max_cnt)
 
-def cr(cur):
-    cur.execute("""
+CREATE_TABLES = {
+    "tweets": """
         CREATE TABLE IF NOT EXISTS tweets
         (
             id integer,
@@ -142,44 +142,42 @@ def cr(cur):
             created_at text,
             PRIMARY KEY (id)
         )
-    """)
-    cur.execute("""
+    """,
+    "users": """
         CREATE TABLE IF NOT EXISTS users
         (
             username text,
-            user_done integer default 0,
+            since_id integer default 0,
             reply_cnt integer default 0,
+            blocked_user default 0,
+            done_time text default '',
             PRIMARY KEY (username)
         )
-    """)
-
-def create_tables(cur):
-    cur.execute("""
+    """,
+    "post_reply_cnt": """
         CREATE TABLE IF NOT EXISTS post_reply_cnt (
             post_md5 integer,
             reply_md5 integer, 
             reply_cnt integer,
             PRIMARY KEY(post_md5, reply_md5)
         )
-    """)
-
-    cur.execute("""
+    """,
+    "post_cnt": """
         CREATE TABLE IF NOT EXISTS post_cnt ( 
             post_md5 integer, 
             post_cnt integer, 
             primary key(post_md5)
         )
-    """)
+    """,
 
-    cur.execute("""
+    "tweet_chains": """
         CREATE TABLE IF NOT EXISTS tweet_chains (
             post_id integer,
             reply_id integer,
             PRIMARY KEY (post_id, reply_id)
         )
-    """)
-
-    cur.execute("""
+    """,
+    "chains_nouns": """
         CREATE TABLE IF NOT EXISTS chains_nouns(
             p_id integer,
             p_md5 integer,
@@ -187,7 +185,18 @@ def create_tables(cur):
             r_md5 integer,
             PRIMARY KEY (p_id, p_md5, r_id, r_md5)
         )
-    """)
+    """
+}
+
+def cr(cur):
+    create_given_tables(cur, ["tweets", "users"]) 
+
+def create_given_tables(cur, tables):
+    for t in tables:
+        cur.execute(CREATE_TABLES[t])
+
+def create_tables(cur):
+    create_given_tables(cur, ["post_reply_cnt", "post_cnt", "tweet_chains", "chains_nouns", "tweets", "users"]) 
 
 def fill_tweet_chains(cur, date):
     print "[%s]  fill tweet_chains" % (time.ctime())
