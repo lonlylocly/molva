@@ -8,6 +8,7 @@ import time
 from sets import Set
 import sys,codecs
 from datetime import datetime, timedelta
+from datetime import time as datetimeTime
 import os
 import traceback
 import copy
@@ -181,7 +182,8 @@ class Fetcher:
             return cur
 
     def get_tweet_start_time(self):
-        return datetime.now() - timedelta (days = self.days_back)
+        # date-time border glued to start of day
+        return datetime.combine(datetime.now(), datetimeTime(0, 0, 0)) - timedelta (days = self.days_back)
 
     def iteration_handler(self):
         f = lambda :  self.iteration()
