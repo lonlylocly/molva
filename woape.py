@@ -1,5 +1,4 @@
 #!/usr/bin/python
-import cProfile, pstats, StringIO
 import httplib, urllib
 import base64
 import json
@@ -12,8 +11,12 @@ from datetime import datetime, timedelta
 import os
 import traceback
 import copy
+import logging, logging.config
 
 import util
+import stats
+
+logging.config.fileConfig("logging.conf")
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -26,10 +29,8 @@ headers = {"Authorization":"Bearer AAAAAAAAAAAAAAAAAAAAAEBgVAAAAAAAxZcUIQhxg"+
 CHAINS_GOAL = 10000000
 #TWEETS_START_DAY = datetime(20114, 12, 25, 0, 0, 0) #datetime.now() - timedelta (days = 40)
 #TWEETS_START_DAY = datetime.now() - timedelta (days = 2)
-DB_FILENAME = os.environ["MOLVA_DB"] 
+DB_DIR = os.environ["MOLVA_DIR"] 
 
-def get_tweet_start_time():
-    return datetime.now() - timedelta (days = 2)
 
 class WoapeException(Exception):
     def __init__(self, value):
@@ -38,46 +39,11 @@ class WoapeException(Exception):
         return repr(self.value)
 
 def create_tables(cur):
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS tweets
-        (
-            id integer,
-            tw_text text,
-            username text,
-            in_reply_to_username text,
-            in_reply_to_id integer,
-            created_at text,
-            PRIMARY KEY (id)
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users
-        (
-            username text,
-            user_done integer default 0,
-            reply_cnt integer default 0,
-            PRIMARY KEY (username)
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS id_queue 
-        (
-            id integer default 0,
-            done integer default 0,
-            PRIMARY KEY (id)
-        )
-    """)
+    stats.create_given_tables(cur, ["tweets", "users"])
 
-def save_tweet(cur, reply):
-    try:
-        mysql_time = to_mysql_timestamp(get_tw_create_time(reply))
-        cur.execute("""
-            INSERT OR IGNORE INTO tweets
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (reply["id"], reply["text"], reply["user"]["screen_name"], reply["in_reply_to_screen_name"], reply["in_reply_to_status_id"], mysql_time))
-    except Exception as e:
-        traceback.print_exc()
-        print "[ERROR] %s "  % e
+DEFAULT_RATE_LIMIT_SLEEP = 60
+
+cur_limit = DEFAULT_RATE_LIMIT_SLEEP
 
 def get_path(path):
     c = httplib.HTTPSConnection('api.twitter.com')
@@ -87,8 +53,9 @@ def get_path(path):
     resp = c.getresponse()
 
     if resp.status == 429:
-        print "[%s] Limit exceeded; waiting 60 sec" 
-        time.sleep(60)
+        print "Limit exceeded; waiting 60 sec" 
+        print json.dumps(resp.getheaders(), indent=4)
+        time.sleep(cur_limit)
 
     return resp
  
@@ -125,22 +92,33 @@ def get_chains(cur):
     chains = s1 & s2    
     return chains
 
-def mark_user_done(cur, username):
+def mark_user_done(cur, username, max_id=0, auth_failed = False):
     print "%s" % username
-    cur.execute("update users set user_done = 1 where username = ?", (username, ))
+    blocked_user = 1 if auth_failed else 0
+    cur.execute("""
+        update users 
+        set 
+            reply_cnt = 0 , 
+            since_id = ?, 
+            blocked_user = ?, 
+            done_time = datetime('now') 
+        where username = ?
+    """, (max_id, blocked_user, username ))
 
 def try_several_times(f, times, error_return=[]):
     tries = 0
     while tries < times:
         try:
+            tries += 1
             res = f()
             return res
         except WoapeException as e:
             print "[%s] Stop trying, WoapeException: %s" % (time.ctime(), e)
             break
-        except Exception as e:
-            traceback.print_exc()
-            print "[%s] [ERROR] %s" % (time.ctime(), e)
+        #except Exception as e:
+        #    traceback.print_exc()
+        #    print "[%s] [ERROR] %s" % (time.ctime(), e)
+
     return error_return
 
 def get_tw_create_time(t):
@@ -150,136 +128,185 @@ def get_tw_create_time(t):
    
     return dt
 
-def to_mysql_timestamp(dt):
-    return dt.strftime("%Y%m%d_%H%M%S")
+MYSQL_TIMESTAMP = "%Y%m%d_%H%M%S"
+def from_sqlite_timestamp(mysql_time):
+    return datetime.strptime(mysql_time,"%Y-%m-%d %H:%M:%S")
 
-def get_more(cur, username, maxid=None):
+def to_mysql_timestamp(dt):
+    return dt.strftime(MYSQL_TIMESTAMP)
+
+def get_more(cur, username, max_id=None, since_id=None):
     resp = None
-    if maxid is None:
-        resp = get_path('/1.1/statuses/user_timeline.json?screen_name=%s&count=200'%username)
-    else:
-        resp = get_path('/1.1/statuses/user_timeline.json?screen_name=%s&max_id=%s&count=200'%(username,maxid))
+    max_id_str = "" if max_id is None else "&max_id=" + str(max_id)
+    since_id_str = "" if since_id is None  or since_id == 0 else "&since_id=" + str(since_id)
+
+    resp = get_path('/1.1/statuses/user_timeline.json?screen_name=%s&count=200%s%s' % (username,max_id_str, since_id_str))
+
+    if resp.status == 429:
+        raise WoapeException("Rate limit exceeded")
+
     if resp.status is not 200:
         print "[ERROR] Response code: %s %s. Response body: %s"% (resp.status, resp.reason, resp.read() )
-        mark_user_done(cur, username)
+        mark_user_done(cur, username, auth_failed = (resp.status == 401))
         raise WoapeException('Invalid response')        
 
     return resp
 
-
-def iteration(cur, username, replys_only=False):
-    if username is None:
-        raise WoapeException('Username is none')
-
-    users_seen = fetch_list(cur, "select username from users") 
-    new_users = []
-    print "[%s] Start loop iteration: %s" % (time.ctime(), username)
-
-    oldest_tweet_time = datetime.now()
-    minid = None
-    cnt = 0
-
-    while oldest_tweet_time > get_tweet_start_time():
-        resp = get_more(cur, username, minid) 
-
-        content = resp.read()
-        last_minid = minid
-
-        conv_partners = {}
-        for t in json.loads(content):
-            ct = get_tw_create_time(t) 
-            if ct < oldest_tweet_time:
-                oldest_tweet_time = ct
-            if ct < get_tweet_start_time():
-                oldest_tweet_time = ct
-                break
-            if replys_only and t["in_reply_to_status_id"] is None :
-                continue
-            if not util.got_russian_letters(t["text"]):
-                continue
-            if minid is None or minid > int(t["id"]):
-                minid = int(t["id"])
- 
-            save_tweet(cur, t)
-            cnt = cnt + 1
-
-            fellow = t["in_reply_to_screen_name"]
-            if fellow not in conv_partners:
-                conv_partners[fellow] = 0
-            conv_partners[fellow] = conv_partners[fellow] + 1
-            if fellow is not None and fellow not in users_seen and fellow not in new_users:
-                cur.execute("insert or ignore into users (username) values (?)", (fellow, ))
-                new_users.append(fellow)
-
-        for partner in conv_partners:
-            cur.execute("update users set reply_cnt = reply_cnt + ? where username = ?", (conv_partners[partner], partner))
-
-        if minid is None or minid == last_minid:
-            print "[%s] cannot get valid minid" % (time.ctime())
-            break    
-    mark_user_done(cur, username)
-
-    print "[%s] Oldest tweet time: %s " % (time.ctime(), oldest_tweet_time)
+class Fetcher:
     
-    print "Saved %s tweets" % cnt
+    def __init__(self, db_dir, db_basename="tweets", days_back=7, seconds_till_user_retry=3600):
+        self.db_dir = db_dir
+        self.db_basename = db_basename
+        self.dates_db = {}
+        self.days_back = days_back
+        self.recent_users = {}
+        self.seconds_till_user_retry = seconds_till_user_retry
+        self.log = logging.getLogger('fetcher-' + db_basename)
 
-    return new_users
-  
-def main_loop_iteration(cur):
-    cnt = 0
-    users = fetch_list(cur, "select username from users where user_done = 0 order by reply_cnt desc limit 1")
+        cur = stats.get_cursor(self.db_dir + "/" + self.db_basename + ".db")
+        self.main_db = cur 
+        stats.create_given_tables(cur, ["users"])
+        
+    def get_db_for_date(self, date):
+        date = date[:8] # assume date format %Y%m%d_%H%M%S
 
-    if len(users) == 0:
-        print "No users left"
-        return cnt 
+        if date in self.dates_db:
+            return self.dates_db[date]
+        else:
+            self.log.info("Setup db connection for date " + date)
+            cur = stats.get_cursor(self.db_dir + "/" + self.db_basename + "_" + date + ".db")
+            self.dates_db[date] = cur
+            stats.create_given_tables(cur, ["tweets"])
 
-    username = users[0]
-    users = users[1:]
+            return cur
 
-    f = lambda :  iteration(cur, username)
-    talked_to_users = try_several_times(f, 3, [])
-   
-    return 1 
+    def get_tweet_start_time(self):
+        return datetime.now() - timedelta (days = self.days_back)
 
+    def iteration_handler(self):
+        f = lambda :  self.iteration()
+        try_several_times(f, 3, [])
 
+    def get_next_user(self):     
+        username, since_id = self.main_db.execute("""
+            SELECT username, since_id
+            FROM users 
+            WHERE
+                (
+                    done_time = '' 
+                OR 
+                    (strftime('%s','now') - strftime('%s', datetime(done_time))) > ? 
+                )
+            AND
+                not blocked_user
+            ORDER BY reply_cnt desc, since_id asc
+            LIMIT 1
+        """, (self.seconds_till_user_retry,)).fetchone()
+
+        if username is None:
+            raise WoapeException('Cannot get next username')
+    
+        return (username, since_id)
+
+    def update_recent_users(self):
+        users_rows = self.main_db.execute("""
+            SELECT username, done_time
+            FROM users
+            WHERE since_id != 0 and done_time != ''
+        """).fetchall()
+
+        users = {}
+
+        for row in users_rows:
+            username, done_time = row
+            users[username] = from_sqlite_timestamp(done_time)
+
+        self.recent_users = users
+
+    def iteration(self):
+        username, since_id = self.get_next_user()
+        self.update_recent_users()
+
+        oldest_tweet_time = datetime.now()
+        next_fetch_max_id = None
+        max_id = since_id 
+        cnt = 0
+
+        while oldest_tweet_time > self.get_tweet_start_time():
+            resp = get_more(self.main_db, username, next_fetch_max_id, since_id) 
+
+            content = resp.read()
+            last_max_id = next_fetch_max_id
+
+            conv_partners = {}
+            for t in json.loads(content):
+                ct = get_tw_create_time(t) 
+                if ct < oldest_tweet_time:
+                    oldest_tweet_time = ct
+                if ct < self.get_tweet_start_time():
+                    oldest_tweet_time = ct
+                    break
+                if not util.got_russian_letters(t["text"]):
+                    continue
+                if next_fetch_max_id is None or next_fetch_max_id > int(t["id"]):
+                    next_fetch_max_id = int(t["id"])
+                if int(t["id"]) > max_id:
+                    max_id = int(t["id"]) 
+
+                self.save_tweet(t)
+                cnt = cnt + 1
+
+                fellow = t["in_reply_to_screen_name"]
+                if fellow is None or fellow == "":
+                    continue
+                if fellow not in conv_partners:
+                    conv_partners[fellow] = 0
+                # count mention to recently done user if it's newer than fellow.done_time
+                if fellow in self.recent_users and self.recent_users[fellow] is not None :
+                    if self.recent_users[fellow] < ct:
+                        conv_partners[fellow] = conv_partners[fellow] + 1
+                # count mention if fellow never seen before 
+                else:
+                    conv_partners[fellow] = conv_partners[fellow] + 1
+
+            self.main_db.executemany("insert or ignore into users (username) values (?)", map(lambda x: (x, ), conv_partners.keys()))
+
+            for partner in conv_partners:
+                self.main_db.execute("update users set reply_cnt = reply_cnt + ? where username = ?", (conv_partners[partner], partner))
+
+            if next_fetch_max_id is None or next_fetch_max_id == last_max_id:
+                self.log.info("cannot get valid max_id")
+                break    
+        mark_user_done(self.main_db, username, max_id)
+
+        self.log.info("Oldest tweet time: %s " % (oldest_tweet_time))
+        
+        self.log.info("Saved %s tweets" % cnt)
+
+    def save_tweet(self, reply):
+        try:
+            mysql_time = to_mysql_timestamp(get_tw_create_time(reply))
+            cur = self.get_db_for_date(mysql_time)
+            cur.execute("""
+                INSERT OR IGNORE INTO tweets
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (reply["id"], reply["text"], reply["user"]["screen_name"], reply["in_reply_to_screen_name"], reply["in_reply_to_status_id"], mysql_time))
+        except Exception as e:
+            traceback.print_exc()
+            self.log.error(e)
 
 def main():
     start_users = sys.argv[1:]
 
-    print "[%s] Startup" % time.ctime()
-    con = sqlite3.connect(DB_FILENAME)
-    con.isolation_level = None
+    fetcher = Fetcher(DB_DIR)
 
-    cur = con.cursor()
-    create_tables(cur)
+    cur = fetcher.main_db
 
-    pr = cProfile.Profile()
-    sortby = 'cumulative'
-
-    cnt = 1
     for user in start_users:
         cur.execute("replace into users values ('%s', 0, 0) " % user)
 
     while True:
-        pr.enable()
-        res = main_loop_iteration(cur)
-        pr.disable()
-        cnt += res
-        if (cnt % 10) == 1:
-            s = StringIO.StringIO()
-            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-            ps.print_stats(30)
-            print s.getvalue()
-
-            chains = get_chains(cur)     
-            if len(chains) >= CHAINS_GOAL:
-                print "Got enough chains, breaking"
-                return  
-            else:
-                print "Has %s chains, need %s, continue" % (len(chains), CHAINS_GOAL)
-
-        if res == 0:
-            break
+        fetcher.iteration_handler()
     
 if __name__ == "__main__":
     main()
