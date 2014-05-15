@@ -1,41 +1,29 @@
 #!/usr/bin/python
-import stats
 import sys
-import time
 import os
+import logging, logging.config
 
-db = os.environ["MOLVA_DB"]
+import stats
+from Indexer import Indexer
 
-def get_tweet_dates(cur):
-    dates = cur.execute("""
-        select substr(date, 0, 11) as date_ from tweets group by date_
-    """).fetchall()
+logging.config.fileConfig("logging.conf")
 
-    ds = []
-    for d in dates:
-        d = d[0].replace("-", "_")
-        ds.append(d)
-
-    return ds
+DB_DIR = os.environ["MOLVA_DIR"]
 
 def main():
-    cur = stats.get_cursor(db)
-    
-    dates = get_tweet_dates(cur)
-    for d in dates:
-        print "do for date " + d
-        shard_db = db.replace(".db","_" + d + ".db")
-        cur_shard = stats.get_cursor(shard_db)
-        cur_shard.execute("""
-            ATTACH "%s" as molva
-        """ % db)
-        stats.create_tables(cur_shard )
-        stats.fill_tweet_chains(cur_shard, d)
-        stats.fill_post_reply(cur_shard)
-
-        cur_shard.execute("""
-            DETACH molva
-        """)
+    ind = Indexer(DB_DIR)
+   
+    for date in sorted(ind.dates_dbs.keys()):
+        cur = ind.get_db_for_date(date)
+        try:
+            cur.execute("select 1 from nouns")
+        except Exception as ex:
+            logging.info("Skip date %s" % date)
+            continue
+        
+        stats.create_tables(cur)
+        stats.fill_tweet_chains(cur)
+        stats.fill_post_reply(cur)
 
 if __name__ == '__main__':
     main()

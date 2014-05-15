@@ -116,9 +116,9 @@ def try_several_times(f, times, error_return=[]):
         except WoapeException as e:
             print "[%s] Stop trying, WoapeException: %s" % (time.ctime(), e)
             break
-        #except Exception as e:
-        #    traceback.print_exc()
-        #    print "[%s] [ERROR] %s" % (time.ctime(), e)
+        except Exception as e:
+            traceback.print_exc()
+            print "[%s] [ERROR] %s" % (time.ctime(), e)
 
     return error_return
 
