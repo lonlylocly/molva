@@ -185,7 +185,28 @@ CREATE_TABLES = {
             r_md5 integer,
             PRIMARY KEY (p_id, p_md5, r_id, r_md5)
         )
-    """
+    """,
+    "tomita_progress": """
+        CREATE TABLE IF NOT EXISTS tomita_progress (
+            id integer,
+            id_done integer default 0,
+            PRIMARY KEY (id, id_done)
+        )
+    """,
+    "nouns": """
+        CREATE TABLE IF NOT EXISTS nouns (
+            noun_md5 integer,
+            noun text,
+            PRIMARY KEY(noun_md5)
+        )
+    """,
+    "tweets_nouns": """
+        CREATE TABLE IF NOT EXISTS tweets_nouns(
+            id integer,
+            noun_md5 integer,
+            PRIMARY KEY(id, noun_md5)
+        )
+    """ 
 }
 
 def cr(cur):
@@ -198,17 +219,16 @@ def create_given_tables(cur, tables):
 def create_tables(cur):
     create_given_tables(cur, ["post_reply_cnt", "post_cnt", "tweet_chains", "chains_nouns", "tweets", "users"]) 
 
-def fill_tweet_chains(cur, date):
+def fill_tweet_chains(cur):
     print "[%s]  fill tweet_chains" % (time.ctime())
 
     cur.execute("""
         insert into tweet_chains
         select t1.id, t2.id 
         from tweets t1
-        inner join molva.tweets t2
+        inner join tweets t2
         on t1.id = t2.in_reply_to_id
-        where t2.date LIKE "%s%%"
-    """ % (date))
+    """)
 
     print "[%s] done fill tweet_chains" % (time.ctime())
 
