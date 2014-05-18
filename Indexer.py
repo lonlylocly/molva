@@ -32,8 +32,18 @@ class Indexer:
         except Exception as e:
             self.log.warn(e)
 
+    def _check_cursor_alive(self, cur):
+        try:
+            res = cur.execute("select 1").fetchone()
+            if res[0] == 1:
+                return True
+            return False
+        except Exception as e:
+            logging.error(e)
+            return False
+
     def get_db_for_filename(self, filename):
-        if filename in self.db_curs:
+        if filename in self.db_curs and self._check_cursor_alive(self.db_curs[filename]):
             return self.db_curs[filename]
         else:
             self.log.info("Setup db connection  " + filename)

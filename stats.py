@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 import sqlite3
 import time
+import math
+import logging, logging.config
+
+from profile import NounProfile, ProfileCompare
 
 def get_cursor(db):
     print "get cursor for " + db
@@ -206,6 +210,31 @@ CREATE_TABLES = {
             noun_md5 integer,
             PRIMARY KEY(id, noun_md5)
         )
+    """,
+    "noun_similarity": """
+        CREATE TABLE IF NOT EXISTS noun_similarity (
+            post1_md5 integer,
+            post2_md5 integer,
+            sim float,
+            PRIMARY KEY (post1_md5, post2_md5)
+        ) 
+    """,
+    "table_stats": """
+        CREATE TABLE IF NOT EXISTS table_stats (
+            table_name text not null,
+            table_date text not null,
+            row_count integer not null,
+            update_time text,
+            PRIMARY KEY (table_name, table_date)
+        )
+    """,
+    "clusters": """
+        CREATE TABLE IF NOT EXISTS clusters (
+            cluster_date text,
+            k integer,
+            cluster text,
+            PRIMARY KEY (cluster_date, k)
+        )
     """ 
 }
 
@@ -223,7 +252,7 @@ def fill_tweet_chains(cur):
     print "[%s]  fill tweet_chains" % (time.ctime())
 
     cur.execute("""
-        insert into tweet_chains
+        insert or ignore into tweet_chains
         select t1.id, t2.id 
         from tweets t1
         inner join tweets t2
@@ -265,3 +294,100 @@ def fill_post_reply(cur):
     """)
 
     print "[%s] done filling" % (time.ctime())
+
+def _log_execute(cur, query):
+    logging.info(query)
+    return cur.execute(query) 
+
+def get_noun_profiles(cur, post_min_freq, blocked_nouns):
+    stats = _log_execute(cur, """
+        select p.post_md5, p.reply_md5, p.reply_cnt, p2.post_cnt
+        from post_reply_cnt p
+        inner join post_cnt p2
+        on p.post_md5 = p2.post_md5
+        where p2.post_cnt > %d
+        and p.post_md5 not in (%s) 
+        and p.reply_md5 not in (%s)
+        order by p2.post_cnt desc
+    """ % (post_min_freq, blocked_nouns, blocked_nouns)).fetchall()
+
+    profiles_dict = {}
+
+    for s in stats:
+        post, reply, cnt, post_cnt  = s 
+        if post not in profiles_dict:
+            profiles_dict[post] = NounProfile(post, post_cnt=post_cnt) 
+        profiles_dict[post].replys[reply] = cnt
+
+    return profiles_dict
+
+def set_noun_profiles_tweet_ids(profiles_dict, tweet_nouns):
+    for x in profiles_dict.keys():
+        profiles_dict[x].post_tweet_ids = tweet_nouns[x] 
+
+def set_noun_profiles_total(cur, profiles_dict, post_min_freq, blocked_nouns):
+    total_stats = cur.execute("""
+        select p.post_md5, sum(p.reply_cnt)
+        from post_reply_cnt p
+        inner join post_cnt p2
+        on p.post_md5 = p2.post_md5
+        where p2.post_cnt > %d
+        and p.post_md5 not in (%s)
+        and reply_md5 not in (%s)
+        group by p.post_md5
+        order by p2.post_cnt desc
+    """ % (post_min_freq, blocked_nouns, blocked_nouns)).fetchall()
+
+    for s in total_stats:
+        post = int(s[0])
+        reply_cnt = int(s[1])
+
+        #assert post in profiles_dict
+        if post not in profiles_dict:
+            continue
+
+        profiles_dict[post].total = reply_cnt 
+
+def count_freq(d, freq):
+    if freq in d:
+        d[freq] += 1
+    else:
+        d[freq] = 1
+
+def count_entropy(profile, repl_p, tot_profiles):
+    entropy = 0
+    for r in profile.replys:
+        freq = profile.replys[r]
+        p = (repl_p[r][freq] + 0.0) / tot_profiles
+        entropy += p * math.log(p)
+
+    entropy *= -1
+
+    for r in profile.replys:
+        profile.replys[r] = profile.replys[r] / entropy
+
+    return entropy
+ 
+def weight_profiles_with_entropy(profiles_dict, nouns):
+    replys = [] 
+    for p in profiles_dict:
+        profiles_dict[p].apply_log()
+        replys += profiles_dict[p].replys.keys()
+
+    replys = list(set(replys))
+    repl_ps = {}
+    # посчитаем сколько раз заданная частота ответа встречается в профилях
+    for r in replys:
+        repl_p = {}
+        repl_ps[r] = repl_p 
+        for pr in profiles_dict:
+            if r in profiles_dict[pr].replys:
+                count_freq(repl_p, profiles_dict[pr].replys[r])
+            else:
+                count_freq(repl_p, 0)
+
+    # на основе этих частот посчитаем энтропию, и нормируем ею все profile.replys 
+    for pr in profiles_dict:
+        count_entropy(profiles_dict[pr], repl_ps, len(profiles_dict.keys()))
+
+

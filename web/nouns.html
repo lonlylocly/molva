@@ -1,0 +1,109 @@
+<html>
+<head>
+<title>О чем говорил твиттер 14 апреля</title>
+<meta charset="UTF-8">
+<style>
+
+.groups-table {
+    border-collapse: collapse;
+}
+td, th {
+    border: 2px solid rgb(218,218,218);
+    vertical-align: top;
+    padding: 5px;
+} 
+
+</style>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+
+<script src="/js/handlebars-v1.3.0.js"></script>
+
+<script>
+function clusterToStr(cluster) {
+    var mems = cluster["members"];
+    var str = "<p>" + cluster["avg_dist"] + "</p>";
+    var mems_text = [];
+    for(var i=0; i < mems.length; i++) {
+        str += "<a href=\"./" + mems[i]["id"] + ".html\">" + mems[i]["text"] + "</a></br>";
+        mems_text.push(mems[i]["text"]);
+    }
+    var time_query = "&tbs=cdr%3A1%2Ccd_min%3A14.04.2014%2Ccd_max%3A14.04.2014";
+    var google_search = "https://www.google.ru/search?q=" + mems_text.join("+") + time_query;
+    str += "<p><a href=\"" + google_search + "\">Искать в google<a/>"; 
+    return str;
+}
+function getCurUrlParams() {
+    var cur_url = "" + document.URL;
+    var url_parts = cur_url.split("?");
+    
+    var params = {};
+    if (url_parts.length > 1) {
+        var param_parts = url_parts[1].split("&");
+        for(var i =0 ; i< param_parts.length; i++) {
+            var p = param_parts[i].split("=");
+            params[p[0]] = p[1];
+        }
+    }
+    
+    return params;
+}
+
+function loadNoun(parse_url_args) {
+    var noun ;
+    var _date;
+    if (parse_url_args) {
+        noun = getCurUrlParams()["noun_md5"];
+        _date = getCurUrlParams()["date"];
+    } else {
+        noun = parseInt($("#noun-param").val());
+        _date = parseInt($("#date-param").val());
+    }
+    
+    console.log(getCurUrlParams()["id"]);
+    $.get( "/api/post_profile?noun_md5=" + noun + "&date=" + _date, function( data ) {
+        try{
+        var profile = JSON.parse(data);
+
+        //cl.sort(function(a,b) {
+        //    if (a["avg_dist"] < b["avg_dist"]) return -1;
+        //    if (a["avg_dist"] > b["avg_dist"]) return 1;
+        //    return 0;
+        //});
+        profile["date"] = _date;
+
+        var source = $("#noun-template").html();
+        var template = Handlebars.compile(source);
+ 
+        $( "#noun-info-holder" ).html( template(profile) );
+        } catch (e){
+            console.log(e);
+        }
+    });
+}
+</script>
+</head>
+<body onLoad="loadNoun(true)">
+
+<p>
+Слово: <input type="text" id="noun-param" value=""/> <br/>
+День: <input type="text" id="date-param" value=""/> <br/>
+<button type="button" onClick="loadNoun()">Go</button><br/>
+</p>
+<script id="noun-template" type="text/x-handlebars-template">
+<div>
+    <h1>{{noun_text}}</h1>
+    <div>
+        {{#each reply_profile}}
+        <a href="/nouns.html?noun_md5={{this.noun_md5}}&date={{../date}}">{{this.noun_text}}</a> {{this.reply_cnt}} <br/>
+        {{/each}} 
+    </div>
+    <div>
+        {{#each tweets}}
+        <a href="https://twitter.com/a/status/{{this}}">{{this}}</a><br/>
+        {{/each}}
+    </div>
+</div> 
+</script>
+<div id="noun-info-holder"></div>
+</body>
+</html>

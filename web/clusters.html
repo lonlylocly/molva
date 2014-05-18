@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>О чем говорил твиттер 14 апреля</title>
+<title>О чем говорит twitter</title>
 <meta charset="UTF-8">
 <style>
 
@@ -15,6 +15,7 @@ td, th {
 
 </style>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="/js/handlebars-v1.3.0.js"></script>
 <script>
 function clusterToStr(cluster) {
     var mems = cluster["members"];
@@ -45,14 +46,22 @@ function getCurUrlParams() {
     return params;
 }
 
-function loadClusters() {
+function loadClusters(parse_url_args) {
+    var k;
+    var _date;
+    if (parse_url_args) {
+        k = getCurUrlParams()["k"];
+        _date = getCurUrlParams()["date"];
+    } else {
+        k = parseInt($("#k-param").val());
+        _date = parseInt($("#date-param").val());
+    }
+ 
     console.log("loadClusters");
-    var k = parseInt($("#k-param").val());
-    console.log(getCurUrlParams()["id"]);
-    $.get( "/cluster?k=" + k, function( data ) {
+    $.get( "/api/cluster?k=" + k + "&date=" + _date, function( data ) {
         try{
         var cl = JSON.parse(data);
-
+    
         cl.sort(function(a,b) {
             if (a["avg_dist"] < b["avg_dist"]) return -1;
             if (a["avg_dist"] > b["avg_dist"]) return 1;
@@ -87,8 +96,14 @@ function loadClusters() {
     });
 }
 </script>
+
+<script id="dates-template" type="text/x-handlebars-template">
+    {{#each dates_available}}
+    <a href="/clusters.html?k=100&date={{this}}">{{this}}</a>
+    {{/each}}
+</script>
 </head>
-<body onLoad="loadClusters()">
+<body onLoad="loadClusters(true)">
 <h3>О чем говорили в русском твиттере 14 апреля</h3>
 <p>
 Каждая ячейка - это смысловая группа. Цифра в ячейке - это плотность группы, она показывает насколько похожи слова друг на друга. 
@@ -96,9 +111,28 @@ function loadClusters() {
 Чем ближе к 1, тем разреженнее и сходство слов слабее.<br/>
 В каждой ячейке есть ссылка - поискать слова из группы в Google.
 </p>
+<p>
+<div id="available-dates"></div>
+<script>
+$.get( "/api/dates_available", function( data ) {
+    try{
+        var dates = JSON.parse(data);
+
+        var source = $("#dates-template").html();
+        var template = Handlebars.compile(source);
+         
+        $( "#available-dates" ).html( template(dates) );
+    } catch(e) {
+        console.log(e);
+    }
+})
+
+</script>
+</p>
 <p>Чтобы сгенирорвать заново, нажми кнопку: </p>
 <p>
 Количество групп: <input type="text" id="k-param" value="100"/> <br/>
+День: <input type="text" id="date-param" value=""/> <br/>
 <button type="button" onClick="loadClusters()">Сгенерировать</button><br/>
 </p>
 <div id="cluster-holder"></div>

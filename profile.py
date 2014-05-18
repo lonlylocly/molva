@@ -6,12 +6,15 @@ import numpy
 
 class ProfileCompare:
 
-    def __init__(self, one=None, other=None):
+    def __init__(self, one=None, other=None, check_common=False):
         self.left = one
         self.right = other
 
-        if one is not None and other is not None:
+        if check_common and one is not None and other is not None:
             self.common_tweets = one.common_tweets_with(other) 
+        else:
+            self.common_tweets = None
+ 
         self.dist = None
         self.common_replys = None
 
@@ -57,8 +60,6 @@ class ProfileCompare:
         x2 = []
        
         for reply in com_set:
-            if reply == 0:
-                continue
             x1.append(one.replys[reply] if reply in one.replys else 0) 
             x2.append(other.replys[reply] if reply in other.replys else 0)
         
@@ -104,13 +105,14 @@ class NounProfile:
     #    p = NounProfile(0, 0)
     #    p.replys = d["replys"]
 
-    def __init__(self, post, reply_min, post_tweet_ids=None):
+    def __init__(self, post, reply_min=None, post_tweet_ids=None, post_cnt=None):
         self.replys = {}
         self.replys_rel = {}
         self.post = post
         self.total = 0
         self.rel_min = reply_min
         self.post_tweet_ids = post_tweet_ids
+        self.post_cnt = post_cnt
 
     def setup_rel_profile(self):
         self.replys_rel[0] = 0.0
