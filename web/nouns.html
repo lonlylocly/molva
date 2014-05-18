@@ -4,13 +4,12 @@
 <meta charset="UTF-8">
 <style>
 
-.groups-table {
+.noun-desc-table {
     border-collapse: collapse;
 }
-td, th {
-    border: 2px solid rgb(218,218,218);
+.noun-desc-table td, th {
     vertical-align: top;
-    padding: 5px;
+    padding-right: 5px;
 } 
 
 </style>
@@ -19,19 +18,7 @@ td, th {
 <script src="/js/handlebars-v1.3.0.js"></script>
 
 <script>
-function clusterToStr(cluster) {
-    var mems = cluster["members"];
-    var str = "<p>" + cluster["avg_dist"] + "</p>";
-    var mems_text = [];
-    for(var i=0; i < mems.length; i++) {
-        str += "<a href=\"./" + mems[i]["id"] + ".html\">" + mems[i]["text"] + "</a></br>";
-        mems_text.push(mems[i]["text"]);
-    }
-    var time_query = "&tbs=cdr%3A1%2Ccd_min%3A14.04.2014%2Ccd_max%3A14.04.2014";
-    var google_search = "https://www.google.ru/search?q=" + mems_text.join("+") + time_query;
-    str += "<p><a href=\"" + google_search + "\">Искать в google<a/>"; 
-    return str;
-}
+
 function getCurUrlParams() {
     var cur_url = "" + document.URL;
     var url_parts = cur_url.split("?");
@@ -64,11 +51,6 @@ function loadNoun(parse_url_args) {
         try{
         var profile = JSON.parse(data);
 
-        //cl.sort(function(a,b) {
-        //    if (a["avg_dist"] < b["avg_dist"]) return -1;
-        //    if (a["avg_dist"] > b["avg_dist"]) return 1;
-        //    return 0;
-        //});
         profile["date"] = _date;
 
         var source = $("#noun-template").html();
@@ -92,16 +74,35 @@ function loadNoun(parse_url_args) {
 <script id="noun-template" type="text/x-handlebars-template">
 <div>
     <h1>{{noun_text}}</h1>
-    <div>
+    <table class="noun-desc-table">
+    <tr><th>Частотность слов-ответов</th><th>Несколько твитов с этим словом</th><th>Наиболее похожие слова-посты</th></tr>
+    <tr>
+    <td>
+        <table>
         {{#each reply_profile}}
-        <a href="/nouns.html?noun_md5={{this.noun_md5}}&date={{../date}}">{{this.noun_text}}</a> {{this.reply_cnt}} <br/>
-        {{/each}} 
-    </div>
-    <div>
-        {{#each tweets}}
-        <a href="https://twitter.com/a/status/{{this}}">{{this}}</a><br/>
+        <tr><td><a href="/nouns.html?noun_md5={{this.noun_md5}}&date={{../date}}">{{this.noun_text}}</a></td><td>{{this.reply_cnt}}</td>
         {{/each}}
-    </div>
+        </table> 
+    </td>
+    <td>
+        <div>
+            {{#each tweets}}
+            <a href="https://twitter.com/a/status/{{this}}">{{this}}</a><br/>
+            {{/each}}
+        </div>
+    </td>
+    <td>
+        <table>
+        {{#each most_similar_nouns}}
+        <tr>
+            <td><a href="/nouns.html?noun_md5={{this.noun_md5}}&date={{../date}}">{{this.noun_text}}</a></td>
+            <td>{{this.sim}}</td>
+        </tr>
+        {{/each}}
+        </table>
+    </td>
+    </tr>
+    </table>
 </div> 
 </script>
 <div id="noun-info-holder"></div>

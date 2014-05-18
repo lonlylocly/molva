@@ -14,7 +14,14 @@ logging.config.fileConfig("logging.conf")
 
 POST_MIN_FREQ = 10
 
-DB_DIR = os.environ["MOLVA_DIR"]
+settings = {} 
+try:
+    settings = json.load(open('global-settings.json', 'r'))
+except Exception as e:
+    logging.warn(e)
+
+DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
+
 def get_sims(cur):
     res = cur.execute("select post1_md5, post2_md5, sim from noun_similarity")
 
@@ -69,6 +76,7 @@ def main():
 
         nouns = stats.get_nouns(cur)
         logging.info("nouns len %s" % len(nouns))
+        post_cnt = stats.get_noun_cnt(cur)
         
         logging.info("get sim_dict")
         sim_dict = get_sims(cur) 
@@ -77,12 +85,18 @@ def main():
         for k in [10, 100, 1000]: 
             logging.info("get clusters")
             cl = KMeanCluster.get_clusters(sim_dict, int(k), nouns)
+            
+            for c in cl:
+                for m in c["members"]:
+                    m["post_cnt"] = post_cnt[m["id"]]
 
             cl_json = json.dumps(cl)
             cur_main.execute("""
-                insert into clusters (cluster_date, k, cluster)
+                replace into clusters (cluster_date, k, cluster)
                 values (?, ?, ?)
             """, (date, k, cl_json))
+
+    logging.info("Done")
 
 if __name__ == '__main__':
     main()
