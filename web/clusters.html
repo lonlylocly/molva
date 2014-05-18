@@ -12,10 +12,36 @@ td, th {
     vertical-align: top;
     padding: 5px;
 } 
-
+.cluster-container {
+    float: left;
+    padding-right: 5px;
+    
+    border: 2px solid rgb(218,218,218);
+}
 </style>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/js/handlebars-v1.3.0.js"></script>
+
+<script id="cluster-template" type="text/x-handlebars-template">
+<table class="groups-table">
+{{#each groups}}
+    <tr>
+    {{#each this}}
+        <td>
+        <p>{{avg_dist}}</p>
+            {{#each members}}
+                <a href="/nouns.html?noun_md5={{this.id}}&date={{../../../date}}">{{this.text}}</a> {{this.post_cnt}}</br>
+            {{/each}}
+            <p>
+            <a href="http://google.com/search?q={{this.query_string}}&tbs=cdr%3A1%2Ccd_min%3A{{../../query_date}}%2Ccd_max%3A{{../../query_date}}">g</a> 
+            <a href="http://yandex.ru/yandsearch?text={{this.query_string}}&from_date_full={{../../query_date}}&to_date_full={{../../query_date}}" style="color: red;">Я</a> 
+            </p>
+        </td>
+    {{/each}}
+    </tr>
+{{/each}}
+</table>
+</script>
 <script>
 function clusterToStr(cluster, _date) {
     var mems = cluster["members"];
@@ -46,6 +72,15 @@ function getCurUrlParams() {
     return params;
 }
 
+function parse_query_date(_date) {
+    return _date.substr(6,2) + '.' + _date.substr(4,2) + '.' + _date.substr(0,4);
+}
+
+function update_cur_date(_date) {
+    var date_str = _date.substr(0,4) + '-' + _date.substr(4,2) + '-' + _date.substr(6,2);
+    $("#stat-date").html(date_str);
+}
+
 function loadClusters(parse_url_args) {
     var k;
     var _date;
@@ -53,10 +88,13 @@ function loadClusters(parse_url_args) {
         k = getCurUrlParams()["k"];
         _date = getCurUrlParams()["date"];
     } else {
-        k = parseInt($("#k-param").val());
+        k = parseInt($('input[name=k-param]:checked').val());
         _date = parseInt($("#date-param").val());
     }
- 
+    update_cur_date(_date);
+    $("#date-param").val(_date);
+    $('input[name=k-param][value=' + k + ']').prop('checked', true);
+
     console.log("loadClusters");
     $.get( "/api/cluster?k=" + k + "&date=" + _date, function( data ) {
         try{
@@ -67,6 +105,17 @@ function loadClusters(parse_url_args) {
             if (a["avg_dist"] > b["avg_dist"]) return 1;
             return 0;
         });
+        for(var i=0; i<cl.length; i++) {
+            cl[i]["members"].sort(function(a,b) {
+                if (a["post_cnt"] < b["post_cnt"]) return -1;
+                if (a["post_cnt"] > b["post_cnt"]) return 1;
+                return 0;
+            }).reverse();
+            var mems = $.map(cl[i]["members"], function(l) {
+                return l["text"];
+            })
+            cl[i]["query_string"] = mems.join("+"); 
+        }
 
         var groups = [];
         var per_group = 8;
@@ -78,18 +127,11 @@ function loadClusters(parse_url_args) {
             groups.push(cl.slice(0, per_group));
             cl = cl.slice(per_group);
         }
-        var cl_code = "<table class=\"groups-table\">";
-        for(var i=0; i<groups.length; i++) {
-            var row_str = "<tr>";
-            for(var j=0; j<groups[i].length; j++) {
-                var cell_str = "<td>" + clusterToStr(groups[i][j], _date) + "</td>";
-                row_str += cell_str;
-            }
-            row_str += "</tr>"
-            cl_code += row_str
-        }
-        cl_code += "</table>"
-        $( "#cluster-holder" ).html( cl_code );
+
+        var source = $("#cluster-template").html();
+        var template = Handlebars.compile(source);
+
+        $( "#cluster-holder" ).html( template({"groups": groups, "date": _date, "query_date": parse_query_date(_date)}) );
         } catch (e){
             console.log(e);
         }
@@ -104,7 +146,7 @@ function loadClusters(parse_url_args) {
 </script>
 </head>
 <body onLoad="loadClusters(true)">
-<h3>О чем говорит русский твиттер</h3>
+<h3>О чем говорит русский твиттер <span id="stat-date"></span></h3>
 
 <p>
 <div id="available-dates"></div>
@@ -124,12 +166,15 @@ $.get( "/api/dates_available", function( data ) {
 
 </script>
 </p>
-<p>Чтобы сгенирорвать заново, нажми кнопку: </p>
-<p>
-Количество групп: <input type="text" id="k-param" value="100"/> <br/>
-День: <input type="text" id="date-param" value=""/> <br/>
-<button type="button" onClick="loadClusters()">Сгенерировать</button><br/>
+
+<p>Количество групп:<br/> 
+<input type="radio" name="k-param" value="10"/> 10 <br/>
+<input type="radio" name="k-param" value="100" checked="true"/> 100<br/>
+<input type="radio" name="k-param" value="1000"/> 1000<br/>
 </p>
+<p>День: <input type="text" id="date-param" value=""/> </p>
+<p><button type="button" onClick="loadClusters()">Показать</button></p>
+
 <div id="cluster-holder"></div>
 </body>
 </html>

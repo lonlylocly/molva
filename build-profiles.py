@@ -3,6 +3,7 @@
 import sys
 import os
 import logging, logging.config
+import json
 
 import stats
 from Indexer import Indexer
@@ -13,7 +14,13 @@ logging.config.fileConfig("logging.conf")
 
 POST_MIN_FREQ = 10
 
-DB_DIR = os.environ["MOLVA_DIR"]
+settings = {} 
+try:
+    settings = json.load(open('global-settings.json', 'r'))
+except Exception as e:
+    logging.warn(e)
+
+DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
 BLOCKED_NOUNS_LIST = u"\n".join(list(u"абвгдеёжзиклмнопрстуфхцчшщыьъэюя"))
 
@@ -111,6 +118,8 @@ def main():
         logging.info("profiles len %s" % len(profiles_dict))
 
         fill_sims(cur, profiles_dict, nouns, tweets_nouns)
+
+    logging.info("Done")
         
 if __name__ == '__main__':
     main()

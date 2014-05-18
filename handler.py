@@ -7,6 +7,7 @@ import os
 import json
 import time
 import re
+import logging
 
 import KMeanCluster
 import stats
@@ -62,6 +63,23 @@ class PostProfileHandler(tornado.web.RequestHandler):
         res = cur.execute("select noun from nouns where noun_md5 = ?", (noun_md5, )).fetchone()
         return res[0]
 
+    def get_most_sim_nouns(self, cur, noun_md5):
+        try:
+            res = cur.execute("""
+                select s.post2_md5, s.sim, n.noun
+                from noun_similarity s 
+                inner join nouns n
+                on s.post2_md5 = n.noun_md5
+                where post1_md5 = ?
+                order by sim
+                limit 10
+            """, (noun_md5, )).fetchall()
+
+            return map(lambda x: {"noun_md5": x[0], "sim": "%.3f" % x[1], "noun_text": x[2]}, res)
+        except Exception as e:
+            logging.error(e)
+            return []
+
     def get(self):
         noun_md5 = self.get_argument("noun_md5", default=None)
         date = self.get_argument('date', default=None)
@@ -77,7 +95,8 @@ class PostProfileHandler(tornado.web.RequestHandler):
         profile = { "noun_md5": noun_md5, 
             "reply_profile": self.get_reply_profile(cur, noun_md5),
             "tweets": self.get_some_tweets(cur, noun_md5),
-            "noun_text": self.get_noun_text(cur, noun_md5)
+            "noun_text": self.get_noun_text(cur, noun_md5),
+            "most_similar_nouns": self.get_most_sim_nouns(cur, noun_md5)
         }
                 
         self.write(json.dumps(profile))
