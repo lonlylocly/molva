@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import re
+import argparse
 
 def digest(s):
     large = int(hashlib.md5(s.encode('utf-8')).hexdigest(), 16)
@@ -19,4 +20,10 @@ def got_russian_letters(s, k=3):
     res = re.match(u".*([а-яА-Я])+.*" , s) is not None
     return res
 
+def get_dates_range_parser():
+    parser = argparse.ArgumentParser()
 
+    parser.add_argument("-s", "--start")
+    parser.add_argument("-e", "--end")
+
+    return parser
