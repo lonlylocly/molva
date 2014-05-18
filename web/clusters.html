@@ -17,15 +17,15 @@ td, th {
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/js/handlebars-v1.3.0.js"></script>
 <script>
-function clusterToStr(cluster) {
+function clusterToStr(cluster, _date) {
     var mems = cluster["members"];
     var str = "<p>" + cluster["avg_dist"] + "</p>";
     var mems_text = [];
     for(var i=0; i < mems.length; i++) {
-        str += "<a href=\"./" + mems[i]["id"] + ".html\">" + mems[i]["text"] + "</a></br>";
+        str += "<a href=\"/nouns.html?noun_md5=" + mems[i]["id"] + "&date=" + _date+ "\">" + mems[i]["text"] + "</a></br>";
         mems_text.push(mems[i]["text"]);
     }
-    var time_query = "&tbs=cdr%3A1%2Ccd_min%3A14.04.2014%2Ccd_max%3A14.04.2014";
+    var time_query = "" //"&tbs=cdr%3A1%2Ccd_min%3A14.04.2014%2Ccd_max%3A14.04.2014";
     var google_search = "https://www.google.ru/search?q=" + mems_text.join("+") + time_query;
     str += "<p><a href=\"" + google_search + "\">Искать в google<a/>"; 
     return str;
@@ -82,7 +82,7 @@ function loadClusters(parse_url_args) {
         for(var i=0; i<groups.length; i++) {
             var row_str = "<tr>";
             for(var j=0; j<groups[i].length; j++) {
-                var cell_str = "<td>" + clusterToStr(groups[i][j]) + "</td>";
+                var cell_str = "<td>" + clusterToStr(groups[i][j], _date) + "</td>";
                 row_str += cell_str;
             }
             row_str += "</tr>"
@@ -104,13 +104,8 @@ function loadClusters(parse_url_args) {
 </script>
 </head>
 <body onLoad="loadClusters(true)">
-<h3>О чем говорили в русском твиттере 14 апреля</h3>
-<p>
-Каждая ячейка - это смысловая группа. Цифра в ячейке - это плотность группы, она показывает насколько похожи слова друг на друга. 
-Чем ближе к 0, тем группа плотнее и слова более похожи.
-Чем ближе к 1, тем разреженнее и сходство слов слабее.<br/>
-В каждой ячейке есть ссылка - поискать слова из группы в Google.
-</p>
+<h3>О чем говорит русский твиттер</h3>
+
 <p>
 <div id="available-dates"></div>
 <script>
