@@ -110,14 +110,17 @@ class Indexer:
 
         return merged_files
 
+    def prepare_tweet_index_for_date(self, date, max_save_iter=30):
+        self.add_new_tweets_for_tomita(date) 
+        for i in range(0, max_save_iter):
+            cnt = self.save_tweets_index(date)
+            if cnt == 0:
+                break
+
     def round_indexing(self):
         for date in sorted(self.dates_dbs.keys()):
-            self.add_new_tweets_for_tomita(date) 
-            for i in range(0, 30):
-                cnt = self.save_tweets_index(date)
-                if cnt == 0:
-                    break
-                
+            self.prepare_tweet_index_for_date(date)
+                            
 
     def add_new_tweets_for_tomita(self, date):
         self.log.info("Index day %s" %date)

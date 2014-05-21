@@ -5,6 +5,7 @@ import time
 import sys,codecs
 import os
 import logging, logging.config
+import json
 
 import xml.etree.cElementTree as ElementTree
 
@@ -16,7 +17,13 @@ logging.config.fileConfig("logging.conf")
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-DB_DIR = os.environ["MOLVA_DIR"]
+settings = {} 
+try:
+    settings = json.load(open('global-settings.json', 'r'))
+except Exception as e:
+    logging.warn(e)
+
+DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
 def create_tables(cur):
     stats.create_given_tables(cur, ["nouns", "tweets_nouns"])

@@ -28,32 +28,12 @@ BLOCKED_NOUNS = ",".join(map( lambda x: str(digest(x)), BLOCKED_NOUNS_LIST.split
 
 NOUNS_LIMIT = 2000
 
-def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq = POST_MIN_FREQ):
-    profiles_dict = stats.get_noun_profiles(cur, post_min_freq, BLOCKED_NOUNS)
-
-    #stats.set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
-    logging.info("Profiles len: %s" % len(profiles_dict))
-    if len(profiles_dict) > NOUNS_LIMIT:
-        short_profiles_dict = {}
-        
-        for k in sorted(profiles_dict.keys(), key=lambda x: profiles_dict[x].post_cnt, reverse=True)[:NOUNS_LIMIT]:
-            short_profiles_dict[k] = profiles_dict[k]
-
-        profiles_dict = short_profiles_dict
-
-        logging.info("Short-list profiles len: %s" % len(profiles_dict))
-
-    stats.set_noun_profiles_total(cur, profiles_dict, post_min_freq, BLOCKED_NOUNS)
-
-    stats.weight_profiles_with_entropy(profiles_dict, nouns) 
-   
-    return profiles_dict
 
 def save_sims(cur, sims):
     cur.execute("begin transaction")
 
     for s in sims:
-        cur.execute("replace into noun_similarity values (?, ?, ?)", s)
+        cur.execute("replace into noun_sim_new values (?, ?, ?)", s)
 
     cur.execute("commit")
 
@@ -83,7 +63,17 @@ def fill_sims(cur, profiles_dict, nouns, tweets_nouns):
                 logging.info("Another 10k seen")
      
     save_sims(cur, sims)
- 
+
+def update_sims(cur):
+    cur.execute("begin transaction")
+
+    cur.execute("drop table if exists noun_sim_old")
+    cur.execute("alter table noun_similarity rename to noun_sim_old")
+    cur.execute("alter table noun_sim_new rename to noun_similarity")
+    cur.execute("drop table noun_sim_old")
+
+    cur.execute("commit")
+
 def main():
     parser = util.get_dates_range_parser()
     parser.add_argument("-c", "--clear", action="store_true")
@@ -104,20 +94,19 @@ def main():
             continue
         
         stats.create_given_tables(cur, ["noun_similarity"])
-
-        if args.clear:
-            logging.info("Clearing previous stats")
-            cur.execute("delete from noun_similarity")
+        cur.execute("create table if not exists noun_sim_new as select * from noun_similarity limit 0")
+        cur.execute("delete from noun_sim_new")
 
         nouns = stats.get_nouns(cur)
         logging.info("nouns len %s" % len(nouns))
 
-        tweets_nouns = {} # stats.get_tweets_nouns(cur)
-
-        profiles_dict = setup_noun_profiles(cur, tweets_nouns, nouns)
+        profiles_dict = stats.setup_noun_profiles(cur, {}, nouns, 
+        post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = NOUNS_LIMIT )
         logging.info("profiles len %s" % len(profiles_dict))
 
-        fill_sims(cur, profiles_dict, nouns, tweets_nouns)
+        fill_sims(cur, profiles_dict, nouns, {})
+
+        update_sims(cur)
 
     logging.info("Done")
         

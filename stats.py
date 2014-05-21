@@ -390,4 +390,25 @@ def weight_profiles_with_entropy(profiles_dict, nouns):
     for pr in profiles_dict:
         count_entropy(profiles_dict[pr], repl_ps, len(profiles_dict.keys()))
 
+def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit):
+    profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns)
+
+    #set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
+    logging.info("Profiles len: %s" % len(profiles_dict))
+    if len(profiles_dict) > nouns_limit:
+        short_profiles_dict = {}
+        
+        for k in sorted(profiles_dict.keys(), key=lambda x: profiles_dict[x].post_cnt, reverse=True)[:nouns_limit]:
+            short_profiles_dict[k] = profiles_dict[k]
+
+        profiles_dict = short_profiles_dict
+
+        logging.info("Short-list profiles len: %s" % len(profiles_dict))
+
+    set_noun_profiles_total(cur, profiles_dict, post_min_freq, blocked_nouns)
+
+    weight_profiles_with_entropy(profiles_dict, nouns) 
+   
+    return profiles_dict
+
 
