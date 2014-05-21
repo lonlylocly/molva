@@ -13,15 +13,14 @@ pre-tomita.py
 run-tomita.py
     depends
         /index/<DATE>_<CHUNK_ID>.index.txt
-        /index/<DATE>_<CHUNK_ID>.tweets.txt
+        /index/<DATE>_<CHUNK_ID>.tweets.txt (removes)
     produces
-        /index/<DATE>_<CHUNK_ID>.done.txt
-        /index/<DATE>_<CHUNK_ID>.facts.xml
+        /nouns/<DATE>_<CHUNK_ID>.facts.xml
 
 parsefacts.py
     depends
-        /index/<DATE>_<CHUNK_ID>.done.txt
-        /index/<DATE>_<CHUNK_ID>.facts.xml
+        /index/<DATE>_<CHUNK_ID>.index.txt (removes)
+        /nouns/<DATE>_<CHUNK_ID>.facts.xml (removes)
     produces
         /tweets_<DATE>.db - nouns 
         /tweets_<DATE>.db - tweet_nouns 

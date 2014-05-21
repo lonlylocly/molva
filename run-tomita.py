@@ -8,8 +8,17 @@ import re
 #import codecs
 from subprocess import call 
 import subprocess
+import json
 
 logging.config.fileConfig("logging.conf")
+
+settings = {} 
+try:
+    settings = json.load(open('global-settings.json', 'r'))
+except Exception as e:
+    logging.warn(e)
+
+DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
 def main(in_dir, out_dir):
     log = logging.getLogger('tomiter')
@@ -35,8 +44,8 @@ def main(in_dir, out_dir):
         ret = call(cmd, stderr=subprocess.STDOUT, shell=True) 
         if ret != 0:
             raise Exception("Failed to exec %s: exit code %s" % (cmd, ret))
-        os.rename(tweets_file, os.path.join(in_dir, tag + ".done.txt"))
+        os.remove(tweets_file)
         
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    main(DB_DIR + "/index/", DB_DIR + "/nouns/")
 

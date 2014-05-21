@@ -3,6 +3,7 @@
 import sys
 import os
 import logging, logging.config
+import json
 
 import stats
 from Indexer import Indexer
@@ -10,7 +11,13 @@ import util
 
 logging.config.fileConfig("logging.conf")
 
-DB_DIR = os.environ["MOLVA_DIR"]
+settings = {} 
+try:
+    settings = json.load(open('global-settings.json', 'r'))
+except Exception as e:
+    logging.warn(e)
+
+DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
 def print_cols(arr, per_col=20):
     print "".join(map(lambda x: "%16s" % x, arr))
