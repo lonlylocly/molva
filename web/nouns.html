@@ -74,6 +74,7 @@ function loadNoun(parse_url_args) {
 <script id="noun-template" type="text/x-handlebars-template">
 <div>
     <h1>{{noun_text}}</h1>
+    <h3>Постов с этим словом: {{post_cnt}}</h3>
     <table class="noun-desc-table">
     <tr><th>Частотность слов-ответов</th><th>Несколько твитов с этим словом</th><th>Наиболее похожие слова-посты</th></tr>
     <tr>
@@ -97,6 +98,7 @@ function loadNoun(parse_url_args) {
         <tr>
             <td><a href="/nouns.html?noun_md5={{this.noun_md5}}&date={{../date}}">{{this.noun_text}}</a></td>
             <td>{{this.sim}}</td>
+            <td>{{this.common_tweet_count}}</td>
         </tr>
         {{/each}}
         </table>
