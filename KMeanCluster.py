@@ -70,7 +70,12 @@ def get_cluster_dists(clusters, sim_dict):
             for j in range (i + 1, len(cluster)):
                ds.append(sim_dict[cluster[i]][cluster[j]])
 
-        dists[c] = reduce(lambda x, y: x+y, ds) / len(ds)
+        if len(ds) > 1:
+            dists[c] = reduce(lambda x, y: x+y, ds) / len(ds)
+        elif len(ds) == 1:
+            dists[c] = ds[0]
+        else:
+            dists[c] = 1
 
     return dists 
 
