@@ -73,10 +73,12 @@ function getCurUrlParams() {
 }
 
 function parse_query_date(_date) {
+    _date = "" + _date;
     return _date.substr(6,2) + '.' + _date.substr(4,2) + '.' + _date.substr(0,4);
 }
 
 function update_cur_date(_date) {
+    _date = "" + _date;
     var date_str = _date.substr(0,4) + '-' + _date.substr(4,2) + '-' + _date.substr(6,2);
     $("#stat-date").html(date_str);
 }
@@ -95,8 +97,10 @@ function loadClusters(parse_url_args) {
     $("#date-param").val(_date);
     $('input[name=k-param][value=' + k + ']').prop('checked', true);
 
+    var svd = getCurUrlParams()["svd"];
+
     console.log("loadClusters");
-    $.get( "/api/cluster?k=" + k + "&date=" + _date, function( data ) {
+    $.get( "/api/cluster?k=" + k + "&date=" + _date + "&svd=" + svd, function( data ) {
         try{
         var cl = JSON.parse(data);
     
