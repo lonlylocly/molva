@@ -51,7 +51,8 @@ def main():
 
     cur_main = stats.get_cursor(DB_DIR + "/tweets.db")
     stats.create_given_tables(cur_main, ["clusters"])
-  
+    #cur_main.execute("create table if not exists clusters_svd as select * from clusters limit 0")
+
     for date in sorted(ind.dates_dbs.keys()):
         if args.start is not None and date < args.start:
             continue

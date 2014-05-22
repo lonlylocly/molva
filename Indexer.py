@@ -29,8 +29,8 @@ class Indexer:
 
         try:
             os.makedirs(self.index_dir)
-        except Exception as e:
-            self.log.warn(e)
+        except OSError as e:
+            pass
 
     def _check_cursor_alive(self, cur):
         try:
