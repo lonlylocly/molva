@@ -175,6 +175,10 @@ class NounProfile:
         for r in self.replys:
             self.replys[r] = math.log(self.replys[r] + 1, 2) 
 
+    def divide_post_cnt(self, post_cnt):
+        for r in self.replys:
+            self.replys[r] = self.replys[r] / math.log(post_cnt, 2) 
+
     def print_replys(self, nouns):
         for r in self.replys:
             print "%s: %s" % (nouns[r], self.replys[r])

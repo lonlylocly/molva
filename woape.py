@@ -24,13 +24,13 @@ sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 headers = {"Authorization":"Bearer AAAAAAAAAAAAAAAAAAAAAEBgVAAAAAAAxZcUIQhxg"+
 "3gWnlJBMHUJ%2FSYIwbc%3DuIu1L6qBROC2wnONa37BVjw0z35FbjJSL2XuXa8fuCUc8wAWJW"}
 
-#c.request('GET', '/1.1/search/tweets.json?%s'%params, '', headers)
-#c.request('GET', '/1.1/statuses/show.json?id=%s'%tweet_id, '', headers)
+settings = {} 
+try:
+    settings = json.load(open('global-settings.json', 'r'))
+except Exception as e:
+    logging.warn(e)
 
-CHAINS_GOAL = 10000000
-#TWEETS_START_DAY = datetime(20114, 12, 25, 0, 0, 0) #datetime.now() - timedelta (days = 40)
-#TWEETS_START_DAY = datetime.now() - timedelta (days = 2)
-DB_DIR = os.environ["MOLVA_DIR"] 
+DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
 
 class WoapeException(Exception):
