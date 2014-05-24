@@ -367,8 +367,9 @@ def count_entropy(profile, repl_p, tot_profiles):
         profile.replys[r] = profile.replys[r] / entropy
 
     return entropy
- 
-def weight_profiles_with_entropy(profiles_dict, nouns):
+
+def weight_profiles_with_entropy(cur, profiles_dict, nouns):
+    post_cnt = get_noun_cnt(cur) 
     replys = [] 
     for p in profiles_dict:
         profiles_dict[p].apply_log()
@@ -407,7 +408,7 @@ def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, 
 
     set_noun_profiles_total(cur, profiles_dict, post_min_freq, blocked_nouns)
 
-    weight_profiles_with_entropy(profiles_dict, nouns) 
+    weight_profiles_with_entropy(cur, profiles_dict, nouns) 
    
     return profiles_dict
 
