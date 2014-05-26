@@ -68,7 +68,9 @@ def parse_facts_file(tweet_index, facts, cur):
                 cur_nouns = []
                 elem.clear()
             if elem.tag == 'Noun':
-                cur_nouns.append(elem.attrib['val'])
+                noun = elem.attrib['val']
+                if len(noun) > 2:
+                    cur_nouns.append(noun)
         if event == 'start':
             if elem.tag == 'document':
                 cur_doc = elem.attrib['di']

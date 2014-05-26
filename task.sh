@@ -6,6 +6,7 @@
 #    ./build-clusters.py -s $d -e $d 1>> clusters.log 2>&1 &
 #    wait $!
 #done
+        #date "+%Y%m%d" -d "now - $d day"
 
 SCRIPTDIR=/home/lonlylocly/woape
 RUNDIR=/home/lonlylocly/run
@@ -15,8 +16,8 @@ RUNDIR=/home/lonlylocly/run
  
     cd $RUNDIR
 
-    for d in 0 1 2 3 4 5 6; do
-        date=$(date "+%Y%m%d" -d "now - $d day")
+    for date in "20140516" ; do
+        
 
         $SCRIPTDIR/pre-tomita.py -s $date -e $date 1>> pre-tomita.log 2>&1  
         $SCRIPTDIR/run-tomita.py 1>> run-tomita.log 2>run-tomita.err  

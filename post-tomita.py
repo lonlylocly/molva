@@ -40,9 +40,9 @@ def main():
         
         stats.create_tables(cur)
 
-        if cur.execute("select count(*) from tweet_chains").fetchone()[0] > 0:
-            logging.info("Skip date %s" % date)
-            continue
+        #if cur.execute("select count(*) from tweet_chains").fetchone()[0] > 0:
+        #    logging.info("Skip date %s" % date)
+        #    continue
 
         stats.fill_tweet_chains(cur)
         stats.fill_post_reply(cur)
