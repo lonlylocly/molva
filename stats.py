@@ -4,8 +4,12 @@ import sqlite3
 import time
 import math
 import logging, logging.config
+import xml.etree.ElementTree as ET
+from subprocess import check_output
+import json
 
 from profile import NounProfile, ProfileCompare
+import util
 
 def get_cursor(db):
     print "get cursor for " + db
@@ -235,6 +239,21 @@ CREATE_TABLES = {
             cluster text,
             PRIMARY KEY (cluster_date, k)
         )
+    """,
+    "titles": """
+        CREATE TABLE IF NOT EXISTS titles (
+            title text,
+            title_md5 integer,
+            PRIMARY KEY (title_md5)
+        )
+    """,
+    "titles_profiles": """
+        CREATE TABLE IF NOT EXISTS titles_profiles (
+            title_md5 integer,
+            noun_md5 integer,
+            sim float,
+            PRIMARY KEY (title_md5, noun_md5)
+        )
     """ 
 }
 
@@ -299,17 +318,48 @@ def _log_execute(cur, query):
     logging.info(query)
     return cur.execute(query) 
 
-def get_noun_profiles(cur, post_min_freq, blocked_nouns):
-    stats = _log_execute(cur, """
+def get_some_noun_profiles(cur, posts_list, post_min_freq=10, profiles_table = "post_reply_cnt"):
+    stats = cur.execute("""
         select p.post_md5, p.reply_md5, p.reply_cnt, p2.post_cnt
-        from post_reply_cnt p
+        from %(profiles_table)s p
         inner join post_cnt p2
         on p.post_md5 = p2.post_md5
-        where p2.post_cnt > %d
-        and p.post_md5 not in (%s) 
-        and p.reply_md5 not in (%s)
+        where
+        p.post_md5 in (%(posts_list)s) 
+        and p2.post_cnt > %(post_min_freq)d
         order by p2.post_cnt desc
-    """ % (post_min_freq, blocked_nouns, blocked_nouns)).fetchall()
+    """ % {"profiles_table": profiles_table, "post_min_freq": post_min_freq, 
+        "posts_list": ",".join(posts_list)}).fetchall()
+
+    profiles_dict = {}
+
+    for s in stats:
+        post, reply, cnt, post_cnt  = s 
+        if post not in profiles_dict:
+            profiles_dict[post] = NounProfile(post, post_cnt=post_cnt) 
+        profiles_dict[post].replys[reply] = cnt
+
+    return profiles_dict
+
+def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_reply_cnt"):
+    stats = cur.execute("""
+        select p.post_md5, p.reply_md5, p.reply_cnt, p2.post_cnt
+        from %(profiles_table)s p
+        inner join post_cnt p2
+        on p.post_md5 = p2.post_md5
+        where
+        p.post_md5 in (
+            select post_md5 
+            from post_cnt
+            order by post_cnt desc
+            limit 1000 
+        )
+        and p2.post_cnt > %(post_min_freq)d
+        and p.post_md5 not in (%(blocked_nouns)s) 
+        and p.reply_md5 not in (%(blocked_nouns)s)
+        order by p2.post_cnt desc
+    """ % {"profiles_table": profiles_table, "post_min_freq": post_min_freq, 
+        "blocked_nouns": blocked_nouns}).fetchall()
 
     profiles_dict = {}
 
@@ -391,8 +441,8 @@ def weight_profiles_with_entropy(cur, profiles_dict, nouns):
     for pr in profiles_dict:
         count_entropy(profiles_dict[pr], repl_ps, len(profiles_dict.keys()))
 
-def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit):
-    profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns)
+def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt"):
+    profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table)
 
     #set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
     logging.info("Profiles len: %s" % len(profiles_dict))
@@ -412,4 +462,172 @@ def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, 
    
     return profiles_dict
 
+def get_title_context(title):
+    cmd = "echo \""+  title + "\" | ./tomita-linux64 tomita/config.proto 2> /dev/null"
+    logging.info(cmd)
+    s = check_output(cmd, shell=True)
+    logging.info(s)
+    tree = ET.fromstring(s)
+    nouns = tree.findall(".//Noun")  
+    nouns = map(lambda x: x.get("val").lower(), nouns)
+    logging.info(json.dumps(nouns, ensure_ascii=False))
 
+    context = {}
+    for n in nouns:
+        noun_md5 = util.digest(n)
+        if noun_md5 not in context:
+            context[noun_md5] = 0
+        context[noun_md5] += 1
+    
+    logging.info(context) 
+    
+    return context
+
+def get_matching_contexts(cur, context):
+    context_ids = map(str, context.keys())
+    logging.info("Fetch possible matching contexts") 
+    res = cur.execute("""
+        select post_md5 
+        from post_context_cnt
+        where 
+        reply_md5 in (%s)
+        group by post_md5
+    """ % (",".join(context_ids))).fetchall()
+
+    possible_contexts = map(lambda x: str(x[0]), res)
+
+    logging.info("Fetch matching contexts") 
+    ps = get_some_noun_profiles(cur, possible_contexts, profiles_table="post_context_cnt")
+
+    query_profile = NounProfile(util.digest(str(context)))
+    query_profile.replys = context
+    
+    logging.info("Compare contexts") 
+
+    context_match = []
+    for p in ps:
+        context_match.append((p, query_profile.compare_with(ps[p]).sim))
+
+    context_match = sorted(context_match, key=lambda x: x[1])[:10]
+    context_match = map(lambda x: [x[0], 1 - x[1]], context_match)
+
+    return context_match
+
+def get_context_replys(cur, context_match):
+    logging.info("Get similar nouns by reply") 
+
+    replys = map(lambda x:  str(x[0]), context_match)
+    res = cur.execute("""
+        select post1_md5, post2_md5, sim
+        from noun_similarity
+        where 
+        post1_md5 in (%(context_ids)s) or post2_md5 in (%(context_ids)s)
+        order by sim
+        limit 100
+    """ % {"context_ids": ",".join(replys)}).fetchall() 
+
+    repl_sims = {} 
+
+    for r in res:
+        p1, p2, s = r
+        if p1 not in repl_sims:
+            repl_sims[p1] = {}
+        if p2 not in repl_sims:
+            repl_sims[p2] = {}
+        repl_sims[p1][p2] = s
+        repl_sims[p2][p1] = s
+      
+    context_replys = []
+    for context in context_match:
+        context_id, context_sim = context
+        if context_id not in repl_sims:
+            continue
+        for k in repl_sims[context_id]:
+            if k not in repl_sims:
+                continue
+            k_sim = repl_sims[context_id][k]
+            context_replys.append([k, context_sim * (1 - k_sim), (1 - k_sim) , 
+            {"context_md5": context_id,
+            "sim": context_sim}])
+
+    return context_replys
+
+def get_merged_contexts(context_match, context_replys):
+    merge_context = sorted(context_replys + context_match, key=lambda x: x[1], reverse = True)
+
+    merge_context_keys = []
+
+    merge_context2 = []
+    for m in merge_context:
+        if m[1] in merge_context_keys:
+            continue
+        merge_context2.append(m)
+    merge_context2 = merge_context2[:20]
+
+    return merge_context2
+ 
+def get_sim_nouns_by_context(cur, title):
+    context = get_title_context(title)
+    if len(context) == 0:
+        return []
+
+    context_match = get_matching_contexts(cur, context)
+        # logging.info(json.dumps(context_match, indent=4, ensure_ascii=False))
+    
+    context_replys = get_context_replys(cur, context_match)
+
+    merge_context = get_merged_contexts(context_match, context_replys)
+
+    return map(lambda x: {"noun_md5": x[0], "sim": x[1]}, merge_context)
+
+def save_title_context(cur, title, context):
+    title_md5 = util.digest(title)
+    cur.execute("""
+        insert or ignore into titles
+        values (?, ?)
+    """, (title, title_md5))
+
+    cur.executemany("""
+        insert or ignore into titles_profiles
+        values (?, ?, ?)
+    """, map(lambda x: (title_md5, x["noun_md5"], x["sim"]), context))
+
+def get_similar_titles(cur, title, context, top=10):
+    title_md5 = util.digest(title)
+    res = cur.execute("""
+        select title_md5, noun_md5, sim
+        from titles_profiles
+        where title_md5 != ?
+    """, (title_md5,)).fetchall()
+
+    ps = {}
+    for r in res:
+        t_md5, n_md5, sim = r
+        if t_md5 not in ps:
+            ps[t_md5] = NounProfile(t_md5)
+        ps[t_md5].replys[n_md5] = sim
+
+    context_profile = NounProfile(1)
+    for c in context:
+        context_profile.replys[c["noun_md5"]] = c["sim"]
+    
+    sim_profs = {} 
+    for p in ps.keys():
+        sim_profs[p] = ps[p].compare_with(context_profile).sim
+
+    sim_profs_top = sorted(sim_profs.keys(), key=lambda x: sim_profs[x])[:top]
+
+    res = cur.execute("""
+        select title_md5, title from titles
+        where title_md5 in (%s)
+    """ % ",".join(map(str,sim_profs_top))).fetchall()
+
+    sim_titles = {}
+    for t in res:
+        t_md5, title = t
+        sim_titles[t_md5] = title
+    logging.warn(sim_titles)
+
+    sim_docs = map(lambda x: {"title": sim_titles[x], "title_md5": x, "sim": sim_profs[x]}, sim_profs_top)
+            
+    return sim_docs

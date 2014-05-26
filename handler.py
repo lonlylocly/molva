@@ -8,13 +8,41 @@ import json
 import time
 import re
 import logging
+from subprocess import check_output
 
 import KMeanCluster
 import stats
 from StatsDisplay import StatsDisplay
 from Indexer import Indexer
 
+#logging.config.fileConfig("logging.conf")
+
 settings = json.load(open('handler-settings.json', 'r'))
+
+class GuessrHandler(tornado.web.RequestHandler):
+    def get(self):
+        title = self.get_argument("title", default="")
+        title = re.sub("(\n|\t)", " ", title)
+        title = re.sub("\"", "\\\"", title)
+
+        ind = Indexer(settings["db_dir"])
+       
+        cur = ind.get_db_for_date("20140523")
+        nouns = stats.get_nouns(cur)
+
+        context = stats.get_sim_nouns_by_context(cur, title) 
+        for c in context:
+            c["noun_text"] = nouns[c["noun_md5"]]
+
+        sim_docs = None 
+        if len(context) != 0:
+            stats.create_given_tables(cur, ["titles", "titles_profiles"])
+
+            stats.save_title_context(cur, title, context)
+
+            sim_docs = stats.get_similar_titles(cur, title, context) 
+        
+        self.write(json.dumps({"profile": context, "sim_docs": sim_docs}, indent=4))
 
 class DatesAvailableHandler(tornado.web.RequestHandler):
 
@@ -210,6 +238,7 @@ if __name__ == '__main__':
         (r"/api/cluster", ClusterHandler),
         (r"/api/dates_available", DatesAvailableHandler),
         (r"/api/post_profile", PostProfileHandler),
+        (r"/api/guessr", GuessrHandler),
     ])
     application.listen(8000)
     tornado.ioloop.IOLoop.instance().start()

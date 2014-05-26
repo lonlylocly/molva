@@ -32,8 +32,7 @@ NOUNS_LIMIT = 2000
 def save_sims(cur, sims):
     cur.execute("begin transaction")
 
-    for s in sims:
-        cur.execute("replace into noun_sim_new values (?, ?, ?)", s)
+    cur.executemany("replace into noun_sim_new values (?, ?, ?)", sims)
 
     cur.execute("commit")
 
@@ -77,6 +76,7 @@ def update_sims(cur):
 def main():
     parser = util.get_dates_range_parser()
     parser.add_argument("-c", "--clear", action="store_true")
+    parser.add_argument("-p", "--profiles-table", default="post_reply_cnt")
     args = parser.parse_args()
 
     ind = Indexer(DB_DIR)
@@ -97,14 +97,14 @@ def main():
         cur.execute("create table if not exists noun_sim_new as select * from noun_similarity limit 0")
         cur.execute("delete from noun_sim_new")
 
-        nouns = stats.get_nouns(cur)
-        logging.info("nouns len %s" % len(nouns))
+        #nouns = stats.get_nouns(cur)
+        #logging.info("nouns len %s" % len(nouns))
 
-        profiles_dict = stats.setup_noun_profiles(cur, {}, nouns, 
-        post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = NOUNS_LIMIT )
+        profiles_dict = stats.setup_noun_profiles(cur, {}, {}, 
+        post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = NOUNS_LIMIT, profiles_table = args.profiles_table )
         logging.info("profiles len %s" % len(profiles_dict))
 
-        fill_sims(cur, profiles_dict, nouns, {})
+        fill_sims(cur, profiles_dict, {}, {})
 
         update_sims(cur)
 
