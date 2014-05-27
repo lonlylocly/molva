@@ -254,6 +254,12 @@ CREATE_TABLES = {
             sim float,
             PRIMARY KEY (title_md5, noun_md5)
         )
+    """,
+    "valid_replys" : """
+        CREATE TABLE IF NOT EXISTS valid_replys (
+            reply_md5 integer,
+            PRIMARY KEY (reply_md5)
+        )
     """ 
 }
 
@@ -342,19 +348,36 @@ def get_some_noun_profiles(cur, posts_list, post_min_freq=10, profiles_table = "
     return profiles_dict
 
 def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_reply_cnt"):
-    stats = cur.execute("""
-        select p.post_md5, p.reply_md5, p.reply_cnt, p2.post_cnt
-        from %(profiles_table)s p
-        inner join post_cnt p2
-        on p.post_md5 = p2.post_md5
-        where
-        p.post_md5 in (
+    limited = """
+    p.post_md5 in (
             select post_md5 
             from post_cnt
             order by post_cnt desc
             limit 1000 
         )
-        and p2.post_cnt > %(post_min_freq)d
+    """
+    create_given_tables(cur, ["valid_replys"])
+    cur.execute("""
+        insert or ignore into valid_replys
+        select reply_md5 
+        from (
+            select count(*) as c, reply_md5
+            from post_reply_cnt 
+            group by reply_md5
+            order by c desc
+            limit 10000
+        ) 
+    """)
+
+    stats = cur.execute("""
+        select p.post_md5, p.reply_md5, p.reply_cnt, p2.post_cnt
+        from %(profiles_table)s p
+        inner join post_cnt p2
+        on p.post_md5 = p2.post_md5
+        inner join valid_replys v
+        on p.reply_md5 = v.reply_md5
+        where
+        p2.post_cnt > %(post_min_freq)d
         and p.post_md5 not in (%(blocked_nouns)s) 
         and p.reply_md5 not in (%(blocked_nouns)s)
         order by p2.post_cnt desc
@@ -419,6 +442,7 @@ def count_entropy(profile, repl_p, tot_profiles):
     return entropy
 
 def weight_profiles_with_entropy(cur, profiles_dict, nouns):
+    logging.info("start")
     post_cnt = get_noun_cnt(cur) 
     replys = [] 
     for p in profiles_dict:
@@ -441,12 +465,14 @@ def weight_profiles_with_entropy(cur, profiles_dict, nouns):
     for pr in profiles_dict:
         count_entropy(profiles_dict[pr], repl_ps, len(profiles_dict.keys()))
 
+    logging.info("done")
+
 def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt"):
     profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table)
 
     #set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
     logging.info("Profiles len: %s" % len(profiles_dict))
-    if len(profiles_dict) > nouns_limit:
+    if False or len(profiles_dict) > nouns_limit:
         short_profiles_dict = {}
         
         for k in sorted(profiles_dict.keys(), key=lambda x: profiles_dict[x].post_cnt, reverse=True)[:nouns_limit]:
