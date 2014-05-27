@@ -6,6 +6,7 @@ import sys,codecs
 import os
 import logging, logging.config
 import json
+import traceback
 
 import xml.etree.cElementTree as ElementTree
 
