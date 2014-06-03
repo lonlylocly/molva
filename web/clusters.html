@@ -18,6 +18,15 @@ td, th {
     
     border: 2px solid rgb(218,218,218);
 }
+.trend-raise {
+    color: green;
+}
+.trend-fall {
+    color: red;
+}
+.trend-unknown {
+    color: grey;
+}
 </style>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/js/handlebars-v1.3.0.js"></script>
@@ -28,12 +37,16 @@ td, th {
     <tr>
     {{#each this}}
         <td>
-        <p>{{avg_dist}}</p>
+        {{!-- <p>{{avg_dist}}</p> --}}
             {{#each members}}
-                <a href="/nouns.html?noun_md5={{this.id}}&date={{../../../date}}">{{this.text}}</a> {{this.post_cnt}}</br>
+                <div style="float: left; padding-left: 5 px;">
+                <a href="/nouns.html?noun_md5={{this.id}}&date={{../../../date}}">{{this.text}}</a> <br/> 
+                <span class="{{this.trend_class}}">{{this.trend}}</span>
+                </div>
+                <div style="float: left; width: 10px">&nbsp;</div>
             {{/each}}
             <p>
-            <a href="http://google.com/search?q={{this.query_string}}&tbs=cdr%3A1%2Ccd_min%3A{{../../query_date}}%2Ccd_max%3A{{../../query_date}}">g</a> 
+            <a href="http://google.com/search?q={{this.query_string}}">g</a> 
             <a href="http://yandex.ru/yandsearch?text={{this.query_string}}&from_date_full={{../../query_date}}&to_date_full={{../../query_date}}" style="color: red;">Я</a> 
             </p>
         </td>
@@ -83,6 +96,32 @@ function update_cur_date(_date) {
     $("#stat-date").html(date_str);
 }
 
+function get_max_trend(cluster) {
+    var trend_vals = []
+    for(var i=0; i<cluster["members"].length; i++) {
+        trend_vals.push(parseFloat(cluster["members"][i]["trend"]));    
+    }
+    trend_vals.sort().reverse();
+
+    return trend_vals[0];
+}
+
+function set_trend_color(cluster) {
+    for(var i=0; i<cluster["members"].length; i++) {
+        var trend = cluster["members"][i]["trend"];
+        var trend_class = "trend-unknown";
+        if (trend >0) {
+            trend_class = "trend-raise";
+            cluster["members"][i]["trend"] = "+" + trend;
+        }
+        if (trend < 0) {
+            trend_class = "trend-fall";
+        }
+
+        cluster["members"][i]["trend_class"] = trend_class;
+    }
+}
+
 function loadClusters(parse_url_args) {
     var k;
     var _date;
@@ -105,24 +144,43 @@ function loadClusters(parse_url_args) {
         var cl = JSON.parse(data);
     
         cl.sort(function(a,b) {
-            if (a["avg_dist"] < b["avg_dist"]) return -1;
-            if (a["avg_dist"] > b["avg_dist"]) return 1;
+            //var a_val = a["avg_dist"];
+            //var b_val = b["avg_dist"];
+            var a_val = get_max_trend(a);
+            var b_val = get_max_trend(b);
+
+            if (a_val < b_val) return -1;
+            if (a_val > b_val) return 1;
             return 0;
-        });
+        }).reverse();
+
+        var limit = 30;
+
+        var cl2= [];
         for(var i=0; i<cl.length; i++) {
             cl[i]["members"].sort(function(a,b) {
-                if (a["post_cnt"] < b["post_cnt"]) return -1;
-                if (a["post_cnt"] > b["post_cnt"]) return 1;
+                var a_val = a["trend"];
+                var b_val = b["trend"];
+
+                if (a_val < b_val) return -1;
+                if (a_val > b_val) return 1;
                 return 0;
             }).reverse();
             var mems = $.map(cl[i]["members"], function(l) {
                 return l["text"];
             })
+            set_trend_color(cl[i]);
+
             cl[i]["query_string"] = mems.join("+"); 
+            if ( cl[i]["members_len"] > 1) {
+                cl2.push(cl[i]);
+            }
         }
+        cl = cl2.slice(0, 20);
+
 
         var groups = [];
-        var per_group = 8;
+        var per_group = 1;
         while(cl.length > 0) {
             if (cl.length < per_group) {
                 groups.push(cl);
