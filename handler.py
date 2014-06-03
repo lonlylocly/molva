@@ -9,6 +9,7 @@ import time
 import re
 import logging
 from subprocess import check_output
+import sqlite3
 
 import KMeanCluster
 import stats
@@ -19,30 +20,41 @@ from Indexer import Indexer
 
 settings = json.load(open('handler-settings.json', 'r'))
 
+logging.config.fileConfig("logging.conf")
+
 class GuessrHandler(tornado.web.RequestHandler):
     def get(self):
-        title = self.get_argument("title", default="")
-        title = re.sub("(\n|\t)", " ", title)
-        title = re.sub("\"", "\\\"", title)
+        try:
+            title = self.get_argument("title", default="")
+            title = re.sub("(\n|\t)", " ", title)
+            title = re.sub("\"", "\\\"", title)
 
-        ind = Indexer(settings["db_dir"])
-       
-        cur = ind.get_db_for_date("20140523")
-        nouns = stats.get_nouns(cur)
+            ind = Indexer(settings["db_dir"])
+            db_filename = ind.dates_dbs["20140525"]
+            con = sqlite3.connect(db_filename)
+            con.isolation_level = None
+            cur = con.cursor()
 
-        context = stats.get_sim_nouns_by_context(cur, title) 
-        for c in context:
-            c["noun_text"] = nouns[c["noun_md5"]]
+            context = stats.get_sim_nouns_by_context(cur, title) 
+            nouns = stats.get_nouns(cur, nouns_only = map(lambda x: x["noun_md5"], context))
+            for c in context:
+                c["noun_text"] = nouns[c["noun_md5"]]
 
-        sim_docs = None 
-        if len(context) != 0:
-            stats.create_given_tables(cur, ["titles", "titles_profiles"])
+            sim_docs = None 
+            if len(context) != 0:
+                stats.create_given_tables(cur, ["titles", "titles_profiles"])
 
-            stats.save_title_context(cur, title, context)
+                stats.save_title_context(cur, title, context)
 
-            sim_docs = stats.get_similar_titles(cur, title, context) 
-        
-        self.write(json.dumps({"profile": context, "sim_docs": sim_docs}, indent=4))
+                sim_docs = stats.get_similar_titles(cur, title, context) 
+            
+            self.write(json.dumps({"profile": context, "sim_docs": sim_docs}, indent=4))
+
+            con.close()
+
+        except Exception as e:
+            logging.error(e)
+            raise e
 
 class DatesAvailableHandler(tornado.web.RequestHandler):
 
@@ -238,7 +250,7 @@ if __name__ == '__main__':
         (r"/api/cluster", ClusterHandler),
         (r"/api/dates_available", DatesAvailableHandler),
         (r"/api/post_profile", PostProfileHandler),
-        (r"/api/guessr", GuessrHandler),
+        #(r"/api/guessr", GuessrHandler),
     ])
     application.listen(8000)
     tornado.ioloop.IOLoop.instance().start()

@@ -14,10 +14,14 @@ TTextMinerConfig {
   ]
   Facts = [
     { Name = "SimpleFact" }
-    { Name = "AdjNounFact" }
-    { Name = "VerbNounFact" }
+    //{ Name = "AdjNounFact" }
+    //{ Name = "VerbNounFact" }
+    //{ Name = "SimpleWord" }
+    //{ Name = "AdjFact" }
+    //{ Name = "VerbFact" }
   ]
   Output = {
     Format = xml;
+    //Format = text;
   }
 }

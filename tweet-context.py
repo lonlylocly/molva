@@ -18,6 +18,12 @@ except Exception as e:
 
 DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
+def insert_context_cnt(cur, data):
+    logging.info("insert data")
+    cur.execute("begin transaction")
+    cur.executemany("insert or ignore into post_context_cnt values (?, ?, ?)" , data)
+    cur.execute("commit")
+
 
 def main():
     parser = util.get_dates_range_parser()
@@ -33,14 +39,22 @@ def main():
 
         cur = ind.get_db_for_date(date)
         
-        res = cur.execute("select id, noun_md5 from tweets_nouns").fetchall()
+        logging.info("start fetch tweets_nouns")
+        res = cur.execute("select id, noun_md5 from tweets_nouns")
+        logging.info("done fetch tweets_nouns")
 
         tw_context = {}
-        for r in res:
+        while True:
+            r = res.fetchone()
+            if r is None:
+                break
+
             tw_id, noun_md5 = r
             if tw_id not in tw_context:
                 tw_context[tw_id] = []
             tw_context[tw_id].append(noun_md5)
+
+        logging.info("local tw_context done")
 
         post_context = {}
         for t in tw_context:
@@ -66,11 +80,11 @@ def main():
         for p in post_context:
             for p2 in post_context[p]:
                 data.append((p, p2, post_context[p][p2]))
+                if len(data) >= 20000:
+                    insert_context_cnt(cur, data) 
+                    data = []
 
-        logging.info("insert data")
-        cur.execute("begin transaction")
-        cur.executemany("insert into post_context_cnt values (?, ?, ?)" , data)
-        cur.execute("commit")
+        insert_context_cnt(cur, data) 
 
         logging.info("done")
 
