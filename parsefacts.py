@@ -104,7 +104,7 @@ def try_several_times(f, times):
             traceback.print_exc()
             logging.error(e)
 
-    raise FailedSeveralTimesException()
+    raise FailedSeveralTimesException("")
 
 def main():
     logging.info("Start parsing extracted nouns")

@@ -20,16 +20,36 @@ def get_cursor(db):
 
     return cur 
 
-def get_nouns(cur):
+def get_nouns(cur, nouns_only=None):
+    cond = ""
+    if nouns_only is not None:
+        cond = ",".join(map(str, nouns_only))
+        cond = "where noun_md5 in (%s)" % cond
+
     res = cur.execute("""
         select noun_md5, noun from nouns
-    """ ).fetchall()
+        %s
+    """ % (cond)).fetchall()
     
     nouns = {}
     for r in res:
         nouns[r[0]] = r[1]
    
     return nouns
+
+def get_noun_trend(cur):
+    cur.execute("""
+        select noun_md5, trend
+        from noun_trend
+    """)
+
+    noun_trend = {}
+    for r in cur.fetchall():
+        noun_md5, trend = r
+        noun_trend[noun_md5] = trend
+
+    return noun_trend
+        
 
 def get_tweets_nouns(cur):
     print "[%s] fetch tweets_nouns " % (time.ctime())
@@ -259,6 +279,13 @@ CREATE_TABLES = {
         CREATE TABLE IF NOT EXISTS valid_replys (
             reply_md5 integer,
             PRIMARY KEY (reply_md5)
+        )
+    """, 
+    "noun_trend": """
+        CREATE TABLE IF NOT EXISTS noun_trend (
+            noun_md5 integer,
+            trend float,
+            PRIMARY KEY (noun_md5)
         )
     """ 
 }
@@ -521,6 +548,7 @@ def get_matching_contexts(cur, context):
     """ % (",".join(context_ids))).fetchall()
 
     possible_contexts = map(lambda x: str(x[0]), res)
+    logging.info("Possible matching contexts: %s" % len(possible_contexts)) 
 
     logging.info("Fetch matching contexts") 
     ps = get_some_noun_profiles(cur, possible_contexts, profiles_table="post_context_cnt")
@@ -593,15 +621,20 @@ def get_merged_contexts(context_match, context_replys):
     return merge_context2
  
 def get_sim_nouns_by_context(cur, title):
+    logging.info("get_title_context")
     context = get_title_context(title)
     if len(context) == 0:
         return []
 
+    logging.info("get_matching_contexts")
     context_match = get_matching_contexts(cur, context)
-        # logging.info(json.dumps(context_match, indent=4, ensure_ascii=False))
+    logging.info("got %s matching contexts" % len(context_match))
     
+    logging.info("get_context_replys")
     context_replys = get_context_replys(cur, context_match)
+    logging.info("got %s matching context replys" % len(context_replys))
 
+    logging.info("get_merged_contexts")
     merge_context = get_merged_contexts(context_match, context_replys)
 
     return map(lambda x: {"noun_md5": x[0], "sim": x[1]}, merge_context)
@@ -657,3 +690,6 @@ def get_similar_titles(cur, title, context, top=10):
     sim_docs = map(lambda x: {"title": sim_titles[x], "title_md5": x, "sim": sim_profs[x]}, sim_profs_top)
             
     return sim_docs
+
+
+               

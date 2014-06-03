@@ -6,12 +6,29 @@ message SimpleFact : NFactType.TFact
     required string Noun = 1;
 }
 
+message SimpleWord : NFactType.TFact 
+{
+    required string Word = 1;
+}
+
+message AdjFact : NFactType.TFact 
+{
+    required string Adj = 1;
+}
+
+message VerbFact : NFactType.TFact 
+{
+    required string Verb = 1;
+}
+
 message AdjNounFact : NFactType.TFact 
 {
     required string Noun = 1;
+    required string Adj = 2;
 }
 
 message VerbNounFact : NFactType.TFact 
 {
     required string Noun = 1;
+    required string Verb = 2;
 }
