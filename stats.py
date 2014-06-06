@@ -221,6 +221,13 @@ CREATE_TABLES = {
             PRIMARY KEY (id, id_done)
         )
     """,
+    "statuses_progress": """
+        CREATE TABLE IF NOT EXISTS tomita_progress (
+            id integer,
+            id_done integer default 0,
+            PRIMARY KEY (id, id_done)
+        )
+    """,
     "nouns": """
         CREATE TABLE IF NOT EXISTS nouns (
             noun_md5 integer,

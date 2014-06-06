@@ -1,3 +1,24 @@
 {
-    "db_dir": "/home/lonlylocly/continious"
+    "db_dir": "/home/lonlylocly/continious",
+    "consumer_key": "VZgCMryRDlSHTfpbaRzgw",
+    "consumer_secret": "HwJAAiHedpajNYt1Vzb3vXe3gMoFAfQ4ELwS81bRaK0",
+    "access_token": "226113374-ONoVUhU4HX4qVTXljAClkmh8kX8rJ8RCCrMo9Vc0",
+    "access_token_secret": "YDQuzXypC1WgGMnRw6Ft6iiPR5t96EZifyZqi6TKVX4qh",
+    "russian_keywords": [
+        "я",
+        "у",
+        "к",
+        "в",
+        "по",
+        "на",
+        "ты",
+        "мы",
+        "до",
+        "на",
+        "она",
+        "он",
+        "и",
+        "да"
+    ],
+    "headers": {"Authorization":"Bearer AAAAAAAAAAAAAAAAAAAAAEBgVAAAAAAAxZcUIQhxg3gWnlJBMHUJ%2FSYIwbc%3DuIu1L6qBROC2wnONa37BVjw0z35FbjJSL2XuXa8fuCUc8wAWJW"}
 }
