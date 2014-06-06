@@ -123,17 +123,23 @@ class Indexer:
                             
 
     def add_new_tweets_for_tomita(self, date):
+        _add_new_tweets_for_worker(self, date, "tomita_progress")
+
+    def add_new_tweets_for_statuses(self, date):
+        _add_new_tweets_for_worker(self, date, "statuses_progress")
+       
+    def _add_new_tweets_for_worker(self, date, table):
         self.log.info("Index day %s" %date)
         cur = self.get_db_for_filename(self.dates_dbs[date])
-        stats.create_given_tables(cur, ["tomita_progress"])
+        stats.create_given_tables(cur, [table])
     
         cur.execute("""
-            INSERT OR IGNORE INTO tomita_progress (id)
+            INSERT OR IGNORE INTO %(table)s (id)
             SELECT t.id from tweets t
             LEFT OUTER JOIN tomita_progress p
             ON t.id = p.id
             WHERE p.id is Null
-        """)  
+        """ % {"table": table})  
 
     def create_index_files(self, date):
         cur_time = "%.0f" % time.time()
