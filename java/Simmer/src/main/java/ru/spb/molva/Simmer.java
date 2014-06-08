@@ -63,7 +63,9 @@ public class Simmer {
                 final RealVector x1 = getRealVector(dict.get(p1), commonKeys);
                 final RealVector x2 = getRealVector(dict.get(p2), commonKeys);
 
-                double sim = x1.dotProduct(x2) / (x1.getNorm() * x2.getNorm());
+                final double n1 = x1.getNorm();
+                final double n2 = x2.getNorm();
+                double sim = 1 - x1.dotProduct(x2) / (n1 * n2);
                 sims.add(new SimEntry(p1, p2, sim));
                 cnt ++;
             }
