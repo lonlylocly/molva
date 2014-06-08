@@ -20,6 +20,8 @@ public class Simmer {
         File inputFile = new File(args[0]);
         File outputFile = new File(args[1]);
 
+        FileUtils.writeStringToFile(outputFile, "");
+
         String content = FileUtils.readFileToString(inputFile);
 
         final JsonElement tree = new JsonParser().parse(content);
@@ -80,20 +82,26 @@ public class Simmer {
                 System.out.println(String.format("Total %s seen", cnt));
                 longCnt += 1;
 
-                StringBuilder builder = new StringBuilder();
-                for (SimEntry sim : sims) {
-                    builder.append(sim.toCsv()).append("\n");
-                }
-
-                sims.clear();
-
-                FileUtils.writeStringToFile(outputFile, builder.toString(), true);
+                saveSims(outputFile, sims);
 
             }
         }
 
+        saveSims(outputFile, sims);
+
         System.out.println(String.format("Total %s seen", cnt));
 
 
+    }
+
+    private static void saveSims(File outputFile, List<SimEntry> sims) throws IOException {
+        StringBuilder builder = new StringBuilder();
+        for (SimEntry sim : sims) {
+            builder.append(sim.toCsv()).append("\n");
+        }
+
+        sims.clear();
+
+        FileUtils.writeStringToFile(outputFile, builder.toString(), true);
     }
 }
