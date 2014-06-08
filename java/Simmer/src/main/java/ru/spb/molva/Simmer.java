@@ -24,40 +24,26 @@ public class Simmer {
 
         String content = FileUtils.readFileToString(inputFile);
 
-        final JsonElement tree = new JsonParser().parse(content);
+        Map<Long,Map<Long,Double>> dict = new HashMap<Long, Map<Long, Double>>();
 
-        final JsonObject profiles = tree.getAsJsonObject();
-        Set<Long> replys = new HashSet<Long>();
-        for (Map.Entry<String, JsonElement> profileDesc : profiles.entrySet()) {
-            final JsonObject postReplys = profileDesc.getValue().getAsJsonObject();
-            for (Map.Entry<String, JsonElement> repl : postReplys.entrySet()) {
-                replys.add(Long.parseLong(repl.getKey()));
-            }
+        final JsonObject profiles = new JsonParser().parse(content).getAsJsonObject();
 
-        }
-        List<Long> replysOrder = new ArrayList<Long>();
-        replysOrder.addAll(replys);
-
-        List<Long> posts = new ArrayList<Long>();
-        Map<Long,RealVector> profilesMap = new HashMap<Long, RealVector>();
         for (Map.Entry<String, JsonElement> profileDesc : profiles.entrySet()) {
             Long postMd5 = Long.parseLong(profileDesc.getKey());
-            posts.add(postMd5);
-
-            double[] profileWeights = new double[replysOrder.size()];
 
             final JsonObject postReplys = profileDesc.getValue().getAsJsonObject();
+            final HashMap<Long, Double> replysDict = new HashMap<Long, Double>();
             for (Map.Entry<String, JsonElement> repl : postReplys.entrySet()) {
                 Long replyMd5 = Long.parseLong(repl.getKey());
-                double weight = repl.getValue().getAsDouble();
-                final int i = replysOrder.indexOf(replyMd5);
-                profileWeights[i] = weight;
-
+                replysDict.put(replyMd5, repl.getValue().getAsDouble());
             }
+            dict.put(postMd5, replysDict);
 
-            profilesMap.put(postMd5, MatrixUtils.createRealVector(profileWeights));
         }
         System.out.println("init ready");
+
+        List<Long> posts = new ArrayList<Long>();
+        posts.addAll(dict.keySet());
 
         List<SimEntry> sims = new ArrayList<SimEntry>((posts.size() / 2) * posts.size());
 
@@ -72,8 +58,11 @@ public class Simmer {
                     continue;
                 }
 
-                final RealVector x1 = profilesMap.get(p1);
-                final RealVector x2 = profilesMap.get(p2);
+                List<Long> commonKeys = getCommonKeys(dict, p1, p2);
+
+                final RealVector x1 = getRealVector(dict.get(p1), commonKeys);
+                final RealVector x2 = getRealVector(dict.get(p2), commonKeys);
+
                 double sim = x1.dotProduct(x2) / (x1.getNorm() * x2.getNorm());
                 sims.add(new SimEntry(p1, p2, sim));
                 cnt ++;
@@ -93,6 +82,31 @@ public class Simmer {
 
 
     }
+
+    private static List<Long> getCommonKeys(Map<Long, Map<Long, Double>> dict, Long p1, Long p2) {
+        final Set<Long> keys1 = dict.get(p1).keySet();
+        final Set<Long> keys2 = dict.get(p2).keySet();
+        List<Long> commonKeys = new ArrayList<Long>(keys1.size() + keys2.size());
+        commonKeys.addAll(keys1);
+        commonKeys.addAll(keys2);
+        return commonKeys;
+    }
+
+    private static RealVector getRealVector(Map<Long, Double> profile, List<Long> commonKeys) {
+        double[] v1 = new double[commonKeys.size()];
+        for (int i=0; i< commonKeys.size(); i++ ) {
+            Long key = commonKeys.get(i);
+            if (profile.containsKey(key)) {
+                v1[i] = profile.get(key);
+            } else {
+                v1[i] = 0;
+            }
+
+        }
+
+        return MatrixUtils.createRealVector(v1);
+    }
+
 
     private static void saveSims(File outputFile, List<SimEntry> sims) throws IOException {
         StringBuilder builder = new StringBuilder();
