@@ -8,13 +8,14 @@ from datetime import datetime, timedelta
 from datetime import time as datetimeTime
 import os
 import traceback
-import copy
 import logging, logging.config
 
 import util
+from util import try_several_times
 import stats
 from Fetcher import Fetcher
 from Exceptions import WoapeException
+
 
 logging.config.fileConfig("logging.conf")
 
@@ -53,22 +54,6 @@ def get_chains(cur):
     s2 = set(in_reply_to_ids)
     chains = s1 & s2    
     return chains
-
-def try_several_times(f, times, error_return=[]):
-    tries = 0
-    while tries < times:
-        try:
-            tries += 1
-            res = f()
-            return res
-        except WoapeException as e:
-            logging.info("Stop trying, WoapeException: %s" % ( e))
-            break
-        except Exception as e:
-            traceback.print_exc()
-            logging.error(e)
-
-    return error_return
 
 def main():
     start_users = sys.argv[1:]

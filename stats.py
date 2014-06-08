@@ -222,7 +222,7 @@ CREATE_TABLES = {
         )
     """,
     "statuses_progress": """
-        CREATE TABLE IF NOT EXISTS tomita_progress (
+        CREATE TABLE IF NOT EXISTS statuses_progress (
             id integer,
             id_done integer default 0,
             PRIMARY KEY (id, id_done)
@@ -301,8 +301,14 @@ def cr(cur):
     create_given_tables(cur, ["tweets", "users"]) 
 
 def create_given_tables(cur, tables):
-    for t in tables:
-        cur.execute(CREATE_TABLES[t])
+    if isinstance(tables, list):
+        for t in tables:
+            cur.execute(CREATE_TABLES[t])
+    if isinstance(tables, dict):
+        for name in tables:
+            like = tables[name]
+            logging.info("create table %s like %s" %(name, like))
+            cur.execute(CREATE_TABLES[like].replace(like, name, 1))
 
 def create_tables(cur):
     create_given_tables(cur, ["post_reply_cnt", "post_cnt", "tweet_chains", "chains_nouns", "tweets", "users"]) 
@@ -331,6 +337,9 @@ def fill_post_reply(cur):
         inner join tweets_nouns n2 on n2.id = tc.reply_id
     """)
 
+    fill_post_cnt(cur)
+
+def fill_post_cnt(cur):
     print "[%s] fill post_reply_cnt" % (time.ctime())
 
     cur.execute("""
