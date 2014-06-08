@@ -3,6 +3,10 @@
 import hashlib
 import re
 import argparse
+import traceback
+import logging
+
+from Exceptions import WoapeException
 
 def digest(s):
     large = int(hashlib.md5(s.encode('utf-8')).hexdigest(), 16)
@@ -27,3 +31,21 @@ def get_dates_range_parser():
     parser.add_argument("-e", "--end")
 
     return parser
+
+def try_several_times(f, times, error_return=[]):
+    tries = 0
+    while tries < times:
+        try:
+            tries += 1
+            res = f()
+            return res
+        except WoapeException as e:
+            logging.info("Stop trying, WoapeException: %s" % ( e))
+            break
+        except Exception as e:
+            traceback.print_exc()
+            logging.error(e)
+
+    return error_return
+
+

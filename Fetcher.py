@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from datetime import time as datetimeTime
 import json
 import re
+from datetime import date
 
 import stats
 from TwitterClient import TwitterClient
@@ -130,6 +131,17 @@ class Fetcher:
 
         return resp
 
+    def save_tweet(self, reply):
+        try:
+            mysql_time = to_mysql_timestamp(get_tw_create_time(reply))
+            cur = self.get_db_for_date(mysql_time)
+            cur.execute("""
+                INSERT OR IGNORE INTO tweets
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (reply["id"], reply["text"], reply["user"]["screen_name"], reply["in_reply_to_screen_name"], reply["in_reply_to_status_id"], mysql_time))
+        except Exception as e:
+            traceback.print_exc()
+            self.log.error(e)
 
     def iteration(self):
         username, since_id = self.get_next_user()
@@ -191,14 +203,31 @@ class Fetcher:
         
         self.log.info("Saved %s tweets" % cnt)
 
-    def save_tweet(self, reply):
-        try:
-            mysql_time = to_mysql_timestamp(get_tw_create_time(reply))
-            cur = self.get_db_for_date(mysql_time)
-            cur.execute("""
-                INSERT OR IGNORE INTO tweets
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (reply["id"], reply["text"], reply["user"]["screen_name"], reply["in_reply_to_screen_name"], reply["in_reply_to_status_id"], mysql_time))
-        except Exception as e:
-            traceback.print_exc()
-            self.log.error(e)
+    def lookup_statuses_iteration(self, cur, ids):
+        ids_enc = ",".join(map(str, ids))
+        resp = self.client.post_path('/1.1/statuses/lookup.json', {'id': ids_enc})
+
+        if resp.status is not 200:
+            loggig.error(u"Response code: %s %s. Response body: %s"% (resp.status, resp.reason, resp.read() ))
+
+            raise WoapeException('Invalid response')        
+
+        content = resp.read()
+
+        cont = json.loads(content)
+        saved = 0
+        for t in cont:
+            if not util.got_russian_letters(t["text"]):
+                continue
+
+            mysql_time = to_mysql_timestamp(get_tw_create_time(t))
+            yesterday = (date.today() - timedelta(1)).strftime("%Y%m%d")
+            if mysql_time[:8] >= yesterday:
+                self.save_tweet(t)
+                saved += 1
+
+        logging.info("Saved %s statues" % saved)
+
+        cur.execute("update statuses_progress set id_done = 1 where id in (%s) " % ids_enc)
+
+

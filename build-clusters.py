@@ -64,66 +64,52 @@ def main():
 
     ind = Indexer(DB_DIR)
 
-    cur_main = stats.get_cursor(DB_DIR + "/tweets.db")
-    stats.create_given_tables(cur_main, ["clusters"])
-    #cur_main.execute("create table if not exists clusters_svd as select * from clusters limit 0")
+    cur = stats.get_cursor(DB_DIR + "/tweets.db")
+    stats.create_given_tables(cur, ["clusters"])
 
-    for date in sorted(ind.dates_dbs.keys()):
-        if args.start is not None and date < args.start:
-            continue
-        if args.end is not None and date > args.end:
-            continue
-        cur = ind.get_db_for_date(date)
-      
-        try:
-            cur.execute("select 1 from noun_similarity")
-        except Exception:
-            logging.info("Skip date %s" % date)
-            continue 
+    cur.execute("drop table if exists clusters")
 
-        cur.execute("drop table if exists clusters")
+    cnt = cur.execute("select count(*) from noun_similarity").fetchone()
+    cnt = cnt[0]
 
-        cnt = cur.execute("select count(*) from noun_similarity").fetchone()
-        cnt = cnt[0]
+    logging.info("noun_similarity count: %s" % cnt)
+    if cnt == 0:
+        continue            
 
-        logging.info("noun_similarity count: %s" % cnt)
-        if cnt == 0:
-            continue            
+    used_nouns = get_used_nouns(cur)        
 
-        #used_nouns = get_used_nouns(cur)        
+    nouns = stats.get_nouns(cur)
+    noun_trend = stats.get_noun_trend(cur)
+    logging.info("nouns len %s" % len(nouns))
+    post_cnt = stats.get_noun_cnt(cur)
+    
+    logging.info("get sim_dict")
+    sim_dict = get_sims(cur) 
+    
 
-        nouns = stats.get_nouns(cur)
-        noun_trend = stats.get_noun_trend(cur)
-        logging.info("nouns len %s" % len(nouns))
-        post_cnt = stats.get_noun_cnt(cur)
-        
-        logging.info("get sim_dict")
-        sim_dict = get_sims(cur) 
-        
+    for k in [int(args.k)]:
+        best_ratio = 1 
+        cl = []
+        for i in range(0, int(args.i)): 
+            logging.info("get %s clusters, iteration %s" % (k, i))
+            resp = KMeanCluster.get_clusters(sim_dict, int(k), nouns)
+            ratio = resp["intra_dist"] / resp["extra_dist"]
+            if (ratio) < best_ratio:
+                best_ratio = ratio
+                cl = resp["clusters"]
+   
+        logging.info("Best ratio: %s" % best_ratio) 
+        for c in cl:
+            for m in c["members"]:
+                m["post_cnt"] = post_cnt[m["id"]]
+                trend = noun_trend[m["id"]] if m["id"] in noun_trend else 0
+                m["trend"] = "%.3f" % trend 
 
-        for k in [int(args.k)]:
-            best_ratio = 1 
-            cl = []
-            for i in range(0, int(args.i)): 
-                logging.info("get %s clusters, iteration %s" % (k, i))
-                resp = KMeanCluster.get_clusters(sim_dict, int(k), nouns)
-                ratio = resp["intra_dist"] / resp["extra_dist"]
-                if (ratio) < best_ratio:
-                    best_ratio = ratio
-                    cl = resp["clusters"]
-       
-            logging.info("Best ratio: %s" % best_ratio) 
-            for c in cl:
-                for m in c["members"]:
-                    m["post_cnt"] = post_cnt[m["id"]]
-                    trend = noun_trend[m["id"]] if m["id"] in noun_trend else 0
-                    m["trend"] = "%.3f" % trend 
-
-            cl_json = json.dumps(cl)
-            cur_main.execute("""
-                replace into clusters (cluster_date, k, cluster)
-                values (?, ?, ?)
-            """, (date, k, cl_json))
+        cl_json = json.dumps(cl)
+        cur.execute("""
+            replace into clusters (cluster_date, k, cluster)
+            values (?, ?, ?)
+        """, (date, k, cl_json))
 
     logging.info("Done")
 

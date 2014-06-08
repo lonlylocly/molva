@@ -114,7 +114,7 @@ def get_post_nouns(cur):
     cur.execute("""
         select t.post_id, n.noun_md5
         from tweet_chains t
-        inner join tweets_nouns n
+        inner join tweets_nouns_cur n
         on t.post_id = n.id
         where n.noun_md5 in (
             select post1_md5 

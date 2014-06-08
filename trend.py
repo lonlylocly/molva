@@ -29,36 +29,37 @@ def main():
 
 
     ind = Indexer(DB_DIR)
+    cur_main = stats.get_cursor(DB_DIR + "/tweets.db")
+
 
     noun_trends = {}   
-    noun_text = {}
-    valid_dates = filter(lambda x: x <= args.end and x >= args.start, sorted(ind.dates_dbs.keys())) 
-    for i in range(0, len(valid_dates)):
-        date = valid_dates[i]
-        cur = ind.get_db_for_date(date)
-        logging.info("Fetch post cnt for date %s" % date)
-        cur.execute("""
+    #noun_text = {}
+    suffs = ("", "_n_1", "_n_2", "_n_3")
+    for i in range(0, len(suffs)):
+        suff = suffs[i]
+        logging.info("Fetch post cnt for suff %s" % suff)
+        cur_main.execute("""
             select post_md5, post_cnt
-            from post_cnt
+            from post_cnt%(suff)s
             order by post_cnt desc
-        """)
+        """ % {"suff": suff})
 
         while True:
-            row = cur.fetchone()
+            row = cur_main.fetchone()
             if row is None:
                 break
             post_md5, post_cnt = row
 
             if post_md5 not in noun_trends:
-                noun_trends[post_md5] = map(lambda x: 0, range(0, len(valid_dates)))
+                noun_trends[post_md5] = map(lambda x: 0, range(0, 4))
             noun_trends[post_md5][i] = post_cnt
 
-        logging.info("Update nouns dictionary")
-        nouns = stats.get_nouns(cur)
-        for n in nouns:
-            noun_text[n] = nouns[n]
+        #logging.info("Update nouns dictionary")
+        #nouns = stats.get_nouns(cur)
+        #for n in nouns:
+        #    noun_text[n] = nouns[n]
 
-    logging.info("write stats to file")
+    logging.info("Done fetching post_cnt")
 
     noun_trends_data = []
     for noun in sorted(noun_trends.keys()):
@@ -67,24 +68,14 @@ def main():
         mean = float(sum_cnt(top)) / len(top)
         if mean > 10:
             dev = (tail - mean) / mean if mean != 0 else 0
-            #line.append(dev)
-            #noun_trends2[noun] = line
+
             noun_trends_data.append((noun, dev))
     
-    stats.create_given_tables(cur, ["noun_trend"]) 
+    stats.create_given_tables(cur_main, ["noun_trend"]) 
 
-    cur.execute("begin transaction")
-    cur.executemany("insert into noun_trend values (?, ?)", noun_trends_data)
-    cur.execute("commit")
- 
-    #f = codecs.open(args.out_file, 'w', encoding='cp1251')
-    ##for noun in sorted(noun_trends.keys(), key=lambda x: sum_cnt(noun_trends[x]), reverse=True):
-    #for noun in sorted(noun_trends2.keys(), key=lambda x: noun_trends2[x][-1], reverse=True):
-    #    line = [noun_text[noun]] + map(str, noun_trends2[noun])
-    #    f.write(";".join(line))         
-    #    f.write(";\n")
-
-    #f.close()
+    cur_main.execute("begin transaction")
+    cur_main.executemany("insert into noun_trend values (?, ?)", noun_trends_data)
+    cur_main.execute("commit")
 
     logging.info("Done")
 

@@ -1,6 +1,8 @@
+# -*- coding: utf-8 -*-
 import httplib, urllib
 import logging
 import time
+import copy
 
 from Exceptions import WoapeException
 

@@ -77,38 +77,35 @@ def main():
     parser = util.get_dates_range_parser()
     parser.add_argument("-c", "--clear", action="store_true")
     parser.add_argument("-p", "--profiles-table", default="post_reply_cnt")
+    parser.add_argument("-o", "--out-file")
     args = parser.parse_args()
 
     ind = Indexer(DB_DIR)
-   
-    for date in sorted(ind.dates_dbs.keys()):
-        if args.start is not None and date < args.start:
-            continue
-        if args.end is not None and date > args.end:
-            continue
-        cur = ind.get_db_for_date(date)
-        try:
-            cur.execute("select 1 from post_reply_cnt")
-        except Exception as ex:
-            logging.info("Skip date %s" % date)
-            continue
-        
-        stats.create_given_tables(cur, ["noun_similarity"])
-        cur.execute("create table if not exists noun_sim_new as select * from noun_similarity limit 0")
-        cur.execute("delete from noun_sim_new")
+    cur = stats.get_cursor(DB_DIR + "/tweets.db")
+            
+    stats.create_given_tables(cur, ["noun_similarity"])
+    cur.execute("create table if not exists noun_sim_new as select * from noun_similarity limit 0")
+    cur.execute("delete from noun_sim_new")
 
-        #nouns = stats.get_nouns(cur)
-        #logging.info("nouns len %s" % len(nouns))
+    #nouns = stats.get_nouns(cur)
+    #logging.info("nouns len %s" % len(nouns))
 
-        profiles_dict = stats.setup_noun_profiles(cur, {}, {}, 
-        post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = NOUNS_LIMIT, profiles_table = args.profiles_table )
-        logging.info("profiles len %s" % len(profiles_dict))
+    profiles_dict = stats.setup_noun_profiles(cur, {}, {}, 
+        post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = NOUNS_LIMIT, profiles_table = args.profiles_table 
+    )
 
-        fill_sims(cur, profiles_dict, {}, {})
+    logging.info("profiles len %s" % len(profiles_dict))
+    profiles_dump = {}
+    for p in profiles_dict:
+        profiles_dump[p] = profiles_dict[p].replys
 
-        update_sims(cur)
+    json.dump(profiles_dump, open(args.out_file, 'w')) 
 
-    logging.info("Done")
+    #fill_sims(cur, profiles_dict, {}, {})
+
+    #update_sims(cur)
+
+    #logging.info("Done")
         
 if __name__ == '__main__':
     main()
