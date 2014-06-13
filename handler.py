@@ -20,41 +20,7 @@ from Indexer import Indexer
 
 settings = json.load(open('handler-settings.json', 'r'))
 
-logging.config.fileConfig("logging.conf")
-
-class GuessrHandler(tornado.web.RequestHandler):
-    def get(self):
-        try:
-            title = self.get_argument("title", default="")
-            title = re.sub("(\n|\t)", " ", title)
-            title = re.sub("\"", "\\\"", title)
-
-            ind = Indexer(settings["db_dir"])
-            db_filename = ind.dates_dbs["20140525"]
-            con = sqlite3.connect(db_filename)
-            con.isolation_level = None
-            cur = con.cursor()
-
-            context = stats.get_sim_nouns_by_context(cur, title) 
-            nouns = stats.get_nouns(cur, nouns_only = map(lambda x: x["noun_md5"], context))
-            for c in context:
-                c["noun_text"] = nouns[c["noun_md5"]]
-
-            sim_docs = None 
-            if len(context) != 0:
-                stats.create_given_tables(cur, ["titles", "titles_profiles"])
-
-                stats.save_title_context(cur, title, context)
-
-                sim_docs = stats.get_similar_titles(cur, title, context) 
-            
-            self.write(json.dumps({"profile": context, "sim_docs": sim_docs}, indent=4))
-
-            con.close()
-
-        except Exception as e:
-            logging.error(e)
-            raise e
+#logging.config.fileConfig("logging.conf")
 
 class DatesAvailableHandler(tornado.web.RequestHandler):
 
@@ -168,19 +134,19 @@ class PostProfileHandler(tornado.web.RequestHandler):
 
     def get(self):
         noun_md5 = self.get_argument("noun_md5", default=None)
-        date = self.get_argument('date', default=None)
-        if date is None or date == "" or not re.match("^\d{8}$", date):
-            return
+       # date = self.get_argument('date', default=None)
+       # if date is None or date == "" or not re.match("^\d{8}$", date):
+       #     return
         try:
             noun_md5 = int(noun_md5)
         except:
             return
 
-        cur = self.ind.get_db_for_date(date)
+        cur = stats.get_cursor(settings["db_dir"] + "/tweets.db") 
 
         profile = { "noun_md5": noun_md5, 
             "reply_profile": self.get_reply_profile(cur, noun_md5),
-            "tweets": self.get_some_tweets(cur, noun_md5),
+            #"tweets": self.get_some_tweets(cur, noun_md5),
             "noun_text": self.get_noun_text(cur, noun_md5),
             "post_cnt": self.get_post_cnt(cur, noun_md5),
             "most_similar_nouns": self.get_most_sim_nouns(cur, noun_md5),
@@ -190,14 +156,14 @@ class PostProfileHandler(tornado.web.RequestHandler):
 
 
 class ClusterHandler(tornado.web.RequestHandler):
-    def initialize(self):
-        self.ind = Indexer(settings["db_dir"])
+   # def initialize(self):
+   #     self.ind = Indexer(settings["db_dir"])
 
-        self.table_stats = StatsDisplay(settings["db_dir"]).get_table_stats()
+   #     self.table_stats = StatsDisplay(settings["db_dir"]).get_table_stats()
 
-        dates = self.table_stats["noun_similarity"].keys()
-        
-        self.available_dates = sorted(dates)
+   #     dates = self.table_stats["noun_similarity"].keys()
+   #     
+   #     self.available_dates = sorted(dates)
 
     def get_sims_for_date(self, date):
         cur = self.ind.get_db_for_date(date)
@@ -225,23 +191,21 @@ class ClusterHandler(tornado.web.RequestHandler):
         cur = self.ind.get_db_for_date(date)
         return stats.get_nouns(cur)
 
-    def get_clusters_for_date(self, date, k):
-        cur = stats.get_cursor(settings["db_dir"] + "/tweets.db") 
-        table = "clusters" 
-        res = cur.execute("select cluster from %s where cluster_date = ? and k = ?" % (table), ( date, k)).fetchone()
-
+    def get_clusters(self):
+        cur = stats.get_cursor(settings["db_dir"] + "/tweets_display.db") 
+        res = cur.execute("select cluster from clusters order by cluster_date desc limit 1 ").fetchone()
 
         return res[0]
 
     def get(self):
-        k = self.get_argument('k',default='100')
-        date = self.get_argument('date', default=None)
-        k = int(k)
+        #k = self.get_argument('k',default='100')
+        # date = self.get_argument('date', default=None)
+        #k = int(k)
         
-        if date is None or date == "" or not re.match("^\d{8}$", date):
-            date = self.available_dates[-1]
+        #if date is None or date == "" or not re.match("^\d{8}$", date):
+        #    date = self.available_dates[-1]
 
-        cl = self.get_clusters_for_date(date, k)
+        cl = self.get_clusters()
 
         self.write(cl)
 

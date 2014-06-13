@@ -4,6 +4,7 @@ import sys
 import os
 import logging, logging.config
 import json
+from datetime import datetime
 
 import stats
 from Indexer import Indexer
@@ -62,33 +63,32 @@ def main():
     parser.add_argument("-i")
     args = parser.parse_args()
 
+    today = (datetime.utcnow()).strftime("%Y%m%d%H%M%S")
+    update_time = (datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+
     ind = Indexer(DB_DIR)
 
     cur = stats.get_cursor(DB_DIR + "/tweets.db")
-    stats.create_given_tables(cur, ["clusters"])
+    cur_display = stats.get_cursor(DB_DIR + "/tweets_display.db")
+    #cur.execute("drop table if exists clusters")
 
-    cur.execute("drop table if exists clusters")
+    stats.create_given_tables(cur_display, ["clusters"])
 
     cnt = cur.execute("select count(*) from noun_similarity").fetchone()
     cnt = cnt[0]
 
-    logging.info("noun_similarity count: %s" % cnt)
-    if cnt == 0:
-        continue            
-
     used_nouns = get_used_nouns(cur)        
 
-    nouns = stats.get_nouns(cur)
+    nouns = stats.get_nouns(cur, used_nouns)
     noun_trend = stats.get_noun_trend(cur)
     logging.info("nouns len %s" % len(nouns))
     post_cnt = stats.get_noun_cnt(cur)
     
     logging.info("get sim_dict")
     sim_dict = get_sims(cur) 
-    
 
     for k in [int(args.k)]:
-        best_ratio = 1 
+        best_ratio = 10 
         cl = []
         for i in range(0, int(args.i)): 
             logging.info("get %s clusters, iteration %s" % (k, i))
@@ -105,11 +105,12 @@ def main():
                 trend = noun_trend[m["id"]] if m["id"] in noun_trend else 0
                 m["trend"] = "%.3f" % trend 
 
+        cl = {"clusters": cl, "update_time": update_time}
         cl_json = json.dumps(cl)
-        cur.execute("""
+        cur_display.execute("""
             replace into clusters (cluster_date, k, cluster)
             values (?, ?, ?)
-        """, (date, k, cl_json))
+        """, (today, k, cl_json))
 
     logging.info("Done")
 
