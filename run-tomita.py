@@ -45,6 +45,8 @@ def main(in_dir, out_dir):
         if ret != 0:
             raise Exception("Failed to exec %s: exit code %s" % (cmd, ret))
         os.remove(tweets_file)
+    
+    log.info("Done")
         
 if __name__ == '__main__':
     main(DB_DIR + "/index/", DB_DIR + "/nouns/")

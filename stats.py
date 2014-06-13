@@ -412,7 +412,7 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
         ) 
     """)
 
-    stats = cur.execute("""
+    cur.execute("""
         select p.post_md5, p.reply_md5, p.reply_cnt, p2.post_cnt
         from %(profiles_table)s p
         inner join post_cnt p2
@@ -425,11 +425,14 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
         and p.reply_md5 not in (%(blocked_nouns)s)
         order by p2.post_cnt desc
     """ % {"profiles_table": profiles_table, "post_min_freq": post_min_freq, 
-        "blocked_nouns": blocked_nouns}).fetchall()
+        "blocked_nouns": blocked_nouns})
 
     profiles_dict = {}
 
-    for s in stats:
+    while True:
+        s = cur.fetchone()
+        if s is None:
+            break
         post, reply, cnt, post_cnt  = s 
         if post not in profiles_dict:
             profiles_dict[post] = NounProfile(post, post_cnt=post_cnt) 

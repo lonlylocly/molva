@@ -43,8 +43,10 @@ def save_tweet_nouns(cur, vals):
 
     cur.execute("commit")
 
-def parse_facts_file(tweet_index, facts, cur):
+def parse_facts_file(tweet_index, facts, cur, cur_main):
     create_tables(cur)   
+    stats.create_given_tables(cur_main, ["nouns"])
+
     logging.info("Parse index: %s; facts: %s" % (tweet_index, facts))
 
     ids = open(tweet_index, 'r').read().split("\n")
@@ -85,6 +87,8 @@ def parse_facts_file(tweet_index, facts, cur):
     save_tweet_nouns(cur, posts_nouns)
 
     save_nouns(cur, nouns_total)
+    save_nouns(cur_main, nouns_total)
+
     return
 
 class FailedSeveralTimesException(Exception):
@@ -110,17 +114,22 @@ def main():
     logging.info("Start parsing extracted nouns")
 
     ind = Indexer(DB_DIR)
+
+    cur_main = stats.get_cursor(DB_DIR + "/tweets.db")
+
     files_for_dates = ind.get_nouns_to_parse()
     for date in sorted(files_for_dates.keys()):
         for t in files_for_dates[date]:
             tweet_index, facts = t 
 
-            f = lambda : parse_facts_file(tweet_index, facts, ind.get_db_for_date(date))
+            f = lambda : parse_facts_file(tweet_index, facts, ind.get_db_for_date(date), cur_main)
             try_several_times(f, 3)
 
             logging.info("Remove index: %s; facts: %s" % (tweet_index, facts))
             os.remove(tweet_index)
             os.remove(facts)
+    
+    logging.info("Done")
 
 if __name__ == "__main__":
     main()
