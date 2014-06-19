@@ -6,7 +6,7 @@ SIMMER_JAR=Simmer-1.0-SNAPSHOT-jar-with-dependencies.jar
 
 do_profiles() {
     $SCRIPTDIR/prepare-profiles.py -o profiles.json  > prepare-profiles.log 2>&1 
-    java -Xmx500m -jar $SCRIPTDIR/$SIMMER_JAR profiles.json sims.csv > simmer.log 2>&1 
+    java -Xmx700m -jar $SCRIPTDIR/$SIMMER_JAR profiles.json sims.csv > simmer.log 2>&1 
     $SCRIPTDIR/post-profiles.py -i sims.csv  > post-profiles.log 2>&1 
 }
 
@@ -37,7 +37,7 @@ date
 $SCRIPTDIR/exclusion.py  1>> exclusion.log 2>&1 
 
 date
-$SCRIPTDIR/build-clusters.py  -k 1000 -i 5 1>> clusters.log 2>&1 
+$SCRIPTDIR/build-clusters.py  -k 1000 -i 10 1>> clusters.log 2>&1 
 
 date
 $SCRIPTDIR/show-db-stats.py -s $date -e $date

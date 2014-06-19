@@ -214,6 +214,16 @@ CREATE_TABLES = {
             PRIMARY KEY (p_id, p_md5, r_id, r_md5)
         )
     """,
+    "chains_nouns_all": """
+        CREATE TABLE IF NOT EXISTS chains_nouns_all(
+            p_id integer,
+            p_md5 integer,
+            r_id integer,
+            r_md5 integer,
+            created_at text,
+            PRIMARY KEY (p_id, p_md5, r_id, r_md5)
+        )
+    """,
     "tomita_progress": """
         CREATE TABLE IF NOT EXISTS tomita_progress (
             id integer,
@@ -408,7 +418,7 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
             from post_reply_cnt 
             group by reply_md5
             order by c desc
-            limit 10000
+            limit 8000
         ) 
     """)
 
