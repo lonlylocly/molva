@@ -7,6 +7,7 @@ import os
 import logging, logging.config
 import json
 import traceback
+import HTMLParser
 
 import xml.etree.cElementTree as ElementTree
 
@@ -41,11 +42,8 @@ def save_tweet_nouns(cur, vals):
 
     for v in vals:
         cur.execute("insert or ignore into tweets_nouns (id, noun_md5) values (?, ?)",
-            (v[0], digest(v[1])) ) 
-        cur.execute("insert or ignore into tweets_words (id, noun_md5, source_md5) values (?, ?, ?)", 
-            (v[0], digest(v[1]), digest(v[2])) ) 
-        cur.execute("update tweets_words set cnt = cnt + 1 where id = ? and noun_md5 = ? and  source_md5 = ?", 
-            (v[0], digest(v[1]), digest(v[2])) )
+            (v[0], v[1]) ) 
+        cur.execute("insert or ignore into tweets_words (id, noun_md5, source_md5) values (?, ?, ?)", v) 
 
     cur.execute("commit")   
 
@@ -60,28 +58,33 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
 
     logging.info("Got tweet %s ids" % (len(ids)))
 
+    h = HTMLParser.HTMLParser()
+
     tree = ElementTree.iterparse(facts, events = ('start', 'end'))
-    cnt = 1
+
     nouns_total = set()
     sources_total = set()
     noun_sources = []
+
     for event, elem in tree:
-        if event == 'end':
-            if elem.tag == 'document':
-                cur_doc = elem.attrib['di']
-                facts = elem.findall("//SimpleFact")
-                for f in facts:
-                    noun = f.find("./Noun")
-                    source = f.find("./Source")
-                    if len(noun) < 3:
-                        continue
+        if event == 'end' and elem.tag == 'document':
+            cur_doc = elem.attrib['di']
+            leads = elem.findall("//Lead")
+            facts = []
+            for l in leads:
+                text = ElementTree.from_string(h.unescape(unicode(l.get('text'))))
+                for f in text.findall('//N'):
+                    noun = f.text
+                    source = f.get('lemma')
+                    noun_sources.append((post_id, digest(noun.lower), digest(source)))
+
                     nouns_total |= noun
                     sources_total |= source
-                    noun_sources.append((post_id, noun, source))
-                if len(posts_nouns) > 10000:
-                    logging.info("seen %s docid" % (cur_doc))
-                    save_tweet_nouns(cur, noun_sources)
-                    noun_sources = []
+
+            if len(noun_sources) > 10000:
+                logging.info("seen %s docid" % (cur_doc))
+                save_tweet_nouns(cur, noun_sources)
+                noun_sources = []
                
             elem.clear()
 
