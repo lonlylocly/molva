@@ -257,7 +257,6 @@ CREATE_TABLES = {
             id integer,
             noun_md5 integer,
             source_md5 integer,
-            cnt integer,
             PRIMARY KEY(id, noun_md5, source_md5)
         )
     """,
