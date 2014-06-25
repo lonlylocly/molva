@@ -29,23 +29,30 @@ DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 def create_tables(cur):
     stats.create_given_tables(cur, ["nouns", "tweets_nouns"])
 
-def save_nouns(cur, nouns):
+def save_nouns(cur, nouns, table="nouns"):
     cur.execute("begin transaction")
     for n in nouns:
-        cur.execute("insert or ignore into nouns (noun_md5, noun) values (?, ?)", (digest(n), n)) 
+        cur.execute("insert or ignore into %s (noun_md5, noun) values (?, ?)" % (table), (digest(n), n)) 
     
     cur.execute("commit")
 
 def save_tweet_nouns(cur, vals):
     cur.execute("begin transaction")
-    for v in vals:
-        cur.execute("insert or ignore into tweets_nouns (id, noun_md5) values (?, ?)", (v[0], digest(v[1]))) 
 
-    cur.execute("commit")
+    for v in vals:
+        cur.execute("insert or ignore into tweets_nouns (id, noun_md5) values (?, ?)",
+            (v[0], digest(v[1])) ) 
+        cur.execute("insert or ignore into tweets_words (id, noun_md5, source_md5) values (?, ?, ?)", 
+            (v[0], digest(v[1]), digest(v[2])) ) 
+        cur.execute("update tweets_words set cnt = cnt + 1 where id = ? and noun_md5 = ? and  source_md5 = ?", 
+            (v[0], digest(v[1]), digest(v[2])) )
+
+    cur.execute("commit")   
 
 def parse_facts_file(tweet_index, facts, cur, cur_main):
     create_tables(cur)   
-    stats.create_given_tables(cur_main, ["nouns"])
+    stats.create_given_tables(cur_main, ["nouns", "tweets_words"])
+    stats.create_given_tables(cur_main, {"sources": "nouns"})
 
     logging.info("Parse index: %s; facts: %s" % (tweet_index, facts))
 
@@ -54,40 +61,36 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
     logging.info("Got tweet %s ids" % (len(ids)))
 
     tree = ElementTree.iterparse(facts, events = ('start', 'end'))
-    cur_doc = None
-    cur_nouns = []
     cnt = 1
     nouns_total = set()
-    posts_nouns = []
+    sources_total = set()
+    noun_sources = []
     for event, elem in tree:
         if event == 'end':
             if elem.tag == 'document':
-                post_id = ids[int(cur_doc) -1]
-                #nouns = map(lambda x: x.decode('utf-8'), cur_nouns)
-                nouns = map(lambda x: x.lower(), cur_nouns)
-                nouns_total = nouns_total | set(nouns)
-                posts_nouns += map(lambda x: (post_id, x), nouns)
-                cur_doc = None
-                cur_nouns = []
-                elem.clear()
-            if elem.tag == 'Noun':
-                noun = elem.attrib['val']
-                if len(noun) > 2:
-                    cur_nouns.append(noun)
-        if event == 'start':
-            if elem.tag == 'document':
                 cur_doc = elem.attrib['di']
-                if int(cur_doc) > cnt * 10000:
-                    logging.info("seen %s docid" % (cur_doc))
-                cnt = cnt + 1
+                facts = elem.findall("//SimpleFact")
+                for f in facts:
+                    noun = f.find("./Noun")
+                    source = f.find("./Source")
+                    if len(noun) < 3:
+                        continue
+                    nouns_total |= noun
+                    sources_total |= source
+                    noun_sources.append((post_id, noun, source))
                 if len(posts_nouns) > 10000:
-                    save_tweet_nouns(cur, posts_nouns)
-                    posts_nouns = []
+                    logging.info("seen %s docid" % (cur_doc))
+                    save_tweet_nouns(cur, noun_sources)
+                    noun_sources = []
+               
+            elem.clear()
 
-    save_tweet_nouns(cur, posts_nouns)
+    save_tweet_nouns(cur, noun_sources)
 
     save_nouns(cur, nouns_total)
+    save_nouns(cur, sources_total, table="sources")
     save_nouns(cur_main, nouns_total)
+    save_nouns(cur_main, sources_total, table="sources")
 
     return
 
