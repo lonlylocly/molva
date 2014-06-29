@@ -48,8 +48,9 @@ def save_tweet_nouns(cur, vals):
     cur.execute("commit")   
 
 def parse_facts_file(tweet_index, facts, cur, cur_main):
-    create_tables(cur)   
-    stats.create_given_tables(cur_main, ["nouns", "tweets_words"])
+    stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words"])
+    stats.create_given_tables(cur, {"sources": "nouns"})
+    stats.create_given_tables(cur_main, ["nouns"])
     stats.create_given_tables(cur_main, {"sources": "nouns"})
 
     logging.info("Parse index: %s; facts: %s" % (tweet_index, facts))
@@ -68,18 +69,19 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
 
     for event, elem in tree:
         if event == 'end' and elem.tag == 'document':
-            cur_doc = elem.attrib['di']
-            leads = elem.findall("//Lead")
+            cur_doc = int(elem.attrib['di'])
+            post_id = ids[cur_doc -1]
+            leads = elem.findall(".//Lead")
             facts = []
             for l in leads:
-                text = ElementTree.from_string(h.unescape(unicode(l.get('text'))))
-                for f in text.findall('//N'):
-                    noun = f.text
-                    source = f.get('lemma')
-                    noun_sources.append((post_id, digest(noun.lower), digest(source)))
+                text = ElementTree.fromstring(l.get('text').encode('utf8'))
+                for f in text.findall('.//N'):
+                    source = f.text
+                    noun = f.get('lemma').lower()
+                    noun_sources.append((post_id, digest(noun), digest(source)))
 
-                    nouns_total |= noun
-                    sources_total |= source
+                    nouns_total.add(noun)
+                    sources_total.add(source)
 
             if len(noun_sources) > 10000:
                 logging.info("seen %s docid" % (cur_doc))
