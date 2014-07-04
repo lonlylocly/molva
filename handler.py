@@ -18,7 +18,7 @@ from Indexer import Indexer
 
 #logging.config.fileConfig("logging.conf")
 
-settings = json.load(open('handler-settings.json', 'r'))
+settings = json.load(open('global-settings.json', 'r'))
 
 class ClusterHandler(tornado.web.RequestHandler):
 
@@ -60,9 +60,41 @@ class ClusterHandler(tornado.web.RequestHandler):
 
         self.write(cl)
 
+class TrendHandler(tornado.web.RequestHandler):
+    def get_trends(self):
+
+        cur = stats.get_cursor(settings["db_dir"] + "/tweets.db") 
+        cur.execute("""
+            select noun, t.noun_md5, trend, p.post_cnt
+            from noun_trend t
+            left join nouns n
+            on t.noun_md5 = n.noun_md5
+            left join post_cnt p
+            on t.noun_md5 = p.post_md5
+            order by trend desc 
+        """)
+
+        trends = []
+        while True:
+            r = cur.fetchone()
+            if r is None:
+                break
+            noun, noun_md5, trend, post_cnt = r
+            trends.append("".join(map(lambda x: "%20s" % x, [noun_md5, noun, trend, post_cnt])))
+            #trends.append( {'noun': noun, 'noun_md5': noun_md5, 'trend': trend, 'post_cnt': post_cnt})
+
+        return "<pre>" + "\n".join(trends) + "</pre>"
+
+    def get(self):
+
+        trends = self.get_trends()
+
+        self.write(trends)
+   
 if __name__ == '__main__':
     application = tornado.web.Application([
         (r"/api/cluster", ClusterHandler),
+        (r"/api/trend", TrendHandler),
     ])
     application.listen(8000)
     tornado.ioloop.IOLoop.instance().start()

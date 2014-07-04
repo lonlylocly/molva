@@ -19,6 +19,8 @@ except Exception as e:
 
 DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
+MIN_TREND_FREQ = 30
+
 def sum_cnt(line):
     return reduce(lambda z, y: z + y, line)
 
@@ -33,7 +35,7 @@ def get_std_dev(vals, mean):
 def get_trend(noun, line):
     top, tail = (line[:-1], line[-1])
     mean = float(sum_cnt(top)) / len(top)
-    if mean > 10:
+    if mean > MIN_TREND_FREQ:
         dev = (tail - mean) / mean 
 
         return [(noun, dev)]
@@ -46,6 +48,7 @@ def main():
 
     ind = Indexer(DB_DIR)
     cur_main = stats.get_cursor(DB_DIR + "/tweets.db")
+    cur_display = stats.get_cursor(DB_DIR + "/tweets_display.db")
 
     noun_trends = {}   
     #noun_text = {}
@@ -85,13 +88,14 @@ def main():
     for noun in sorted(noun_trends.keys()):
         line = noun_trends[noun]      
         noun_trends_data += get_trend(noun, line)
-            
-    cur_main.execute("drop table if exists noun_trend")
-    stats.create_given_tables(cur_main, ["noun_trend"]) 
+           
+    for cur in (cur_main, cur_display): 
+        cur.execute("begin transaction")
+        cur.execute("drop table if exists noun_trend")
+        stats.create_given_tables(cur, ["noun_trend"]) 
 
-    cur_main.execute("begin transaction")
-    cur_main.executemany("insert into noun_trend values (?, ?)", noun_trends_data)
-    cur_main.execute("commit")
+        cur.executemany("insert into noun_trend values (?, ?)", noun_trends_data)
+        cur.execute("commit")
 
     logging.info("Done")
 
