@@ -16,7 +16,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>ru.spb.molva.Simmer</mainClass>
+                            <mainClass>ru.spb.molva.CMeans</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
@@ -31,6 +31,16 @@
                         <goals>
                             <goal>single</goal>
                         </goals>
+                    </execution>
+                    <execution>
+                        <id>make-assembly-cmeans</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <finalName>cmeans</finalName>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -63,7 +73,6 @@
             <artifactId>commons-io</artifactId>
             <version>2.4</version>
         </dependency>
-
 
 
     </dependencies>
