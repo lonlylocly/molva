@@ -63,9 +63,7 @@ public class Simmer {
                 final RealVector x1 = getRealVector(dict.get(p1), commonKeys);
                 final RealVector x2 = getRealVector(dict.get(p2), commonKeys);
 
-                final double n1 = x1.getNorm();
-                final double n2 = x2.getNorm();
-                double sim = 1 - x1.dotProduct(x2) / (n1 * n2);
+                double sim = compare(x1, x2);
                 sims.add(new SimEntry(p1, p2, sim));
                 cnt ++;
             }
@@ -85,6 +83,12 @@ public class Simmer {
 
     }
 
+    public static double compare(RealVector x1, RealVector x2) {
+        final double n1 = x1.getNorm();
+        final double n2 = x2.getNorm();
+        return 1 - x1.dotProduct(x2) / (n1 * n2);
+    }
+
     private static List<Long> getCommonKeys(Map<Long, Map<Long, Double>> dict, Long p1, Long p2) {
         final Set<Long> keys1 = dict.get(p1).keySet();
         final Set<Long> keys2 = dict.get(p2).keySet();
@@ -94,7 +98,7 @@ public class Simmer {
         return commonKeys;
     }
 
-    private static RealVector getRealVector(Map<Long, Double> profile, List<Long> commonKeys) {
+    public static RealVector getRealVector(Map<Long, Double> profile, List<Long> commonKeys) {
         double[] v1 = new double[commonKeys.size()];
         for (int i=0; i< commonKeys.size(); i++ ) {
             Long key = commonKeys.get(i);
