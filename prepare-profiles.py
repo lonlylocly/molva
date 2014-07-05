@@ -74,6 +74,7 @@ def update_sims(cur):
     cur.execute("commit")
 
 def main():
+    logging.info("start")
     parser = util.get_dates_range_parser()
     parser.add_argument("-c", "--clear", action="store_true")
     parser.add_argument("-p", "--profiles-table", default="post_reply_cnt")

@@ -152,6 +152,8 @@ def save_corrected(cur, data):
     cur.execute("commit")
 
 def build_sim_corrected(cur, coocurence, raw_p):
+    logging.info("start")
+
     cur.execute("drop table if exists noun_sim_corrected")
     cur.execute("create table noun_sim_corrected as select * from noun_similarity limit 0")
     
@@ -184,8 +186,14 @@ def build_sim_corrected(cur, coocurence, raw_p):
 
     save_corrected(cur, data)
 
+    logging.info("done")
+
 def apply_corrections(cur):
     cur.execute("begin transaction")
+
+    cur.execute("""
+        drop table noun_similarity_old
+    """)
 
     cur.execute("""
         alter table noun_similarity rename to noun_similarity_old
@@ -210,7 +218,7 @@ def main():
 
     ind = Indexer(DB_DIR)
     
-    cur = ind.get_db_for_date(args.start)
+    cur = stats.get_cursor(DB_DIR + "/tweets.db")
 
     post_nouns, nouns_freqs = get_post_nouns(cur)
 

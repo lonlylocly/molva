@@ -27,3 +27,5 @@ if __name__ == '__main__':
         if args.end is not None and date > args.end:
             continue
         ind.prepare_tweet_index_for_date(date)
+
+    logging.info("Done")

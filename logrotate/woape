@@ -1,0 +1,23 @@
+/home/lonlylocly/run/woape-statuses.log {
+    rotate 7
+    daily
+    size=1M
+}
+
+/home/lonlylocly/run/streaming.log {
+    rotate 7
+    daily
+    size=1M
+}
+
+/home/lonlylocly/run/current-post-cnt.log {
+    rotate 7
+    daily
+    size=1M
+}
+
+/home/lonlylocly/run/task.log {
+    rotate 7
+    daily
+    size=1M
+}

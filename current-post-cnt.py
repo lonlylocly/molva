@@ -37,10 +37,11 @@ def count_currents(cur, utc_now):
         logging.info("drop %s" % t)
         cur.execute("drop table if exists %s" % t)
     stats.create_given_tables(cur, cur_tables)
+    stats.create_given_tables(cur, ["chains_nouns_all"])
 
     cur_tables2 = {
         "tweets_nouns_cur": "tweets_nouns", 
-        "chains_nouns_all": "chains_nouns",
+        #"chains_nouns_all": "chains_nouns",
         "chains_nouns_n_1": "chains_nouns",
         "chains_nouns_n_2": "chains_nouns",
         "chains_nouns_n_3": "chains_nouns",
@@ -53,11 +54,16 @@ def count_currents(cur, utc_now):
         cur.execute("drop table if exists %s" % t)
     stats.create_given_tables(cur, cur_tables2)
 
+    cur.execute("""
+        delete from chains_nouns_all
+        where created_at <= '%(time)s'
+    """ % {'time': time_ranges[-1]["min"]})
+
     for db in ("today.", "ystd."):
         logging.info("chains_nouns_all for db: %s" % db)
         cur.execute("""
             insert or ignore into chains_nouns_all 
-            select tc.post_id, n1.noun_md5, tc.reply_id, n2.noun_md5 
+            select tc.post_id, n1.noun_md5, tc.reply_id, n2.noun_md5, t.created_at 
             from %(db)stweet_chains tc 
             inner join %(db)stweets_nouns n1 
             on n1.id = tc.post_id 
@@ -79,17 +85,14 @@ def count_currents(cur, utc_now):
 
     for i in range(0, len(time_ranges)):
         suff = time_ranges[i]["suff"]
-        for db in ("today.", "ystd."):
-            logging.info("chains_nouns for db: %s; for suff: %s; for time: %s" % (db, suff, time_ranges[i]["min"]))
-            cur.execute("""
-                insert into chains_nouns%(suff)s
-                select p_id, p_md5, r_id, r_md5  from chains_nouns_all
-                inner join %(db)stweets t
-                on p_id = t.id
-                where t.created_at > '%(min_time)s' and t.created_at <= '%(max_time)s'
-            """ % {"suff": suff, "db": db, "min_time": time_ranges[i]["min"], "max_time": time_ranges[i]["max"]})
+        logging.info("chains_nouns%s; time (%s, %s)" % (suff, time_ranges[i]["min"], time_ranges[i]["max"]))
+        cur.execute("""
+            insert into chains_nouns%(suff)s
+            select p_id, p_md5, r_id, r_md5  from chains_nouns_all
+            where created_at > '%(min_time)s' and created_at <= '%(max_time)s'
+        """ % {"suff": suff, "min_time": time_ranges[i]["min"], "max_time": time_ranges[i]["max"]})
 
-        logging.info("post_cnt for suff: %s" % (suff))
+        logging.info("post_cnt%s" % (suff))
         cur.execute("""
             insert or ignore into post_cnt%(suff)s 
             select p_md5,  count(*) 
