@@ -16,7 +16,7 @@ import java.util.*;
 public class CMeans {
 
     List<Long> replys;
-    List<RealVector> posts;
+    List<SparseVector> posts;
     Integer k;
     Integer n;
     List<RealVector> centers;
@@ -26,7 +26,7 @@ public class CMeans {
     public void populate(File inputFile, Integer k) throws IOException {
         String content = FileUtils.readFileToString(inputFile);
 
-        posts = new LinkedList<RealVector>();
+        posts = new LinkedList<SparseVector>();
 
         Set<Long> replysSet = new HashSet<Long>();
 
@@ -50,7 +50,7 @@ public class CMeans {
                 Long replyMd5 = Long.parseLong(repl.getKey());
                 replysDict.put(replyMd5, repl.getValue().getAsDouble());
             }
-            posts.add(Simmer.getRealVector(replysDict, replys));
+            posts.add(new SparseVector(replysDict, replys));
         }
 
         this.k = k;
@@ -80,7 +80,7 @@ public class CMeans {
         for(int j=0; j<k; j++) {
             final RealVector c = getEmptyRealVector(replys);
             for(int i=0; i<n; i++) {
-                c.add(posts.get(i).mapMultiply(weights.get(i).get(j)));
+                c.add(posts.get(i).getRealVector().mapMultiply(weights.get(i).get(j)));
             }
             centers.add(c);
         }
@@ -94,10 +94,10 @@ public class CMeans {
         for(int i=0; i<n; i++) {
             weights.add(new ArrayList<Double>(k));
             for(int j=0; j<k; j++) {
-                final double dk = Simmer.compare(centers.get(j), posts.get(i));
+                final double dk = Simmer.compare(centers.get(j), posts.get(i).getRealVector());
                 double w = 0;
                 for(int jj=0; jj<k; jj++) {
-                    final double djj = Simmer.compare(centers.get(jj), posts.get(i));
+                    final double djj = Simmer.compare(centers.get(jj), posts.get(i).getRealVector());
                     w += dk / djj;
                 }
                 if (w != 0) {
