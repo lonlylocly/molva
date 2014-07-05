@@ -188,6 +188,8 @@ class Indexer:
             last_tweet_id = tweet_id
             index_file.write("%d\n" % tweet_id)
             tw_text = tw_text.replace('\n', ' ').replace("'", "\\'")
+            # filter out usernames
+            tw_text = re.sub("(^@|\s@)[^\s]+", "", tw_text)
             tweets_file.write("%s\n" % tw_text)
             t = tweets.fetchone()
 

@@ -7,6 +7,7 @@ import os
 import logging, logging.config
 import json
 import traceback
+import HTMLParser
 
 import xml.etree.cElementTree as ElementTree
 
@@ -29,62 +30,73 @@ DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 def create_tables(cur):
     stats.create_given_tables(cur, ["nouns", "tweets_nouns"])
 
-def save_nouns(cur, nouns):
+def save_nouns(cur, nouns, table="nouns"):
     cur.execute("begin transaction")
     for n in nouns:
-        cur.execute("insert or ignore into nouns (noun_md5, noun) values (?, ?)", (digest(n), n)) 
+        cur.execute("insert or ignore into %s (noun_md5, noun) values (?, ?)" % (table), (digest(n), n)) 
     
     cur.execute("commit")
 
 def save_tweet_nouns(cur, vals):
     cur.execute("begin transaction")
+
     for v in vals:
-        cur.execute("insert or ignore into tweets_nouns (id, noun_md5) values (?, ?)", (v[0], digest(v[1]))) 
+        cur.execute("insert or ignore into tweets_nouns (id, noun_md5) values (?, ?)",
+            (v[0], v[1]) ) 
+        cur.execute("insert or ignore into tweets_words (id, noun_md5, source_md5) values (?, ?, ?)", v) 
 
-    cur.execute("commit")
+    cur.execute("commit")   
 
-def parse_facts_file(tweet_index, facts, cur):
-    create_tables(cur)   
+def parse_facts_file(tweet_index, facts, cur, cur_main):
+    stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words"])
+    stats.create_given_tables(cur, {"sources": "nouns"})
+    stats.create_given_tables(cur_main, ["nouns"])
+    stats.create_given_tables(cur_main, {"sources": "nouns"})
+
     logging.info("Parse index: %s; facts: %s" % (tweet_index, facts))
 
     ids = open(tweet_index, 'r').read().split("\n")
 
     logging.info("Got tweet %s ids" % (len(ids)))
 
-    tree = ElementTree.iterparse(facts, events = ('start', 'end'))
-    cur_doc = None
-    cur_nouns = []
-    cnt = 1
-    nouns_total = set()
-    posts_nouns = []
-    for event, elem in tree:
-        if event == 'end':
-            if elem.tag == 'document':
-                post_id = ids[int(cur_doc) -1]
-                #nouns = map(lambda x: x.decode('utf-8'), cur_nouns)
-                nouns = map(lambda x: x.lower(), cur_nouns)
-                nouns_total = nouns_total | set(nouns)
-                posts_nouns += map(lambda x: (post_id, x), nouns)
-                cur_doc = None
-                cur_nouns = []
-                elem.clear()
-            if elem.tag == 'Noun':
-                noun = elem.attrib['val']
-                if len(noun) > 2:
-                    cur_nouns.append(noun)
-        if event == 'start':
-            if elem.tag == 'document':
-                cur_doc = elem.attrib['di']
-                if int(cur_doc) > cnt * 10000:
-                    logging.info("seen %s docid" % (cur_doc))
-                cnt = cnt + 1
-                if len(posts_nouns) > 10000:
-                    save_tweet_nouns(cur, posts_nouns)
-                    posts_nouns = []
+    h = HTMLParser.HTMLParser()
 
-    save_tweet_nouns(cur, posts_nouns)
+    tree = ElementTree.iterparse(facts, events = ('start', 'end'))
+
+    nouns_total = set()
+    sources_total = set()
+    noun_sources = []
+
+    for event, elem in tree:
+        if event == 'end' and elem.tag == 'document':
+            cur_doc = int(elem.attrib['di'])
+            post_id = ids[cur_doc -1]
+            leads = elem.findall(".//Lead")
+            facts = []
+            for l in leads:
+                text = ElementTree.fromstring(l.get('text').encode('utf8'))
+                for f in text.findall('.//N'):
+                    source = f.text
+                    noun = f.get('lemma').lower()
+                    noun_sources.append((post_id, digest(noun), digest(source)))
+
+                    nouns_total.add(noun)
+                    sources_total.add(source)
+
+            if len(noun_sources) > 10000:
+                logging.info("seen %s docid" % (cur_doc))
+                save_tweet_nouns(cur, noun_sources)
+                noun_sources = []
+               
+            elem.clear()
+
+    save_tweet_nouns(cur, noun_sources)
 
     save_nouns(cur, nouns_total)
+    save_nouns(cur, sources_total, table="sources")
+    save_nouns(cur_main, nouns_total)
+    save_nouns(cur_main, sources_total, table="sources")
+
     return
 
 class FailedSeveralTimesException(Exception):
@@ -110,17 +122,22 @@ def main():
     logging.info("Start parsing extracted nouns")
 
     ind = Indexer(DB_DIR)
+
+    cur_main = stats.get_cursor(DB_DIR + "/tweets.db")
+
     files_for_dates = ind.get_nouns_to_parse()
     for date in sorted(files_for_dates.keys()):
         for t in files_for_dates[date]:
             tweet_index, facts = t 
 
-            f = lambda : parse_facts_file(tweet_index, facts, ind.get_db_for_date(date))
+            f = lambda : parse_facts_file(tweet_index, facts, ind.get_db_for_date(date), cur_main)
             try_several_times(f, 3)
 
             logging.info("Remove index: %s; facts: %s" % (tweet_index, facts))
             os.remove(tweet_index)
             os.remove(facts)
+    
+    logging.info("Done")
 
 if __name__ == "__main__":
     main()

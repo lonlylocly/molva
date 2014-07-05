@@ -214,6 +214,16 @@ CREATE_TABLES = {
             PRIMARY KEY (p_id, p_md5, r_id, r_md5)
         )
     """,
+    "chains_nouns_all": """
+        CREATE TABLE IF NOT EXISTS chains_nouns_all(
+            p_id integer,
+            p_md5 integer,
+            r_id integer,
+            r_md5 integer,
+            created_at text,
+            PRIMARY KEY (p_id, p_md5, r_id, r_md5)
+        )
+    """,
     "tomita_progress": """
         CREATE TABLE IF NOT EXISTS tomita_progress (
             id integer,
@@ -240,6 +250,14 @@ CREATE_TABLES = {
             id integer,
             noun_md5 integer,
             PRIMARY KEY(id, noun_md5)
+        )
+    """,
+    "tweets_words": """
+        CREATE TABLE IF NOT EXISTS tweets_words(
+            id integer,
+            noun_md5 integer,
+            source_md5 integer,
+            PRIMARY KEY(id, noun_md5, source_md5)
         )
     """,
     "noun_similarity": """
@@ -408,11 +426,11 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
             from post_reply_cnt 
             group by reply_md5
             order by c desc
-            limit 10000
+            limit 8000
         ) 
     """)
 
-    stats = cur.execute("""
+    cur.execute("""
         select p.post_md5, p.reply_md5, p.reply_cnt, p2.post_cnt
         from %(profiles_table)s p
         inner join post_cnt p2
@@ -425,11 +443,14 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
         and p.reply_md5 not in (%(blocked_nouns)s)
         order by p2.post_cnt desc
     """ % {"profiles_table": profiles_table, "post_min_freq": post_min_freq, 
-        "blocked_nouns": blocked_nouns}).fetchall()
+        "blocked_nouns": blocked_nouns})
 
     profiles_dict = {}
 
-    for s in stats:
+    while True:
+        s = cur.fetchone()
+        if s is None:
+            break
         post, reply, cnt, post_cnt  = s 
         if post not in profiles_dict:
             profiles_dict[post] = NounProfile(post, post_cnt=post_cnt) 

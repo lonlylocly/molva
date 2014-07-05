@@ -95,7 +95,7 @@ def build_clusters_from_init(sim_dict, init_clusters):
     for c in init_clusters:
        clusters[c] = []
  
-    while True:
+    for i in range(0,100):
         new_clusters = iteration(clusters, sim_dict)
         new_clusters = choose_centers(new_clusters, sim_dict)
 

@@ -47,5 +47,7 @@ def main():
         stats.fill_tweet_chains(cur)
         #stats.fill_post_reply(cur)
 
+    logging.info("Done")
+
 if __name__ == '__main__':
     main()
