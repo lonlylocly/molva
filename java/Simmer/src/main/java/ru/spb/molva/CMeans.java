@@ -57,6 +57,7 @@ public class CMeans {
         this.n = posts.size();
         final Random rand = new Random();
 
+        weights = new ArrayList<List<Double>>(n);
         for(int i=0; i<n; i++) {
             List<Double> row = new ArrayList<Double>(k);
             for(int j=0; j<k; j++) {
