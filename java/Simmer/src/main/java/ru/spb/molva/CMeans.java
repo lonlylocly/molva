@@ -85,6 +85,7 @@ public class CMeans {
             }
             centers.add(c);
         }
+        this.centers = centers;
         System.out.println("stop recount centers");
     }
 

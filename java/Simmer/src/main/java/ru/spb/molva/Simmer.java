@@ -86,6 +86,9 @@ public class Simmer {
     public static double compare(RealVector x1, RealVector x2) {
         final double n1 = x1.getNorm();
         final double n2 = x2.getNorm();
+        if (n1 == 0 || n2 == 0) {
+            return 1;
+        }
         return 1 - x1.dotProduct(x2) / (n1 * n2);
     }
 

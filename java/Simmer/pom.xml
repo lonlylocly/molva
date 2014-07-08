@@ -13,12 +13,7 @@
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
-                    <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>ru.spb.molva.CMeans</mainClass>
-                        </manifest>
-                    </archive>
+
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
@@ -30,7 +25,16 @@
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
+
                         </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <addClasspath>true</addClasspath>
+                                    <mainClass>ru.spb.molva.Simmer</mainClass>
+                                </manifest>
+                            </archive>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>make-assembly-cmeans</id>
@@ -40,6 +44,12 @@
                         </goals>
                         <configuration>
                             <finalName>cmeans</finalName>
+                            <archive>
+                                <manifest>
+                                    <addClasspath>true</addClasspath>
+                                    <mainClass>ru.spb.molva.CMeans</mainClass>
+                                </manifest>
+                            </archive>
                         </configuration>
                     </execution>
                 </executions>
