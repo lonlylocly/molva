@@ -30,9 +30,6 @@ date=$(date "+%Y%m%d" -d "now")
 date
 $SCRIPTDIR/current-post-cnt.py >> current-post-cnt.log 2>&1 
 
-echo "done"
-exit 0
-
 do_profiles
 
 $SCRIPTDIR/trend.py  1>> trend.log 2>&1 

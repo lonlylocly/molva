@@ -47,9 +47,36 @@ def save_tweet_nouns(cur, vals):
 
     cur.execute("commit")   
 
+def save_word_pairs(cur, lemma_pairs, pairs_table="lemma_pairs"):
+    logging.info("save %d lemma pairs" % len(lemma_pairs))
+    cur.execute("begin transaction")
+
+    cur.executemany("""
+        insert or ignore into %s (noun1_md5, noun2_md5)
+        values (?, ?) 
+    """ % pairs_table, lemma_pairs)
+
+    for l in lemma_pairs:
+        cur.execute("""
+            update %s set cnt = cnt + 1
+            where noun1_md5 = %s and noun2_md5 = %s
+        """ % (pairs_table, l[0], l[1]))
+    
+    cur.execute("commit")
+    logging.info("done")
+
+def make_word_pairs(lemmas):
+    lemma_pairs = []
+    if len(lemmas) <2:
+        return lemma_pairs
+    for i in range(0,len(lemmas)-1):
+        lemma_pairs.append((lemmas[i], lemmas[i+1]))
+
+    return lemma_pairs
+
 def parse_facts_file(tweet_index, facts, cur, cur_main):
-    stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words"])
-    stats.create_given_tables(cur, {"sources": "nouns"})
+    stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words", "lemma_pairs"])
+    stats.create_given_tables(cur, {"sources": "nouns", "word_pairs": "lemma_pairs"})
     stats.create_given_tables(cur_main, ["nouns"])
     stats.create_given_tables(cur_main, {"sources": "nouns"})
 
@@ -66,31 +93,47 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
     nouns_total = set()
     sources_total = set()
     noun_sources = []
+    lemma_pairs = []
+    noun_pairs = []
 
     for event, elem in tree:
         if event == 'end' and elem.tag == 'document':
             cur_doc = int(elem.attrib['di'])
             post_id = ids[cur_doc -1]
             leads = elem.findall(".//Lead")
-            facts = []
+            lemmas = []
+            nouns = []
             for l in leads:
                 text = ElementTree.fromstring(l.get('text').encode('utf8'))
                 for f in text.findall('.//N'):
                     source = f.text
                     noun = f.get('lemma').lower()
                     noun_sources.append((post_id, digest(noun), digest(source)))
+                    lemmas.append(digest(source))
+                    nouns.append(digest(noun))
 
                     nouns_total.add(noun)
                     sources_total.add(source)
+
+            lemma_pairs += make_word_pairs(lemmas)
+            noun_pairs += make_word_pairs(nouns)
 
             if len(noun_sources) > 10000:
                 logging.info("seen %s docid" % (cur_doc))
                 save_tweet_nouns(cur, noun_sources)
                 noun_sources = []
+
+            if len(lemma_pairs) > 20000:
+                save_word_pairs(cur, lemma_pairs)
+                lemma_pairs = []
+                save_word_pairs(cur, noun_pairs, pairs_table="word_pairs") 
+                noun_pairs = []
                
             elem.clear()
 
     save_tweet_nouns(cur, noun_sources)
+    save_word_pairs(cur, lemma_pairs)
+    save_word_pairs(cur, noun_pairs, pairs_table="word_pairs") 
 
     save_nouns(cur, nouns_total)
     save_nouns(cur, sources_total, table="sources")
