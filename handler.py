@@ -48,15 +48,26 @@ class ClusterHandler(tornado.web.RequestHandler):
         cur = self.ind.get_db_for_date(date)
         return stats.get_nouns(cur)
 
-    def get_clusters(self):
+    def get_clusters(self, skip):
         cur = stats.get_cursor(settings["db_dir"] + "/tweets_display.db") 
-        res = cur.execute("select cluster from clusters order by cluster_date desc limit 1 ").fetchone()
+        res = cur.execute("""
+            select cluster 
+            from clusters 
+            order by cluster_date desc 
+            limit 1 
+            offset %s
+        """ % (skip)).fetchone()
 
-        return res[0]
+        return res[0] 
 
     def get(self):
+        skip = self.get_argument("skip", default=0)
+        try:
+            skip = int(skip)
+        except:
+            skip = 0
 
-        cl = self.get_clusters()
+        cl = self.get_clusters(skip=skip)
 
         self.write(cl)
 

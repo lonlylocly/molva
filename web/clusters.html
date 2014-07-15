@@ -32,6 +32,7 @@ td, th {
 <script src="/js/handlebars-v1.3.0.js"></script>
 
 <script id="cluster-template" type="text/x-handlebars-template">
+<span>Обновлено {{update_time}}.</span>
 <table class="groups-table">
 {{#each groups}}
     <tr>
@@ -40,14 +41,14 @@ td, th {
         {{!-- <p>{{avg_dist}}</p> --}}
             {{#each members}}
                 <div style="float: left; padding-left: 5 px;">
-                <a href="/nouns.html?noun_md5={{this.id}}&date={{../../../date}}">{{this.text}}</a> <br/> 
-                <span class="{{this.trend_class}}">{{this.trend}}</span>
+                <a href="https://twitter.com/search?q={{this.text}}" target="_blank">{{this.text}}</a> <br/> 
+                <span class="{{this.trend_class}}">{{this.trend}}</span> <br/>
                 </div>
                 <div style="float: left; width: 10px">&nbsp;</div>
             {{/each}}
             <p>
-            <a href="http://google.com/search?q={{this.query_string}}">g</a> 
-            <a href="http://yandex.ru/yandsearch?text={{this.query_string}}&from_date_full={{../../query_date}}&to_date_full={{../../query_date}}" style="color: red;">Я</a> 
+            <a href="http://google.com/search?q={{this.query_string}}" target="_blank">g</a> 
+            <a href="http://yandex.ru/yandsearch?text={{this.query_string}}" style="color: red;" target="_blank">Я</a> 
             </p>
         </td>
     {{/each}}
@@ -93,6 +94,9 @@ function parse_query_date(_date) {
 function update_cur_date(_date) {
     _date = "" + _date;
     var date_str = _date.substr(0,4) + '-' + _date.substr(4,2) + '-' + _date.substr(6,2);
+    if (_date == "undefined") {
+        date_str = "";
+    }
     $("#stat-date").html(date_str);
 }
 
@@ -122,27 +126,29 @@ function set_trend_color(cluster) {
     }
 }
 
-function loadClusters(parse_url_args) {
-    var k;
-    var _date;
-    if (parse_url_args) {
-        k = getCurUrlParams()["k"];
-        _date = getCurUrlParams()["date"];
-    } else {
-        k = parseInt($('input[name=k-param]:checked').val());
-        _date = parseInt($("#date-param").val());
+function goBack() {
+    var skip;
+    skip = parseInt(getCurUrlParams()["skip"]);
+    if (isNaN(skip)) {
+        skip = 0;
     }
-    update_cur_date(_date);
-    $("#date-param").val(_date);
-    $('input[name=k-param][value=' + k + ']').prop('checked', true);
+    window.location.assign("/?skip=" + parseInt(skip + 1))
+}
 
-    var svd = getCurUrlParams()["svd"];
-
-    console.log("loadClusters");
-    $.get( "/api/cluster?k=" + k + "&date=" + _date + "&svd=" + svd, function( data ) {
-        try{
-        var cl = JSON.parse(data);
+function loadClusters(parse_url_args) {
+    var skip = parseInt(getCurUrlParams()["skip"]);
     
+    if (isNaN(skip)) {
+        skip = 0;
+    }
+    
+    console.log("loadClusters");
+    $.get( "/api/cluster?skip=" + skip, function( data ) {
+        try{
+        var resp = JSON.parse(data);
+    
+        var cl = resp["clusters"];
+
         cl.sort(function(a,b) {
             //var a_val = a["avg_dist"];
             //var b_val = b["avg_dist"];
@@ -166,6 +172,8 @@ function loadClusters(parse_url_args) {
                 if (a_val > b_val) return 1;
                 return 0;
             }).reverse();
+            //cl[i]["members"] = cl[i]["members"].slice(0,2);
+
             var mems = $.map(cl[i]["members"], function(l) {
                 return l["text"];
             })
@@ -193,7 +201,7 @@ function loadClusters(parse_url_args) {
         var source = $("#cluster-template").html();
         var template = Handlebars.compile(source);
 
-        $( "#cluster-holder" ).html( template({"groups": groups, "date": _date, "query_date": parse_query_date(_date)}) );
+        $( "#cluster-holder" ).html( template({"groups": groups, "update_time": resp["update_time"]}) );
         } catch (e){
             console.log(e);
         }
@@ -210,33 +218,38 @@ function loadClusters(parse_url_args) {
 <body onLoad="loadClusters(true)">
 <h3>О чем говорит русский твиттер <span id="stat-date"></span></h3>
 
-<p>
-<div id="available-dates"></div>
-<script>
-$.get( "/api/dates_available", function( data ) {
-    try{
-        var dates = JSON.parse(data);
-
-        var source = $("#dates-template").html();
-        var template = Handlebars.compile(source);
-         
-        $( "#available-dates" ).html( template(dates) );
-    } catch(e) {
-        console.log(e);
-    }
-})
-
-</script>
-</p>
-
-<p>Количество групп:<br/> 
-<input type="radio" name="k-param" value="10"/> 10 <br/>
-<input type="radio" name="k-param" value="100" checked="true"/> 100<br/>
-<input type="radio" name="k-param" value="1000"/> 1000<br/>
-</p>
-<p>День: <input type="text" id="date-param" value=""/> </p>
-<p><button type="button" onClick="loadClusters()">Показать</button></p>
+<div>
+<a href="#" onClick="goBack()">раньше</a>
+</div>
 
 <div id="cluster-holder"></div>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+(function (d, w, c) {
+    (w[c] = w[c] || []).push(function() {
+        try {
+            w.yaCounter25227179 = new Ya.Metrika({id:25227179,
+                    clickmap:true,
+                    trackLinks:true,
+                    accurateTrackBounce:true});
+        } catch(e) { }
+    });
+
+    var n = d.getElementsByTagName("script")[0],
+        s = d.createElement("script"),
+        f = function () { n.parentNode.insertBefore(s, n); };
+    s.type = "text/javascript";
+    s.async = true;
+    s.src = (d.location.protocol == "https:" ? "https:" : "http:") + "//mc.yandex.ru/metrika/watch.js";
+
+    if (w.opera == "[object Opera]") {
+        d.addEventListener("DOMContentLoaded", f, false);
+    } else { f(); }
+})(document, window, "yandex_metrika_callbacks");
+</script>
+<noscript><div><img src="//mc.yandex.ru/watch/25227179" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
 </body>
 </html>
