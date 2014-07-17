@@ -12,7 +12,7 @@ from Indexer import Indexer
 import util
 
 logging.config.fileConfig("logging.conf")
-
+logging.getLogger().setLevel(logging.INFO)
 
 settings = {} 
 try:
@@ -21,6 +21,8 @@ except Exception as e:
     logging.warn(e)
 
 DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
+
+MAX_COEF = 1e7
 
 def get_best_trend_cluster(cluster):
     max_trend = 0
@@ -47,8 +49,12 @@ class BagFreq:
         self.cur = cur
         self.word_freqs = {}
         self.pair_freqs = {}
+        self.lemma_pair_freqs = {}
         self.init_word_freqs()
         self.init_pair_freqs()
+        self.init_lemma_freqs()
+        self.init_lemma_nexts()
+        #self.init_lemma_pair_freqs()
  
     def get_bag_joined(self):
         return ",".join(map(str, self.bag)) 
@@ -99,8 +105,78 @@ class BagFreq:
         #print self.pair_freqs 
 
     def init_lemma_freqs(self):
+        logging.info("start")
         self.cur.execute("""
-            select t.noun_md5, t2.noun_md5cnt, l.noun1_md5, l.noun2_md5, l.cnt
+            select noun_md5, source_md5, count(*)
+            from tweets_words
+            where noun_md5 in (%s)
+            group by noun_md5, source_md5
+        """ % self.get_bag_joined())
+
+        lemma_freqs = {}
+        for row in self.cur.fetchall():
+            n, s, cnt = row
+            if n not in lemma_freqs:
+                lemma_freqs[n] = {}
+            lemma_freqs[n][s] = cnt
+
+        self.lemma_freqs = lemma_freqs
+        logging.info("stop")
+
+    def get_best_lemma(self, noun):
+        bestie = sorted(self.lemma_freqs[noun].keys(), key=lambda x: self.lemma_freqs[noun][x])[-1]
+        return bestie
+
+    def get_bag_lemmas(self):
+        lemmas = []
+        for n in self.noun_lemmas:
+            lemmas += self.noun_lemmas[n]
+
+        return lemmas       
+
+    def init_lemma_nexts(self):
+        logging.info("start")
+        self.cur.execute("""
+            select w.noun1_md5, l.noun_md5
+            from word_pairs w
+            inner join tweets_words t
+            on w.noun2_md5 = t.noun_md5
+            inner join sources l
+            on t.source_md5 = l.noun_md5
+            where w.noun1_md5 in (%s)
+            group by w.noun1_md5, l.noun_md5
+        """ % (self.get_bag_joined()))
+        
+        lemma_nexts = {}
+        for row in self.cur.fetchall():
+            n, l = row
+            if n not in lemma_nexts:
+                lemma_nexts[n] = []
+            lemma_nexts[n].append(l)
+
+        self.lemma_nexts = lemma_nexts
+
+        self.cur.execute("""
+            select noun_md5, source_md5
+            from tweets_words
+            where noun_md5 in (%s)
+            group by noun_md5, source_md5
+        """ % self.get_bag_joined())
+
+        noun_lemmas = {}
+        for row in self.cur.fetchall():
+            n, s = row
+            if n not in noun_lemmas:
+                noun_lemmas[n] = []
+            noun_lemmas[n].append(s)
+        self.noun_lemmas = noun_lemmas
+        
+        logging.info("stop")
+
+    def init_lemma_pair_freqs(self):
+        logging.info("start")
+        self.cur.execute("""
+            select t.noun_md5, t2.noun_md5, l.noun1_md5, l.noun2_md5, l.cnt
             from lemma_pairs l
             inner join tweets_words t
             on l.noun1_md5 = t.source_md5
@@ -110,22 +186,36 @@ class BagFreq:
             and t2.noun_md5 in (%s)
         """ % (self.get_bag_joined(), self.get_bag_joined()))
 
-        lemma_freqs = []
+        lemma_pair_freqs = {}
         for row in self.cur.fetchall():
             n1, n2, l1, l2, cnt = row
-            lemm_freq = - math.log(float(cnt) / self.word_freqs[n1], 2)
-            lemma_freqs.append((n1, n2, l1, l2, lemm_freq)) 
+            lemma_freq = - math.log(float(cnt) / self.word_freqs[n1], 2)
+            if (n1, n2) not in lemma_pair_freqs:
+                lemma_pair_freqs[(n1, n2)] = []
+            
+            lemma_pair_freqs[(n1, n2)].append((l1, l2, lemma_freq))
         
-        self.lemma_freqs = lemma_freqs
+        self.lemma_pair_freqs = lemma_pair_freqs 
+        logging.info("stop")
+
+    def get_chain_lemmas(self, chain):
+        chain_lemmas = map(lambda x: None, range(0, len(chain)))
+        chain_lemmas[0] = len(set(self.noun_lemmas[chain[0]]) )
+        for i in range(0, len(chain)-1):
+            suggested = set(self.lemma_nexts[chain[i]])
+            available = set(self.noun_lemmas[chain[i+1]])
+            chain_lemmas[i + 1] = len( suggested & available )
+
+        return chain_lemmas
 
     def getf(self, n1, n2):
         if n1 in self.pair_freqs:
             if n2 in self.pair_freqs[n1]:
                 return self.pair_freqs[n1][n2]
-        return 1e6
+        return MAX_COEF
 
 def get_bag_best_pair(neighbours, bag):
-    best = 1e6
+    best = MAX_COEF
     best_i = None
     best_j = None
     for i in range(0, len(neighbours)):
@@ -148,7 +238,7 @@ def get_bag_best_pair(neighbours, bag):
     return (best, best_i, best_j) 
 
 def get_best_neighbour(neighbours, chains, bag, right=True):
-    best = 1e6
+    best = MAX_COEF
     best_n = None
     best_c = None 
     for c in range(0,len(chains)):
@@ -183,9 +273,9 @@ def align(bag, nouns):
         best_left_t = get_best_neighbour(neighbours, chains, bag, right=False) 
         best_right_t = get_best_neighbour(neighbours, chains, bag, right=True) 
 
-        best_f = best_pair[0]    if best_pair is not None else 1e6
-        best_l = best_left_t[0]  if best_left_t is not None else 1e6
-        best_r = best_right_t[0] if best_right_t is not None else 1e6
+        best_f = best_pair[0]    if best_pair is not None else MAX_COEF
+        best_l = best_left_t[0]  if best_left_t is not None else MAX_COEF
+        best_r = best_right_t[0] if best_right_t is not None else MAX_COEF
 
         if  best_f < best_l and best_f < best_r:
             new_best_pair = [neighbours[best_pair[1]], neighbours[best_pair[2]]]
@@ -200,13 +290,13 @@ def align(bag, nouns):
             best_l, n, c = best_right_t
             chains[c].append(neighbours.pop(n))
         else:
-            logging.warn(u" ".join(map(lambda x: nouns[x], neighbours)))
-            logging.warn(chains)
-            logging.warn("Neighbours split: there's a tie, forget it")
+            logging.warn(u"Не удалось найти пару: " + u" ".join(map(lambda x: nouns[x], neighbours)))
+            #logging.warn(chains)
+            #logging.warn("Neighbours split: there's a tie, forget it")
             break 
 
     while len(chains) > 1:
-        best_f = 1e6
+        best_f = MAX_COEF
         best_i = None
         best_j = None
         for i in range(0, len(chains)):
@@ -220,15 +310,18 @@ def align(bag, nouns):
                     best_i = j 
                     best_j = i
         if best_i is not None:
-            chain_j = chains.pop(j)
-            chains[best_i] += chain_j
+            chains[best_i] += chains[j]
+            chains.pop(j)
         else:
-            logging.warn("Chains glue: there's a tie, forget it")
+            #logging.warn("Chains glue: there's a tie, forget it")
             break
 
     logging.debug(chains)
 
     return chains
+
+def choose_lemmas(chain, bag):
+    pass
 
 def main():
     parser = util.get_dates_range_parser()
@@ -258,11 +351,14 @@ def main():
         nouns = stats.get_nouns(cur, used_nouns)
         
         bag = BagFreq(used_nouns, cur_date)
-
+    
+        logging.info(u"Исходное: " + u" ".join(map(lambda x: nouns[x], bag.bag)))
         chains = align(bag, nouns) 
 
         for c in chains:
             logging.info(u"Цепочка: " + u" ".join(map(lambda x: nouns[x], c)))
+            print bag.get_chain_lemmas(c)
+
 
     logging.info("Done")
 

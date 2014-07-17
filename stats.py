@@ -20,16 +20,23 @@ def get_cursor(db):
 
     return cur 
 
+def get_sources(cur, nouns_only=None):
+    return get_nounlikes(cur, nouns_only, "sources")
+
 def get_nouns(cur, nouns_only=None):
+    return get_nounlikes(cur, nouns_only, "nouns")
+
+def get_nounlikes(cur, nouns_only, nouns_table):
     cond = ""
     if nouns_only is not None:
         cond = ",".join(map(str, nouns_only))
         cond = "where noun_md5 in (%s)" % cond
 
     res = cur.execute("""
-        select noun_md5, noun from nouns
+        select noun_md5, noun 
+        from %s
         %s
-    """ % (cond)).fetchall()
+    """ % (nouns_table, cond)).fetchall()
     
     nouns = {}
     for r in res:
