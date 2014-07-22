@@ -47,23 +47,31 @@ def save_tweet_nouns(cur, vals):
 
     cur.execute("commit")   
 
-def save_word_pairs(cur, lemma_pairs, pairs_table="lemma_pairs"):
-    logging.info("save %d lemma pairs" % len(lemma_pairs))
+def save_lemma_word_pairs(cur, lemma_word_pairs):
+    logging.info("save %d lemma pairs" % len(lemma_word_pairs))
     cur.execute("begin transaction")
 
     cur.executemany("""
-        insert or ignore into %s (noun1_md5, noun2_md5)
-        values (?, ?) 
-    """ % pairs_table, lemma_pairs)
+        insert or ignore into lemma_word_pairs (noun1_md5, noun2_md5, source1_md5, source2_md5)
+        values (?, ?, ?, ?) 
+    """, lemma_word_pairs)
 
-    for l in lemma_pairs:
-        cur.execute("""
-            update %s set cnt = cnt + 1
-            where noun1_md5 = %s and noun2_md5 = %s
-        """ % (pairs_table, l[0], l[1]))
+    cur.executemany("""
+        update lemma_word_pairs set cnt = cnt + 1
+        where noun1_md5 = ? and noun2_md5 = ? and source1_md5 = ? and source2_md5 = ?
+    """, lemma_word_pairs )
     
     cur.execute("commit")
     logging.info("done")
+
+def make_lemma_word_pairs(words, lemmas):
+    word_pairs = make_word_pairs(words)
+    lemma_pairs = make_word_pairs(lemmas)
+    lemma_word_pairs = []
+    for i in range(0, len(word_pairs)):
+        lemma_word_pairs.append((word_pairs[i][0], word_pairs[i][1], lemma_pairs[i][0], lemma_pairs[i][1]))
+
+    return lemma_word_pairs    
 
 def make_word_pairs(lemmas):
     lemma_pairs = []
@@ -75,8 +83,8 @@ def make_word_pairs(lemmas):
     return lemma_pairs
 
 def parse_facts_file(tweet_index, facts, cur, cur_main):
-    stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words", "lemma_pairs"])
-    stats.create_given_tables(cur, {"sources": "nouns", "word_pairs": "lemma_pairs"})
+    stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words", "lemma_word_pairs"])
+    stats.create_given_tables(cur, {"sources": "nouns"})
     stats.create_given_tables(cur_main, ["nouns"])
     stats.create_given_tables(cur_main, {"sources": "nouns"})
 
@@ -93,8 +101,7 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
     nouns_total = set()
     sources_total = set()
     noun_sources = []
-    lemma_pairs = []
-    noun_pairs = []
+    lemma_word_pairs = []
 
     for event, elem in tree:
         if event == 'end' and elem.tag == 'document':
@@ -115,25 +122,21 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
                     nouns_total.add(noun)
                     sources_total.add(source)
 
-            lemma_pairs += make_word_pairs(lemmas)
-            noun_pairs += make_word_pairs(nouns)
+            lemma_word_pairs += make_lemma_word_pairs(nouns, lemmas)
 
             if len(noun_sources) > 10000:
                 logging.info("seen %s docid" % (cur_doc))
                 save_tweet_nouns(cur, noun_sources)
                 noun_sources = []
 
-            if len(lemma_pairs) > 20000:
-                save_word_pairs(cur, lemma_pairs)
-                lemma_pairs = []
-                save_word_pairs(cur, noun_pairs, pairs_table="word_pairs") 
-                noun_pairs = []
+            if len(lemma_word_pairs) > 20000:
+                save_lemma_word_pairs(cur, lemma_word_pairs) 
+                lemma_word_pairs = []
                
             elem.clear()
 
     save_tweet_nouns(cur, noun_sources)
-    save_word_pairs(cur, lemma_pairs)
-    save_word_pairs(cur, noun_pairs, pairs_table="word_pairs") 
+    save_lemma_word_pairs(cur, lemma_word_pairs) 
 
     save_nouns(cur, nouns_total)
     save_nouns(cur, sources_total, table="sources")

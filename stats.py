@@ -320,12 +320,14 @@ CREATE_TABLES = {
             PRIMARY KEY (noun_md5)
         )
     """,
-    "lemma_pairs": """
-        CREATE TABLE IF NOT EXISTS lemma_pairs (
+    "lemma_word_pairs": """
+        CREATE TABLE IF NOT EXISTS lemma_word_pairs (
             noun1_md5 integer,
             noun2_md5 integer,
+            source1_md5 integer,
+            source2_md5 integer,
             cnt integer default 0,
-            PRIMARY KEY (noun1_md5, noun2_md5)
+            PRIMARY KEY (noun1_md5, noun2_md5, source1_md5, source2_md5)
         )
     """ 
 }
