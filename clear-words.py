@@ -28,14 +28,14 @@ def main():
     logging.info("Clear words for date %s" % args.start)
     cur = ind.get_db_for_date(args.start)
 
-    cur.execute("begin transaction")
+    #cur.execute("begin transaction")
     cur.execute("delete from tomita_progress")
     cur.execute("delete from tweets_nouns")
     cur.execute("delete from tweets_words")
-    cur.execute("delete from lemma_pairs")
+    cur.execute("delete from lemma_word_pairs")
     #cur.execute("delete from word_pairs")
 
-    cur.execute("commit")
+    #cur.execute("commit")
     logging.info("Done")
 
 if __name__ == '__main__':

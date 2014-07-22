@@ -10,6 +10,7 @@ import stats
 from Indexer import Indexer
 import util
 import KMeanCluster
+import aligner
 
 logging.config.fileConfig("logging.conf")
 
@@ -58,8 +59,9 @@ def get_used_nouns(cur):
     return map(lambda x: x[0], res)    
  
 def main():
+    logging.info("start")
     parser = util.get_dates_range_parser()
-    parser.add_argument("-k")
+    #parser.add_argument("-k")
     parser.add_argument("-i")
     args = parser.parse_args()
 
@@ -74,8 +76,7 @@ def main():
 
     stats.create_given_tables(cur_display, ["clusters"])
 
-    cnt = cur.execute("select count(*) from noun_similarity").fetchone()
-    cnt = cnt[0]
+    #cnt = cur.execute("select count(*) from noun_similarity").fetchone()[0]
 
     used_nouns = get_used_nouns(cur)        
 
@@ -87,9 +88,9 @@ def main():
     logging.info("get sim_dict")
     sim_dict = get_sims(cur) 
 
-    for k in [int(args.k)]:
-        best_ratio = 10 
-        cl = []
+    best_ratio = 10 
+    cl = []
+    for k in [900, 1000, 1100]:
         for i in range(0, int(args.i)): 
             logging.info("get %s clusters, iteration %s" % (k, i))
             resp = KMeanCluster.get_clusters(sim_dict, int(k), nouns)
@@ -98,19 +99,21 @@ def main():
                 best_ratio = ratio
                 cl = resp["clusters"]
    
-        logging.info("Best ratio: %s" % best_ratio) 
-        for c in cl:
-            for m in c["members"]:
-                m["post_cnt"] = post_cnt[m["id"]]
-                trend = noun_trend[m["id"]] if m["id"] in noun_trend else 0
-                m["trend"] = "%.3f" % trend 
+    logging.info("Best ratio: %s" % best_ratio) 
+    for c in cl:
+        for m in c["members"]:
+            m["post_cnt"] = post_cnt[m["id"]]
+            trend = noun_trend[m["id"]] if m["id"] in noun_trend else 0
+            m["trend"] = "%.3f" % trend 
 
-        cl = {"clusters": cl, "update_time": update_time}
-        cl_json = json.dumps(cl)
-        cur_display.execute("""
-            replace into clusters (cluster_date, k, cluster)
-            values (?, ?, ?)
-        """, (today, k, cl_json))
+    cl = aligner.get_aligned_cluster(cur, cl)
+    
+    cl = {"clusters": cl, "update_time": update_time}
+    cl_json = json.dumps(cl)
+    cur_display.execute("""
+        replace into clusters (cluster_date, cluster)
+        values (?, ?)
+    """, (today, cl_json))
 
     logging.info("Done")
 

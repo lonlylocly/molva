@@ -8,7 +8,6 @@
     border-collapse: collapse;
 }
 td, th {
-    border: 2px solid rgb(218,218,218);
     vertical-align: top;
     padding: 5px;
 } 
@@ -28,6 +27,8 @@ td, th {
     color: grey;
 }
 </style>
+    
+<!--border: 2px solid rgb(218,218,218);-->
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/js/handlebars-v1.3.0.js"></script>
 
@@ -38,18 +39,19 @@ td, th {
     <tr>
     {{#each this}}
         <td>
-        {{!-- <p>{{avg_dist}}</p> --}}
+            <span class="{{this.trend_class}}">{{this.avg_trend}}</span> <br/>
+        </td>
+        <td>
             {{#each members}}
-                <div style="float: left; padding-left: 5 px;">
-                <a href="https://twitter.com/search?q={{this.text}}" target="_blank">{{this.text}}</a> <br/> 
-                <span class="{{this.trend_class}}">{{this.trend}}</span> <br/>
-                </div>
-                <div style="float: left; width: 10px">&nbsp;</div>
+                <a href="https://twitter.com/search?q={{this.text}}" target="_blank">{{this.text}}</a> 
             {{/each}}
-            <p>
-            <a href="http://google.com/search?q={{this.query_string}}" target="_blank">g</a> 
-            <a href="http://yandex.ru/yandsearch?text={{this.query_string}}" style="color: red;" target="_blank">Я</a> 
-            </p>
+        </td>
+        <td>
+        <div style="display: block;">
+            <a href="http://google.com/search?q={{this.query_string}}" target="_blank">g</a>&nbsp; 
+            <a href="http://yandex.ru/yandsearch?text={{this.query_string}}" style="color: red;" target="_blank">Я</a> &nbsp;
+            <a href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" target="_blank"><span style="color: red">Я</span>.Новости</a>
+            </div>
         </td>
     {{/each}}
     </tr>
@@ -111,19 +113,23 @@ function get_max_trend(cluster) {
 }
 
 function set_trend_color(cluster) {
+    var avg_trend = 0;
     for(var i=0; i<cluster["members"].length; i++) {
-        var trend = cluster["members"][i]["trend"];
-        var trend_class = "trend-unknown";
-        if (trend >0) {
-            trend_class = "trend-raise";
-            cluster["members"][i]["trend"] = "+" + trend;
-        }
-        if (trend < 0) {
-            trend_class = "trend-fall";
-        }
-
-        cluster["members"][i]["trend_class"] = trend_class;
+        avg_trend += parseFloat(cluster["members"][i]["trend"]);
     }
+    avg_trend = avg_trend / cluster["members"].length;
+
+    var trend_class = "trend-unknown";
+    var sign = "";
+    if (avg_trend >0) {
+        trend_class = "trend-raise";
+        sign = "+";
+    } else if (avg_trend < 0) {
+        trend_class = "trend-fall";
+    }
+    
+    cluster["avg_trend"] = sign +  avg_trend.toFixed(2);
+    cluster["trend_class"] = trend_class;
 }
 
 function goBack() {
@@ -164,20 +170,25 @@ function loadClusters(parse_url_args) {
 
         var cl2= [];
         for(var i=0; i<cl.length; i++) {
-            cl[i]["members"].sort(function(a,b) {
-                var a_val = a["trend"];
-                var b_val = b["trend"];
-
-                if (a_val < b_val) return -1;
-                if (a_val > b_val) return 1;
-                return 0;
-            }).reverse();
+            //cl[i]["members"].sort(function(a,b) {
+            //    var a_val = a["trend"];
+            //    var b_val = b["trend"];
+            //
+            //    if (a_val < b_val) return -1;
+            //    if (a_val > b_val) return 1;
+            //    return 0;
+            //}).reverse();
             //cl[i]["members"] = cl[i]["members"].slice(0,2);
 
             var mems = $.map(cl[i]["members"], function(l) {
                 return l["text"];
             })
-            set_trend_color(cl[i]);
+
+            try {
+                set_trend_color(cl[i]);
+            } catch(e) {
+                console.log(e);
+            }
 
             cl[i]["query_string"] = mems.join("+"); 
             if ( cl[i]["members_len"] > 1) {
