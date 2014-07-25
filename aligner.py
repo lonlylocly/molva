@@ -49,6 +49,13 @@ def get_cluster_avg_trend(cluster):
 
     return trend / len(cluster["members"])
 
+def get_best3_trend(cluster):
+    trend = 0
+    for m in sorted(cluster["members"], key=lambda x: float(x["trend"]), reverse=True)[:3]:
+        trend += float(m["trend"])
+
+    return trend
+
 class TotalFreq:
     def __init__(self, cur, nouns ):
         logging.info("start")
@@ -320,8 +327,9 @@ def get_lemma_perplexity(chain, lemma, bag):
         l1, l2 = lemma[i], lemma[i+1]
         if (n1, n2, l1, l2) in bag.lemma_pair_freqs:        
             perpl += bag.lemma_pair_freqs[(n1,n2,l1,l2)]
-        #elif (n1, l1) in bag.lemma_freqs:
-        #    perpl += bag.lemma_freqs[(n1,l1)]
+        # need a weighted formula
+        #elif n1 in bag.total_freq.lemma_freqs and l1 in bag.total_freq.lemma_freqs[n1]:
+        #    perpl += bag.total_freq.lemma_freqs[n1][l1]
         else: 
             perpl += MAX_COEF
     return perpl
@@ -409,7 +417,7 @@ def align(bag, nouns):
 
 def get_aligned_cluster(cur, cluster, trendy_clusters_limit=20):
     valid_clusters = filter(lambda x: len(x["members"]) > 1, cluster)
-    trendy_clusters = sorted(valid_clusters, key=lambda x: get_cluster_avg_trend(x), reverse=True)
+    trendy_clusters = sorted(valid_clusters, key=lambda x: get_best3_trend(x), reverse=True)
 
     cl_nouns = []
     for c in trendy_clusters:
@@ -442,9 +450,11 @@ def get_aligned_cluster(cur, cluster, trendy_clusters_limit=20):
             new_clusters.append({
                 "members": members, 
                 "gen_title": lemmas_title if len(lemmas)>0 else nouns_title,
-                "members_len": len(members)})
+                "members_len": len(members),
+                "unaligned": cluster
+            })
 
-    sample = sorted(new_clusters, key=lambda x: get_cluster_avg_trend(x), reverse=True)
+    sample = sorted(new_clusters, key=lambda x: get_best3_trend(x), reverse=True)
 
     return sample
 
