@@ -71,3 +71,4 @@ if __name__ == '__main__':
 
     stream = tweepy.Stream(auth, listener)
     stream.filter(track=settings["russian_keywords"])
+    #stream.sample()

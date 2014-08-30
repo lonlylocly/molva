@@ -64,7 +64,7 @@ class Indexer:
             full_path = os.path.join(self.db_dir, f)
             if os.path.isfile(full_path):
                 basename = os.path.basename(f)
-                match = re.search("tweets_(\d{8})\.db", basename)
+                match = re.search("tweets_(\d{8})\.db$", basename)
                 if match:
                     date = match.group(1)
                     dates_dbs[date] = os.path.join(self.db_dir, basename)

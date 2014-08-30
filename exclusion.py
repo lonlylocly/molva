@@ -111,6 +111,7 @@ def get_coocurence(post_nouns, nouns_freqs):
 
 def get_post_nouns(cur):
     logging.info("start")
+    stats.create_given_tables(cur, ["tweet_chains"])
     cur.execute("""
         select t.post_id, n.noun_md5
         from tweet_chains t
@@ -192,7 +193,7 @@ def apply_corrections(cur):
     cur.execute("begin transaction")
 
     cur.execute("""
-        drop table noun_similarity_old
+        drop table if exists noun_similarity_old
     """)
 
     cur.execute("""
