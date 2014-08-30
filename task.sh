@@ -33,6 +33,7 @@ $SCRIPTDIR/current-post-cnt.py >> current-post-cnt.log 2>&1
 do_profiles
 
 $SCRIPTDIR/trend.py  1>> trend.log 2>&1 
+# TODO по ходу эта шняга не работает
 echo "$(date) exclusion"
 $SCRIPTDIR/exclusion.py  1>> exclusion.log 2>&1 
 

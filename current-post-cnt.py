@@ -41,7 +41,7 @@ def count_currents(cur, utc_now):
 
     cur_tables2 = {
         "tweets_nouns_cur": "tweets_nouns", 
-        #"chains_nouns_all": "chains_nouns",
+    #    "chains_nouns_all": "chains_nouns",
         "chains_nouns_n_1": "chains_nouns",
         "chains_nouns_n_2": "chains_nouns",
         "chains_nouns_n_3": "chains_nouns",
@@ -59,17 +59,17 @@ def count_currents(cur, utc_now):
         where created_at <= '%(time)s'
     """ % {'time': time_ranges[-1]["min"]})
 
-    for db in ("today.", "ystd."):
+    for db in ("today", "ystd"):
         logging.info("chains_nouns_all for db: %s" % db)
         cur.execute("""
             insert or ignore into chains_nouns_all 
             select tc.post_id, n1.noun_md5, tc.reply_id, n2.noun_md5, t.created_at 
-            from %(db)stweet_chains tc 
-            inner join %(db)stweets_nouns n1 
+            from %(db)s.tweet_chains tc 
+            inner join %(db)s.tweets_nouns n1 
             on n1.id = tc.post_id 
-            inner join %(db)stweets_nouns n2 
+            inner join %(db)s.tweets_nouns n2 
             on n2.id = tc.reply_id
-            inner join %(db)stweets t 
+            inner join %(db)s.tweets t 
             on tc.post_id = t.id
             where t.created_at > '%(time)s'
         """ % {"db": db, "time": time_ranges[-1]["min"]})
@@ -77,8 +77,8 @@ def count_currents(cur, utc_now):
         logging.info("tweets_nouns_cur for db: %s" % db)
         cur.execute("""
             insert into tweets_nouns_cur
-            select n.id, n.noun_md5 from %(db)stweets_nouns n
-            inner join %(db)stweets t
+            select n.id, n.noun_md5 from %(db)s.tweets_nouns n
+            inner join %(db)s.tweets t
             on n.id = t.id
             where t.created_at > '%(time)s'
         """ % {"db": db, "time": utc_ystd_m})
