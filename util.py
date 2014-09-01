@@ -5,6 +5,7 @@ import re
 import argparse
 import traceback
 import logging
+import time
 
 from Exceptions import WoapeException
 
@@ -48,4 +49,17 @@ def try_several_times(f, times, error_return=[]):
 
     return error_return
 
+def time_logger(func):
+    def inner(*args, **kwargs):
+        inner.__name__ = func.__name__
+        logging.info("Stating <%s>" % func.__name__)
+        start_time =time.time()
+        try:
+            res = func(*args, **kwargs) 
+        finally:
+            end_time=time.time()
+            logging.info("<%s> Time spent: %.3f seconds" % (func.__name__, end_time - start_time))
 
+        return res
+
+    return inner

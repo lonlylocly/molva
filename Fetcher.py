@@ -216,6 +216,7 @@ class Fetcher:
 
         cont = json.loads(content)
         saved = 0
+        too_old = 0
         for t in cont:
             if not util.got_russian_letters(t["text"]):
                 continue
@@ -225,8 +226,11 @@ class Fetcher:
             if mysql_time[:8] >= yesterday:
                 self.save_tweet(t)
                 saved += 1
+            else:
+                too_old += 1
 
-        logging.info("Saved %s statues" % saved)
+        logging.info("Saved %s statuses" % saved)
+        logging.info("Not saved %s statuses (too old)" % too_old)
 
         cur.execute("update statuses_progress set id_done = 1 where id in (%s) " % ids_enc)
 

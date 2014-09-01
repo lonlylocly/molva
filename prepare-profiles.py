@@ -84,8 +84,7 @@ def main():
     ind = Indexer(DB_DIR)
     cur = stats.get_cursor(DB_DIR + "/tweets.db")
             
-    stats.create_given_tables(cur, ["noun_similarity"])
-    cur.execute("create table if not exists noun_sim_new as select * from noun_similarity limit 0")
+    stats.create_given_tables(cur, {"noun_sim_new": "noun_similarity"})
     cur.execute("delete from noun_sim_new")
 
     #nouns = stats.get_nouns(cur)

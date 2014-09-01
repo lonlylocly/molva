@@ -79,6 +79,7 @@ def main():
     #cnt = cur.execute("select count(*) from noun_similarity").fetchone()[0]
 
     used_nouns = get_used_nouns(cur)        
+    logging.info("used nouns %s" % used_nouns)
 
     nouns = stats.get_nouns(cur, used_nouns)
     noun_trend = stats.get_noun_trend(cur)

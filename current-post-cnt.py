@@ -3,8 +3,7 @@ import sys
 import os
 import logging, logging.config
 import json
-from datetime import datetime, timedelta
-from datetime import date
+from datetime import datetime, timedelta, date
 
 import stats
 from Indexer import Indexer
@@ -21,6 +20,66 @@ except Exception as e:
 
 DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
+@util.time_logger
+def build_chains_nouns_all(cur, db, time_bound):
+    logging.info("chains_nouns_all for db: %s" % db)
+    cur.execute("""
+        insert or ignore into chains_nouns_all 
+        select tc.post_id, n1.noun_md5, tc.reply_id, n2.noun_md5, t.created_at 
+        from %(db)s.tweet_chains tc 
+        inner join %(db)s.tweets_nouns n1 
+        on n1.id = tc.post_id 
+        inner join %(db)s.tweets_nouns n2 
+        on n2.id = tc.reply_id
+        inner join %(db)s.tweets t 
+        on tc.post_id = t.id
+        where t.created_at > '%(time)s'
+    """ % {"db": db, "time": time_bound})
+
+@util.time_logger
+def build_tweets_nouns_cur(cur, db, time_bound):
+    logging.info("tweets_nouns_cur for db: %s" % db)
+    cur.execute("""
+        insert into tweets_nouns_cur
+        select n.id, n.noun_md5 from %(db)s.tweets_nouns n
+        inner join %(db)s.tweets t
+        on n.id = t.id
+        where t.created_at > '%(time)s'
+    """ % {"db": db, "time": time_bound})
+
+@util.time_logger
+def build_chains_nouns(cur, time_ranges):
+    logging.info("chains_nouns%s; time (%s, %s)" % (suff, time_ranges[0]["min"], time_ranges[0]["max"]))
+    cur.execute("""
+        insert into chains_nouns
+        select p_id, p_md5, r_id, r_md5  from chains_nouns_all
+        where created_at > '%(min_time)s' and created_at <= '%(max_time)s'
+    """ % {"min_time": time_ranges[0]["min"], "max_time": time_ranges[0]["max"]})
+
+    for i in range(0, len(time_ranges)):
+        suff = time_ranges[i]["suff"]
+        #logging.info("chains_nouns%s; time (%s, %s)" % (suff, time_ranges[i]["min"], time_ranges[i]["max"]))
+        #cur.execute("""
+        #    insert into chains_nouns%(suff)s
+        #    select p_id, p_md5, r_id, r_md5  from chains_nouns_all
+        #    where created_at > '%(min_time)s' and created_at <= '%(max_time)s'
+        #""" % {"suff": suff, "min_time": time_ranges[i]["min"], "max_time": time_ranges[i]["max"]})
+
+        logging.info("post_cnt%s" % (suff))
+        cmd = """
+            insert or ignore into post_cnt%(suff)s 
+            select p_md5,  count(*) 
+            from (
+                select p_id, p_md5 
+                from chains_nouns_all
+                where created_at > '%(min_time)s' and created_at <= '%(max_time)s' 
+                group by p_md5, p_id
+            ) group by p_md5
+        """ % {"suff": suff, "min_time": time_ranges[i]["min"], "max_time": time_ranges[i]["max"]}
+        logging.info(cmd)
+        cur.execute(cmd)
+
+@util.time_logger
 def count_currents(cur, utc_now):
     utc_ystd = utc_now - timedelta(1)
     utc_ystd_m = to_mysql_timestamp(utc_ystd) 
@@ -42,9 +101,9 @@ def count_currents(cur, utc_now):
     cur_tables2 = {
         "tweets_nouns_cur": "tweets_nouns", 
     #    "chains_nouns_all": "chains_nouns",
-        "chains_nouns_n_1": "chains_nouns",
-        "chains_nouns_n_2": "chains_nouns",
-        "chains_nouns_n_3": "chains_nouns",
+        #"chains_nouns_n_1": "chains_nouns",
+        #"chains_nouns_n_2": "chains_nouns",
+        #"chains_nouns_n_3": "chains_nouns",
         "post_cnt_n_1": "post_cnt",
         "post_cnt_n_2": "post_cnt",
         "post_cnt_n_3": "post_cnt",
@@ -60,48 +119,11 @@ def count_currents(cur, utc_now):
     """ % {'time': time_ranges[-1]["min"]})
 
     for db in ("today", "ystd"):
-        logging.info("chains_nouns_all for db: %s" % db)
-        cur.execute("""
-            insert or ignore into chains_nouns_all 
-            select tc.post_id, n1.noun_md5, tc.reply_id, n2.noun_md5, t.created_at 
-            from %(db)s.tweet_chains tc 
-            inner join %(db)s.tweets_nouns n1 
-            on n1.id = tc.post_id 
-            inner join %(db)s.tweets_nouns n2 
-            on n2.id = tc.reply_id
-            inner join %(db)s.tweets t 
-            on tc.post_id = t.id
-            where t.created_at > '%(time)s'
-        """ % {"db": db, "time": time_ranges[-1]["min"]})
+        build_chains_nouns_all(cur, db, time_ranges[-1]["min"])
 
-        logging.info("tweets_nouns_cur for db: %s" % db)
-        cur.execute("""
-            insert into tweets_nouns_cur
-            select n.id, n.noun_md5 from %(db)s.tweets_nouns n
-            inner join %(db)s.tweets t
-            on n.id = t.id
-            where t.created_at > '%(time)s'
-        """ % {"db": db, "time": utc_ystd_m})
+        build_tweets_nouns_cur(cur, db, utc_ystd_m)
 
-    for i in range(0, len(time_ranges)):
-        suff = time_ranges[i]["suff"]
-        logging.info("chains_nouns%s; time (%s, %s)" % (suff, time_ranges[i]["min"], time_ranges[i]["max"]))
-        cur.execute("""
-            insert into chains_nouns%(suff)s
-            select p_id, p_md5, r_id, r_md5  from chains_nouns_all
-            where created_at > '%(min_time)s' and created_at <= '%(max_time)s'
-        """ % {"suff": suff, "min_time": time_ranges[i]["min"], "max_time": time_ranges[i]["max"]})
-
-        logging.info("post_cnt%s" % (suff))
-        cur.execute("""
-            insert or ignore into post_cnt%(suff)s 
-            select p_md5,  count(*) 
-            from (
-                select p_id, p_md5 
-                from chains_nouns%(suff)s 
-                group by p_md5, p_id
-            ) group by p_md5
-        """ % {"suff": suff})
+    build_chains_nouns(cur, time_ranges)
 
     logging.info("post_reply_cnt")
     cur.execute("""
