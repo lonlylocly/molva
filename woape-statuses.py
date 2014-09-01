@@ -47,9 +47,8 @@ def main():
 
     ind = Indexer(DB_DIR)
    
-    fetcher = Fetcher(DB_DIR, headers)
 
-    for date in sorted(ind.dates_dbs.keys()):
+    for date in sorted(ind.dates_dbs.keys())[-2:]:
         if args.start is not None and date < args.start:
             continue
         if args.end is not None and date > args.end:
@@ -59,8 +58,11 @@ def main():
         
         ind.add_new_tweets_for_statuses(date)
 
-        while lookup_statuses(cur, fetcher):
-            pass
+        while True:
+            fetcher = Fetcher(DB_DIR, headers)
+            res = lookup_statuses(cur, fetcher)
+            if not res:
+                break
     
 if __name__ == "__main__":
     main()
