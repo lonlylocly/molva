@@ -9,32 +9,6 @@
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/custom.css" rel="stylesheet">
 
-<style>
-
-.groups-table {
-    border-collapse: collapse;
-}
-td, th {
-    vertical-align: top;
-    padding: 5px;
-} 
-.cluster-container {
-    float: left;
-    padding-right: 5px;
-    
-    border: 2px solid rgb(218,218,218);
-}
-.trend-raise {
-    color: green;
-}
-.trend-fall {
-    color: red;
-}
-.trend-unknown {
-    color: grey;
-}
-</style>
-    
 <!--border: 2px solid rgb(218,218,218);-->
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/js/handlebars-v1.3.0.js"></script>
@@ -48,7 +22,6 @@ td, th {
 {{#each groups}}
     <li class="list-group-item">
     <div class="row">
-    {{#each this}}
         <div class="col-md-1">
             <span class="{{this.trend_class}}">{{this.avg_trend}}</span>
         </div>
@@ -62,7 +35,6 @@ td, th {
             <a href="http://yandex.ru/yandsearch?text={{this.query_string}}" class="btn btn-sm btn-default" target="_blank"><span style="color: red">Я</span>ндекс</a> &nbsp;
             <a href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" class="btn btn-sm btn-default" target="_blank"><span style="color: red">Я</span>ндекс.Новости</a>
         </div>
-    {{/each}}
     </div>
     </li>
 {{/each}}
@@ -71,7 +43,10 @@ td, th {
 <script src="/js/clusters.js"></script>
 
 </head>
-<body onLoad="loadClusters(true)">
+<body>
+    <script>
+        loadClusters()
+    </script>
     <div class="navbar navbar-fixed-top navbar-default" role="navigation">
       <div class="container">
         <div class="navbar-header">
@@ -81,7 +56,7 @@ td, th {
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="http://molva.spb.ru">molva.spb.ru</a>
+          <a class="navbar-brand" href="http://molva.spb.ru">molva.spb.ru <sub class="beta-mark">&beta;eta</sub></a>
         </div>
         <div class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
@@ -94,7 +69,9 @@ td, th {
 
 
     <div class="container jumbotron-1">
-        <div id="cluster-holder"></div>
+        <div id="cluster-holder">
+            <p>Загрузка...</p>
+        </div>
 
       <footer  style="padding-bottom: 30px;">
             <p>&copy; <a href="http://twitter.com/lonlylocly" id="contact">Николай Васильев</a>
