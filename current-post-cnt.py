@@ -49,7 +49,7 @@ def build_tweets_nouns_cur(cur, db, time_bound):
 
 @util.time_logger
 def build_chains_nouns(cur, time_ranges):
-    logging.info("chains_nouns%s; time (%s, %s)" % (suff, time_ranges[0]["min"], time_ranges[0]["max"]))
+    logging.info("chains_nouns; time (%s, %s)" % (time_ranges[0]["min"], time_ranges[0]["max"]))
     cur.execute("""
         insert into chains_nouns
         select p_id, p_md5, r_id, r_md5  from chains_nouns_all
