@@ -6,3 +6,29 @@
   margin-top: 60px;
   color: inherit;
 }
+.beta-mark {
+  color: #00CECE;
+}
+
+.groups-table {
+    border-collapse: collapse;
+}
+td, th {
+    vertical-align: top;
+    padding: 5px;
+} 
+.cluster-container {
+    float: left;
+    padding-right: 5px;
+    
+    border: 2px solid rgb(218,218,218);
+}
+.trend-raise {
+    color: green;
+}
+.trend-fall {
+    color: red;
+}
+.trend-unknown {
+    color: grey;
+}
