@@ -81,6 +81,7 @@ function fill_cluster_properties(cl) {
             console.log(e);
         }
 
+        cl[i]["query_string"] = mems.join("+");
         if ( cl[i]["members_len"] > 1) {
             cl2.push(cl[i]);
         }
