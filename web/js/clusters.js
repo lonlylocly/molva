@@ -1,16 +1,4 @@
-function clusterToStr(cluster, _date) {
-    var mems = cluster["members"];
-    var str = "<p>" + cluster["avg_dist"] + "</p>";
-    var mems_text = [];
-    for(var i=0; i < mems.length; i++) {
-        str += "<a href=\"/nouns.html?noun_md5=" + mems[i]["id"] + "&date=" + _date+ "\">" + mems[i]["text"] + "</a></br>";
-        mems_text.push(mems[i]["text"]);
-    }
-    var time_query = "" //"&tbs=cdr%3A1%2Ccd_min%3A14.04.2014%2Ccd_max%3A14.04.2014";
-    var google_search = "https://www.google.ru/search?q=" + mems_text.join("+") + time_query;
-    str += "<p><a href=\"" + google_search + "\">Искать в google<a/>"; 
-    return str;
-}
+
 function getCurUrlParams() {
     var cur_url = "" + document.URL;
     var url_parts = cur_url.split("?");
@@ -25,20 +13,6 @@ function getCurUrlParams() {
     }
     
     return params;
-}
-
-function parse_query_date(_date) {
-    _date = "" + _date;
-    return _date.substr(6,2) + '.' + _date.substr(4,2) + '.' + _date.substr(0,4);
-}
-
-function update_cur_date(_date) {
-    _date = "" + _date;
-    var date_str = _date.substr(0,4) + '-' + _date.substr(4,2) + '-' + _date.substr(6,2);
-    if (_date == "undefined") {
-        date_str = "";
-    }
-    $("#stat-date").html(date_str);
 }
 
 function get_max_trend(cluster) {
@@ -95,8 +69,6 @@ function loadClusters(parse_url_args) {
         var cl = resp["clusters"];
 
         cl.sort(function(a,b) {
-            //var a_val = a["avg_dist"];
-            //var b_val = b["avg_dist"];
             var a_val = get_max_trend(a);
             var b_val = get_max_trend(b);
 
@@ -109,16 +81,6 @@ function loadClusters(parse_url_args) {
 
         var cl2= [];
         for(var i=0; i<cl.length; i++) {
-            //cl[i]["members"].sort(function(a,b) {
-            //    var a_val = a["trend"];
-            //    var b_val = b["trend"];
-            //
-            //    if (a_val < b_val) return -1;
-            //    if (a_val > b_val) return 1;
-            //    return 0;
-            //}).reverse();
-            //cl[i]["members"] = cl[i]["members"].slice(0,2);
-
             var mems = $.map(cl[i]["members"], function(l) {
                 return l["text"];
             })
