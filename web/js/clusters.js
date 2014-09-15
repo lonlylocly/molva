@@ -1,3 +1,7 @@
+Handlebars.registerHelper('urlEscape', function(smth) {
+  return encodeURIComponent(smth);
+});
+
 function getCurUrlParams() {
     var cur_url = "" + document.URL;
     var url_parts = cur_url.split("?");
@@ -50,7 +54,7 @@ function set_trend_color(cluster) {
     cluster["trend_class"] = trend_class;
 }
 
-function goBack() {
+function goBackOld() {
     var skip;
     skip = parseInt(getCurUrlParams()["skip"]);
     if (isNaN(skip)) {
@@ -58,6 +62,14 @@ function goBack() {
     }
     window.location.assign("/?skip=" + parseInt(skip + 1))
 }
+function goBack() {
+    var before = $("#current-timestamp").text();
+    window.location.assign("/?before=" + before);
+}
+function goNow() {
+    window.location.assign("/");
+}
+
 
 function compare_max_trend (a,b) {
     var a_val = get_max_trend(a);
@@ -90,15 +102,28 @@ function fill_cluster_properties(cl) {
     return cl2;
 }
 
-function loadClusters() {
+function getApiRequest() {
     var skip = parseInt(getCurUrlParams()["skip"]);
-    
-    if (isNaN(skip)) {
-        skip = 0;
+    var before = getCurUrlParams()["before"];
+    var date = getCurUrlParams()["date"];
+   
+    var request = "/api/cluster?"
+    if (date && typeof date != 'undefined') {
+        request += "date=" + date;
+    } else if (before && typeof before !=  'undefined') {
+        request += "before=" + before;
+    } else if (!isNaN(skip)) {
+        request += "skip=" + skip;
     }
-    
+
+    return request;
+}
+
+function loadClusters() {
+    var request = getApiRequest();
+
     console.log("loadClusters");
-    $.get( "/api/cluster?skip=" + skip, function( data ) {
+    $.get( request, function( data ) {
         try{
             var resp = JSON.parse(data);
         
@@ -118,6 +143,9 @@ function loadClusters() {
         } catch (e){
             console.log(e);
         }
+    })
+    .fail(function() {
+        $( "#cluster-holder" ).html("Произошла ошибка.")
     });
 }
 

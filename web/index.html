@@ -14,26 +14,33 @@
 <script src="/js/handlebars-v1.3.0.js"></script>
 
 <script id="cluster-template" type="text/x-handlebars-template">
-<div style="padding-bottom: 10 px; margin-bottom: 20px;">
-<span>Обновлено {{update_time}}.</span>
-<a href="#" class="btn btn-sm btn-default" onClick="goBack()">Раньше</a>
+<div class="row" style="padding-bottom: 10 px; margin-bottom: 20px;">
+    <div class="col-md-8">
+        <a href="#" class="btn btn-sm btn-default" onClick="goBack()">Раньше</a> 
+        <a href="#" class="btn btn-sm btn-default" onClick="goNow()">Сейчас</a>
+        <span>Обновлено <span id="current-timestamp">{{update_time}}</span>.</span>
+    </div>
+    <div class="col-md-4">
+<a href="https://twitter.com/share" class="twitter-share-button" data-url="http://molva.spb.ru/?date={{urlEscape update_time}}" data-text="Послушайте, о чем говорит твиттер:" data-via="molva_spb_ru" data-size="large" data-count="none">Tweet</a>
+<scr{{!}}ipt>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</scr{{!}}ipt>
+    </div>
 </div>
 <ul class="list-group">
 {{#each groups}}
     <li class="list-group-item">
     <div class="row">
         <div class="col-md-1">
-            <span class="{{this.trend_class}}">{{this.avg_trend}}</span>
+            <span class="{{this.trend_class}}" title="Прирост активности по теме">{{this.avg_trend}}</span>
         </div>
         <div class="col-md-7">
             {{#each members}}
-                <a href="https://twitter.com/search?q={{this.text}}" target="_blank">{{this.text}}</a> 
+                <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'>{{this.text}}</a> 
             {{/each}}
         </div>
         <div class="col-md-4">
-            <a href="http://google.com/search?q={{this.query_string}}" class="btn btn-sm btn-default" target="_blank">Google</a>&nbsp; 
-            <a href="http://yandex.ru/yandsearch?text={{this.query_string}}" class="btn btn-sm btn-default" target="_blank"><span style="color: red">Я</span>ндекс</a> &nbsp;
-            <a href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" class="btn btn-sm btn-default" target="_blank"><span style="color: red">Я</span>ндекс.Новости</a>
+            <a href="http://google.com/search?q={{this.query_string}}" class="btn btn-sm btn-default" target="_blank" title='Уточнить тему "{{this.query_string}}" поиском в Google'>Google</a>&nbsp; 
+            <a href="http://yandex.ru/yandsearch?text={{this.query_string}}" class="btn btn-sm btn-default" target="_blank" title='Уточнить тему "{{this.query_string}}" поиском в Яндексе'><span style="color: red">Я</span>ндекс</a> &nbsp;
+            <a href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" class="btn btn-sm btn-default" target="_blank" title='Уточнить тему "{{this.query_string}}" поиском по Яндекс.Новостям'><span style="color: red">Я</span>ндекс.Новости</a>
         </div>
     </div>
     </li>
@@ -47,6 +54,7 @@
     <script>
         loadClusters()
     </script>
+
     <div class="navbar navbar-fixed-top navbar-default" role="navigation">
       <div class="container">
         <div class="navbar-header">
