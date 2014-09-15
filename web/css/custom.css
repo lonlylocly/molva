@@ -32,3 +32,9 @@ td, th {
 .trend-unknown {
     color: grey;
 }
+
+.share-section {
+    float: left; 
+    margin-top: 5px; 
+    margin-right: 10px;
+}

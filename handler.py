@@ -10,6 +10,7 @@ import re
 import logging
 from subprocess import check_output
 import sqlite3
+from datetime import datetime
 
 import KMeanCluster
 import stats
@@ -22,90 +23,69 @@ settings = json.load(open('global-settings.json', 'r'))
 
 class ClusterHandler(tornado.web.RequestHandler):
 
-    def get_sims_for_date(self, date):
-        cur = self.ind.get_db_for_date(date)
-        res = cur.execute("select post1_md5, post2_md5, sim from noun_similarity")
-
-        sim_dict = {}
-        while True:
-            r = cur.fetchone()
-            if r is None:
-                break
-            p1, p2, sim = r
-            if p1 not in sim_dict:
-                sim_dict[p1] = {}
-            if p2 not in sim_dict:
-                sim_dict[p2] = {}
-            sim_dict[p1][p2] = sim
-            sim_dict[p2][p1] = sim
-         
-        for p in sim_dict.keys():
-            sim_dict[p][p] = 0
-
-        return sim_dict
- 
-    def get_nouns_for_date(self, date):
-        cur = self.ind.get_db_for_date(date)
-        return stats.get_nouns(cur)
-
-    def get_clusters(self, skip):
+    def get_clusters(self, skip, before, date):
         cur = stats.get_cursor(settings["db_dir"] + "/tweets_display.db") 
-        res = cur.execute("""
-            select cluster 
-            from clusters 
-            order by cluster_date desc 
-            limit 1 
-            offset %s
-        """ % (skip)).fetchone()
+        if date is not None:
+            cur.execute("""
+                select cluster 
+                from clusters 
+                where cluster_date = '%(date)s'
+            """  % ({'date': date}))
+        elif before is not None:
+            cur.execute("""
+                select cluster 
+                from clusters 
+                where cluster_date < '%(before)s'
+                order by cluster_date desc 
+                limit 1 
+            """ % ({'before': before}))
+        else:
+            cur.execute("""
+                select cluster 
+                from clusters 
+                order by cluster_date desc 
+                limit 1 
+                offset %s
+            """ % (skip))
+        res = cur.fetchone()[0] 
 
-        return res[0] 
+        return res
+
+    def parse_date(self, mydate):
+        if mydate is None or mydate == "":
+            return None
+        try:
+            mydate = mydate.replace("-","").replace(" ","").replace(":","") 
+
+            unixtime = datetime.strptime(mydate, "%Y%m%d%H%M%S").strftime("%s")
+            mydate_dt = datetime.utcfromtimestamp(int(unixtime))
+            mydate = mydate_dt.strftime("%Y%m%d%H%M%S")
+            
+            return mydate
+        except Exception as e:
+            logging.info(e)
+            return None
 
     def get(self):
         skip = self.get_argument("skip", default=0)
+        before = self.parse_date(self.get_argument("before", default=None))
+        date = self.parse_date(self.get_argument("date", default=None))
         try:
             skip = int(skip)
         except:
             skip = 0
 
-        cl = self.get_clusters(skip=skip)
+        logging.info("Before %s (UTC)" % before)
+        logging.info("Date %s (UTC)" % before)
+
+        cl = self.get_clusters(skip, before, date)
 
         self.write(cl)
 
-class TrendHandler(tornado.web.RequestHandler):
-    def get_trends(self):
-
-        cur = stats.get_cursor(settings["db_dir"] + "/tweets.db") 
-        cur.execute("""
-            select noun, t.noun_md5, trend, p.post_cnt
-            from noun_trend t
-            left join nouns n
-            on t.noun_md5 = n.noun_md5
-            left join post_cnt p
-            on t.noun_md5 = p.post_md5
-            order by trend desc 
-        """)
-
-        trends = []
-        while True:
-            r = cur.fetchone()
-            if r is None:
-                break
-            noun, noun_md5, trend, post_cnt = r
-            trends.append("".join(map(lambda x: "%20s" % x, [noun_md5, noun, trend, post_cnt])))
-            #trends.append( {'noun': noun, 'noun_md5': noun_md5, 'trend': trend, 'post_cnt': post_cnt})
-
-        return "<pre>" + "\n".join(trends) + "</pre>"
-
-    def get(self):
-
-        trends = self.get_trends()
-
-        self.write(trends)
    
 if __name__ == '__main__':
     application = tornado.web.Application([
-        (r"/api/cluster", ClusterHandler),
-        (r"/api/trend", TrendHandler),
+        (r"/api/cluster", ClusterHandler)
     ])
     application.listen(8000)
     tornado.ioloop.IOLoop.instance().start()
