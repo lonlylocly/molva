@@ -20,10 +20,7 @@
         <a href="#" class="btn btn-sm btn-default" onClick="goNow()">Сейчас</a>
         <span>Обновлено <span id="current-timestamp">{{update_time}}</span>.</span>
     </div>
-    <div class="col-md-4">
-<a href="https://twitter.com/share" class="twitter-share-button" data-url="http://molva.spb.ru/?date={{urlEscape update_time}}" data-text="Послушайте, о чем говорит твиттер:" data-via="molva_spb_ru" data-size="large" data-count="none">Tweet</a>
-<scr{{!}}ipt>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</scr{{!}}ipt>
-    </div>
+
 </div>
 <ul class="list-group">
 {{#each groups}}
@@ -47,6 +44,20 @@
 {{/each}}
 </ul>
 </script>
+
+<script id="shares-template" type="text/x-handlebars-template">
+<scr{{!}}ipt type="text/javascript" src="//yandex.st/share/share.js" charset="utf-8"></scr{{!}}ipt>
+<div class="row featurette shares-block">
+    <div class="col-md-4">
+            <div class="yashare-auto-init" data-yashareL10n="ru"
+             data-yashareType="none" data-yashareQuickServices="vkontakte,facebook,twitter,gplus"
+            data-yashareLink="{{shareUrl}}"
+            data-yashareTitle="Послушайте, о чем говорит Twitter"
+            ></div> 
+    </div>
+</div>
+</script>
+
 <script src="/js/clusters.js"></script>
 
 </head>
@@ -79,6 +90,9 @@
     <div class="container jumbotron-1">
         <div id="cluster-holder">
             <p>Загрузка...</p>
+        </div>
+    
+        <div id="shares-holder">
         </div>
 
       <footer  style="padding-bottom: 30px;">
