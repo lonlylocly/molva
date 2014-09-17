@@ -140,6 +140,11 @@ function loadClusters() {
 
             $( "#cluster-holder" ).html( template({"groups": cl2.slice(0, 20), "update_time": resp["update_time"]}) );
 
+            var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"]);
+            var source2 = $("#shares-template").html();
+            var template2 = Handlebars.compile(source2);
+            $( "#shares-holder" ).html( template2({"shareUrl": shareUrl}) );
+
         } catch (e){
             console.log(e);
         }
