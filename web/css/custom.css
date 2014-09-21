@@ -1,10 +1,11 @@
+body {
+  padding-top: 70px;
+  padding-bottom: 30px;
+}
+
 .jumbotron {
   text-align: center;
   background-color: transparent;
-}
-.jumbotron-1 {
-  margin-top: 60px;
-  color: inherit;
 }
 .beta-mark {
   color: #00CECE;
@@ -41,4 +42,24 @@ td, th {
 
 .shares-block {
     margin-bottom: 20px;
+}
+
+.featurette-divider {
+  margin: 60px 0; /* Space out the Bootstrap <hr> more */
+}
+
+.featurette-heading {
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.featurette-heading {
+font-size: 50px;
+}
+
+@media (min-width: 800px) {
+  .featurette-heading {
+    margin-top: 100px;
+  }
 }
