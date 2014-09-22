@@ -25,6 +25,7 @@
 <ul class="list-group">
 {{#each groups}}
     <li class="list-group-item">
+
     <div class="row">
         <div class="col-md-1">
             <span class="{{this.trend_class}}" title="Прирост активности по теме">{{this.avg_trend}}</span>
@@ -35,9 +36,20 @@
             {{/each}}
         </div>
         <div class="col-md-4">
-            <a href="http://google.com/search?q={{this.query_string}}" class="btn btn-sm btn-default" target="_blank" title='Уточнить тему "{{this.query_string}}" поиском в Google'>Google</a>&nbsp; 
-            <a href="http://yandex.ru/yandsearch?text={{this.query_string}}" class="btn btn-sm btn-default" target="_blank" title='Уточнить тему "{{this.query_string}}" поиском в Яндексе'><span style="color: red">Я</span>ндекс</a> &nbsp;
-            <a href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" class="btn btn-sm btn-default" target="_blank" title='Уточнить тему "{{this.query_string}}" поиском по Яндекс.Новостям'><span style="color: red">Я</span>ндекс.Новости</a>
+              <ul class="dropdown">
+                <a href="#" class="dropdown-toggle btn btn-sm btn-default" data-toggle="dropdown" style="float: left; margin-right: 10px;">Уточнить <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li><a href="http://google.com/search?q={{this.query_string}}"  target="_blank" 
+                        title='Уточнить тему "{{this.query_string}}" поиском в Google'>Google</a></li>
+                  <li><a href="http://yandex.ru/yandsearch?text={{this.query_string}}"  target="_blank" 
+                        title='Уточнить тему "{{this.query_string}}" поиском в Яндексе'><span style="color: red">Я</span>ндекс</a></li>
+                  <li><a href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" target="_blank" 
+                        title='Уточнить тему "{{this.query_string}}" поиском по Яндекс.Новостям'><span style="color: red">Я</span>ндекс.Новости</a></li>
+                  <li><a href="https://twitter.com/search?q={{this.query_string}}"  target="_blank" 
+                        title='Уточнить тему "{{this.query_string}}" поиском в Twitter'>Twitter</a></li>
+                </ul>
+            </ul>
+            <a href="http://molva.spb.ru?date={{urlEscape ../update_time}}&offset={{@index}}&limit=1" class=" btn btn-sm btn-default">Только эта тема</a>
         </div>
     </div>
     </li>
@@ -80,18 +92,19 @@
         <div class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
             <li><a href="/about">About</a></li>
-            <li><a href="#contact">Contact</a></li>
+            <li><a href="/contact">Contact</a></li>
           </ul>
         </div><!-- /.nav-collapse -->
       </div><!-- /.container -->
     </div><!-- /.navbar -->
 
 
-    <div class="container jumbotron-1">
+    <div class="container">
         <div id="cluster-holder">
             <p>Загрузка...</p>
         </div>
     
+        <hr class="featurette-divider">
         <div id="shares-holder">
         </div>
 
@@ -101,6 +114,8 @@
       </footer>
 
     </div>
+
+    <script src="/bootstrap/js/bootstrap.min.js"></script>
 
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">

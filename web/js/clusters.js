@@ -18,6 +18,15 @@ function getCurUrlParams() {
     return params;
 }
 
+function getCurUrlIntParam(param, default_val) {
+    var p_val = parseInt(getCurUrlParams()[param]);
+    if (isNaN(p_val)) {
+        return default_val;
+    } else {
+        return p_val;
+    }
+}
+
 function get_max_trend(cluster) {
     var trend_vals = []
     for(var i=0; i<cluster["members"].length; i++) {
@@ -39,7 +48,7 @@ function get_avg_trend(cluster) {
 }
 
 function set_trend_color(cluster) {
-    var avg_trend = get_avg_trend(cluster);
+    var avg_trend = get_max_trend(cluster);
 
     var trend_class = "trend-unknown";
     var sign = "";
@@ -94,7 +103,7 @@ function fill_cluster_properties(cl) {
         }
 
         cl[i]["query_string"] = mems.join("+");
-        if ( cl[i]["members_len"] > 1) {
+        if ( cl[i]["members_len"] > 0) {
             cl2.push(cl[i]);
         }
     }
@@ -121,6 +130,8 @@ function getApiRequest() {
 
 function loadClusters() {
     var request = getApiRequest();
+    var limit = getCurUrlIntParam("limit",20);
+    var offset = getCurUrlIntParam("offset",0);
 
     console.log("loadClusters");
     $.get( request, function( data ) {
@@ -131,16 +142,14 @@ function loadClusters() {
 
             cl.sort(compare_max_trend).reverse();
 
-            var limit = 30;
-
             var cl2 = fill_cluster_properties(cl); 
 
             var source = $("#cluster-template").html();
             var template = Handlebars.compile(source);
 
-            $( "#cluster-holder" ).html( template({"groups": cl2.slice(0, 20), "update_time": resp["update_time"]}) );
+            $( "#cluster-holder" ).html( template({"groups": cl2.slice(offset, offset + limit), "update_time": resp["update_time"]}) );
 
-            var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"]);
+            var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset + "&limit=" + limit;;
             var source2 = $("#shares-template").html();
             var template2 = Handlebars.compile(source2);
             $( "#shares-holder" ).html( template2({"shareUrl": shareUrl}) );

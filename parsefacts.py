@@ -112,8 +112,10 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
             nouns = []
             for l in leads:
                 text = ElementTree.fromstring(l.get('text').encode('utf8'))
+                # <N lemma="">text</N> 
+                # lemma - базовая форма. text - текущая, производная
                 for f in text.findall('.//N'):
-                    source = f.text
+                    source = f.text.replace('"','')
                     noun = f.get('lemma').lower()
                     noun_sources.append((post_id, digest(noun), digest(source)))
                     lemmas.append(digest(source))
