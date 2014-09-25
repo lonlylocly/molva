@@ -25,10 +25,10 @@ td, th {
     border: 2px solid rgb(218,218,218);
 }
 .trend-raise {
-    color: green;
+    color: #5cb85c;
 }
 .trend-fall {
-    color: red;
+    color: #d9534f;
 }
 .trend-unknown {
     color: grey;
@@ -65,4 +65,8 @@ font-size: 50px;
 }
 .contact-face-img {
     margin-top: 30px;
+}
+
+.topic-holder {
+    margin-bottom: 20px;
 }
