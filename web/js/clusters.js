@@ -103,6 +103,7 @@ function fill_cluster_properties(cl) {
         }
 
         cl[i]["query_string"] = mems.join("+");
+        cl[i]["title_string"] = mems.join(" ");
         if ( cl[i]["members_len"] > 0) {
             cl2.push(cl[i]);
         }
@@ -128,6 +129,47 @@ function getApiRequest() {
     return request;
 }
 
+function parseResponse(resp){
+
+    var cl = resp["clusters"];
+
+    cl.sort(compare_max_trend).reverse();
+
+    var topics = fill_cluster_properties(cl); 
+
+    return topics;
+}
+
+function loadTopic() {
+    var request = getApiRequest();
+    var offset = getCurUrlIntParam("offset",0);
+
+     $.get( request, function( data ) {
+        try{
+            var resp = JSON.parse(data);
+            var topic = parseResponse(resp)[offset];
+            topic["update_time"] = resp["update_time"];
+
+            var source = $("#cluster-template").html();
+            var template = Handlebars.compile(source);
+
+            $( "#cluster-holder" ).html( template(topic) );
+
+            var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset;
+            var source2 = $("#shares-template").html();
+            var template2 = Handlebars.compile(source2);
+            $( "#shares-holder" ).html( template2({"shareUrl": shareUrl, "shareTitle": '"' + topic["title_string"] + '"'}) );
+
+        } catch (e){
+            console.log(e);
+        }
+    })
+    .fail(function() {
+        $( "#cluster-holder" ).html("Произошла ошибка.")
+    });
+   
+}
+
 function loadClusters() {
     var request = getApiRequest();
     var limit = getCurUrlIntParam("limit",20);
@@ -137,13 +179,7 @@ function loadClusters() {
     $.get( request, function( data ) {
         try{
             var resp = JSON.parse(data);
-        
-            var cl = resp["clusters"];
-
-            cl.sort(compare_max_trend).reverse();
-
-            var cl2 = fill_cluster_properties(cl); 
-
+            var cl2 = parseResponse(resp);
             var source = $("#cluster-template").html();
             var template = Handlebars.compile(source);
 
@@ -152,7 +188,7 @@ function loadClusters() {
             var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset + "&limit=" + limit;;
             var source2 = $("#shares-template").html();
             var template2 = Handlebars.compile(source2);
-            $( "#shares-holder" ).html( template2({"shareUrl": shareUrl}) );
+            $( "#shares-holder" ).html( template2({"shareUrl": shareUrl, "shareTitle": "О чем говорит Twitter"}) );
 
         } catch (e){
             console.log(e);

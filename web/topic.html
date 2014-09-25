@@ -12,49 +12,42 @@
 <!--border: 2px solid rgb(218,218,218);-->
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/js/handlebars-v1.3.0.js"></script>
-<script type="text/javascript" src="//yastatic.net/share/share.js" charset="utf-8"></script>
 
 <script id="cluster-template" type="text/x-handlebars-template">
 <div class="row" style="padding-bottom: 10 px; margin-bottom: 20px;">
     <div class="col-md-8">
-        <a href="#" class="btn btn-sm btn-default" onClick="goBack()">Раньше</a> 
-        <a href="#" class="btn btn-sm btn-default" onClick="goNow()">Сейчас</a>
         <span>Обновлено <span id="current-timestamp">{{update_time}}</span>.</span>
     </div>
-
 </div>
 <ul class="list-group">
-{{#each groups}}
     <li class="list-group-item">
 
     <div class="row">
-        <div class="col-md-1">
+        <div class="col-md-2 lead">
             <span class="{{this.trend_class}}" title="Прирост активности по теме">{{this.avg_trend}}</span>
         </div>
-        <div class="col-md-7">
+        <div class="col-md-10">
+            <p class="lead">
             {{#each members}}
                 <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'>{{this.text}}</a> 
             {{/each}}
+            </p>
         </div>
-        <div class="col-md-4">
-              <ul class="dropdown">
-                <a href="#" class="dropdown-toggle btn btn-sm btn-default" data-toggle="dropdown" style="float: left; margin-right: 10px;">Уточнить <span class="caret"></span></a>
-                <ul class="dropdown-menu" role="menu">
-                  <li><a href="http://google.com/search?q={{this.query_string}}"  target="_blank" 
-                        title='Уточнить тему "{{this.query_string}}" поиском в Google'>Google</a></li>
-                  <li><a href="http://yandex.ru/yandsearch?text={{this.query_string}}"  target="_blank" 
-                        title='Уточнить тему "{{this.query_string}}" поиском в Яндексе'><span style="color: red">Я</span>ндекс</a></li>
-                  <li><a href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" target="_blank" 
-                        title='Уточнить тему "{{this.query_string}}" поиском по Яндекс.Новостям'><span style="color: red">Я</span>ндекс.Новости</a></li>
-                  <li><a href="https://twitter.com/search?q={{this.query_string}}"  target="_blank" 
-                        title='Уточнить тему "{{this.query_string}}" поиском в Twitter'>Twitter</a></li>
-                </ul>
-            </ul>
-            <a href="http://molva.spb.ru/topic?date={{urlEscape ../update_time}}&offset={{@index}}" class=" btn btn-sm btn-default">Только эта тема</a>
+    </div>
+    <div class="row">
+        <div class="col-md-2 lead">Уточнить:</div>
+        <div class="col-md-10">
+              <a class="dropdown-toggle btn btn-sm btn-default" href="http://google.com/search?q={{this.query_string}}"  target="_blank" 
+                title='Уточнить тему "{{this.query_string}}" поиском в Google'>Google</a>
+              <a class="dropdown-toggle btn btn-sm btn-default"  href="http://yandex.ru/yandsearch?text={{this.query_string}}"  target="_blank" 
+                title='Уточнить тему "{{this.query_string}}" поиском в Яндексе'><span style="color: red">Я</span>ндекс</a>
+              <a class="dropdown-toggle btn btn-sm btn-default"  href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" target="_blank" 
+                title='Уточнить тему "{{this.query_string}}" поиском по Яндекс.Новостям'><span style="color: red">Я</span>ндекс.Новости</a>
+              <a class="dropdown-toggle btn btn-sm btn-default"  href="https://twitter.com/search?q={{this.query_string}}"  target="_blank" 
+                title='Уточнить тему "{{this.query_string}}" поиском в Twitter'>Twitter</a>
         </div>
     </div>
     </li>
-{{/each}}
 </ul>
 </script>
 
@@ -74,7 +67,7 @@
 </head>
 <body>
     <script>
-        loadClusters()
+        loadTopic()
     </script>
 
     <div class="navbar navbar-fixed-top navbar-default" role="navigation">
