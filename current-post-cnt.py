@@ -35,6 +35,25 @@ def build_chains_nouns_all(cur, db, time_bound):
         on tc.post_id = t.id
         where t.created_at > '%(time)s'
     """ % {"db": db, "time": time_bound})
+    cur.execute("""
+        insert or ignore into chains_nouns_all 
+        select 
+            tc.post_id, 
+            n1.noun_md5, 
+            tc.reply_id, 
+            n2.noun_md5, 
+            t.created_at 
+        from %(db)s.tweet_chains tc 
+        inner join %(db)s.tweets_nouns n1 
+        on n1.id = tc.post_id 
+        inner join %(db)s.tweets_nouns n2 
+        on n2.id = tc.post_id
+        inner join %(db)s.tweets t 
+        on tc.post_id = t.id
+        where 
+            t.created_at > '%(time)s'
+            and n1.noun_md5 != n2.noun_md5
+    """ % {"db": db, "time": time_bound})
 
 @util.time_logger
 def build_tweets_nouns_cur(cur, db, time_bound):
@@ -100,10 +119,6 @@ def count_currents(cur, utc_now):
 
     cur_tables2 = {
         "tweets_nouns_cur": "tweets_nouns", 
-    #    "chains_nouns_all": "chains_nouns",
-        #"chains_nouns_n_1": "chains_nouns",
-        #"chains_nouns_n_2": "chains_nouns",
-        #"chains_nouns_n_3": "chains_nouns",
         "post_cnt_n_1": "post_cnt",
         "post_cnt_n_2": "post_cnt",
         "post_cnt_n_3": "post_cnt",
@@ -140,16 +155,13 @@ def count_currents(cur, utc_now):
         logging.info("count(*) from %s = %s" % (t, cnt))
 
 def main():
-    parser = util.get_dates_range_parser()
-    args = parser.parse_args()
-
 
     utc_now = datetime.utcnow()
     yesterday = (utc_now - timedelta(1)).strftime("%Y%m%d")          
     today = (utc_now).strftime("%Y%m%d")
 
     ind = Indexer(DB_DIR)
-    cur = stats.get_cursor(DB_DIR + "/tweets.db")
+    cur = stats.get_main_cursor(DB_DIR)
 
     today_file = ind.dates_dbs[today]
     ystd_file = ind.dates_dbs[yesterday]

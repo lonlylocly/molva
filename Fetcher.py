@@ -31,7 +31,8 @@ def to_mysql_timestamp(dt):
 
 class Fetcher:
     
-    def __init__(self, db_dir, headers, db_basename="tweets", days_back=7, seconds_till_user_retry=3600):
+    def __init__(self, db_dir, headers,  days_back=7, seconds_till_user_retry=3600):
+        db_basename="tweets"
         self.db_dir = db_dir
         self.db_basename = db_basename
         self.dates_db = {}
@@ -40,7 +41,7 @@ class Fetcher:
         self.seconds_till_user_retry = seconds_till_user_retry
         self.log = logging.getLogger('fetcher-' + db_basename)
 
-        cur = stats.get_cursor(self.db_dir + "/" + self.db_basename + ".db")
+        cur = stats.get_main_cursor(self.db_dir)
         self.main_db = cur 
         stats.create_given_tables(cur, ["users"])
         
@@ -53,7 +54,7 @@ class Fetcher:
             return self.dates_db[date]
         else:
             self.log.info("Setup db connection for date " + date)
-            cur = stats.get_cursor(self.db_dir + "/" + self.db_basename + "_" + date + ".db")
+            cur = stats.get_cursor(self.db_dir + "/tweets_" + date + ".db")
             self.dates_db[date] = cur
             stats.create_given_tables(cur, ["tweets"])
 

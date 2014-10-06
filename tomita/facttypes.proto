@@ -4,6 +4,7 @@ import "facttypes_base.proto"; // описание protobuf-типа NFactType.T
 message SimpleFact : NFactType.TFact 
 {
     required string Noun = 1;
+    optional string Prep = 2;
 }
 
 message SimpleWord : NFactType.TFact 

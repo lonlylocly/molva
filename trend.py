@@ -47,7 +47,7 @@ def main():
     args = parser.parse_args()
 
     ind = Indexer(DB_DIR)
-    cur_main = stats.get_cursor(DB_DIR + "/tweets.db")
+    cur_main = stats.get_main_cursor(DB_DIR)
     cur_display = stats.get_cursor(DB_DIR + "/tweets_display.db")
 
     noun_trends = {}   

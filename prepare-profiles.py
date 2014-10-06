@@ -82,14 +82,8 @@ def main():
     args = parser.parse_args()
 
     ind = Indexer(DB_DIR)
-    cur = stats.get_cursor(DB_DIR + "/tweets.db")
+    cur = stats.get_main_cursor(DB_DIR)
             
-    stats.create_given_tables(cur, {"noun_sim_new": "noun_similarity"})
-    cur.execute("delete from noun_sim_new")
-
-    #nouns = stats.get_nouns(cur)
-    #logging.info("nouns len %s" % len(nouns))
-
     profiles_dict = stats.setup_noun_profiles(cur, {}, {}, 
         post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = NOUNS_LIMIT, profiles_table = args.profiles_table 
     )
@@ -101,12 +95,6 @@ def main():
 
     json.dump(profiles_dump, open(args.out_file, 'w')) 
 
-    #fill_sims(cur, profiles_dict, {}, {})
-
-    #update_sims(cur)
-
-    #logging.info("Done")
-        
 if __name__ == '__main__':
     main()
 

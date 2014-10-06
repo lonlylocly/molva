@@ -144,6 +144,11 @@ def get_intra_cluster_dist(cl, sim_dict):
 
     return dist / cnt
 
+#{ "clusters": 
+#  { "members": 
+#    {"id": , "text": }
+#  }
+#}
 def get_clusters(sim_dict, clusters_num, nouns):
     cl = build_clusters(sim_dict, clusters_num)
 

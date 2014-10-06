@@ -29,7 +29,7 @@ def main():
     logging.info("Start")
     ind = Indexer(DB_DIR)
 
-    cur_main = stats.get_cursor(DB_DIR + "/tweets.db")
+    cur_main = stats.get_main_cursor(DB_DIR)
     stats.create_given_tables(cur_main, ["table_stats"])
 
     db_stats = {}   

@@ -82,6 +82,58 @@ def make_word_pairs(lemmas):
 
     return lemma_pairs
 
+class SimpleFact:
+
+    def __init__(self):
+        self.noun = None
+        self.prep = None
+        self.noun_lemma = None
+        self.prep_lemma = None
+        self.noun_id = None
+        self.prep_id = None
+
+    def __str__(self):
+        s = u"%(prep)s %(noun)s [%(noun_lemma)s %(noun_id)s] [%(prep_lemma)s %(prep_id)s]" %  ({"noun": self.noun, "noun_id": self.noun_id, "noun_lemma": self.noun_lemma,
+            "prep": self.prep if self.prep is not None else '', "prep_id": self.prep_id, "prep_lemma": self.prep_lemma})
+
+        return s
+
+    def with_prep(self):
+        return self.noun if self.prep is None else self.prep + " " + self.noun
+
+def get_nouns_preps(elem):
+    facts = []
+    for raw_fact in elem.findall(".//SimpleFact"):
+        fields_info = raw_fact.get('FieldsInfo').split(';')
+        noun = raw_fact.find("./Noun").get('val').lower()
+        prep = raw_fact.find("./Prep")
+
+        fact = SimpleFact()
+        fact.noun_lemma = noun
+        fact.noun_id = fields_info[0]
+
+        if prep is not None:
+            fact.prep_lemma = prep.get('val').lower()
+            fact.prep_id = fields_info[1]
+
+        facts.append(fact)
+
+    for lead in elem.findall(".//Lead"):
+        text = ElementTree.fromstring(lead.get('text').encode('utf8'))
+        # <N lemma="">text</N> 
+        # lemma - базовая форма. text - текущая, производная
+        for f in text.findall('.//N'):
+            for fact in facts:
+                if f.get(fact.noun_id) is not None:
+                    fact.noun = f.text.replace('"','')
+        for f in text.findall('.//P'):
+            for fact in facts:
+                if f.get(fact.prep_id) is not None:
+                    fact.prep = f.text.replace('"','')
+
+    return facts
+        
+
 def parse_facts_file(tweet_index, facts, cur, cur_main):
     stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words", "lemma_word_pairs"])
     stats.create_given_tables(cur, {"sources": "nouns"})
@@ -107,22 +159,16 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
         if event == 'end' and elem.tag == 'document':
             cur_doc = int(elem.attrib['di'])
             post_id = ids[cur_doc -1]
-            leads = elem.findall(".//Lead")
+            nouns_preps = get_nouns_preps(elem)
             lemmas = []
             nouns = []
-            for l in leads:
-                text = ElementTree.fromstring(l.get('text').encode('utf8'))
-                # <N lemma="">text</N> 
-                # lemma - базовая форма. text - текущая, производная
-                for f in text.findall('.//N'):
-                    source = f.text.replace('"','')
-                    noun = f.get('lemma').lower()
-                    noun_sources.append((post_id, digest(noun), digest(source)))
-                    lemmas.append(digest(source))
-                    nouns.append(digest(noun))
+            for np in nouns_preps:
+                lemmas.append(digest(np.with_prep()))
+                nouns.append(digest(np.noun_lemma))
+                nouns_total.add(np.noun_lemma)
+                sources_total.add(np.with_prep())
 
-                    nouns_total.add(noun)
-                    sources_total.add(source)
+                noun_sources.append((post_id, digest(np.noun_lemma), digest(np.with_prep())))
 
             lemma_word_pairs += make_lemma_word_pairs(nouns, lemmas)
 
@@ -171,7 +217,7 @@ def main():
 
     ind = Indexer(DB_DIR)
 
-    cur_main = stats.get_cursor(DB_DIR + "/tweets.db")
+    cur_main = stats.get_main_cursor(DB_DIR)
 
     files_for_dates = ind.get_nouns_to_parse()
     for date in sorted(files_for_dates.keys()):
