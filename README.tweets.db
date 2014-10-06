@@ -1,0 +1,93 @@
+tweets.db
+=========
+
+build-clusters.py
+read:
+  noun_similarity
+  nouns
+  sources
+  noun_trend 
+  post_cnt
+  lemma_word_pairs 
+  tweets_words
+
+parse-facts.py
+create:
+  nouns
+  sources 
+write:
+  nouns
+  sources
+
+prepare-profiles.py
+read:
+  post_reply_cnt
+  post_cnt
+  
+#prepare-aligner.py
+#drop:
+#  lemma_word_pairs
+#  tweets_words
+#read:
+#  lemma_word_pairs
+#  tweets_words
+#write:
+#  lemma_word_pairs
+#  tweets_words
+
+current-post-cnt.py
+drop:
+  chains_nouns
+  post_cnt
+  post_reply_cnt
+  tweets_nouns_cur
+  post_cnt_n_1
+  post_cnt_n_2
+  post_cnt_n_3
+create:
+  chains_nouns
+  post_cnt
+  post_reply_cnt
+  chains_nouns_all
+  tweets_nouns_cur
+  post_cnt_n_1
+  post_cnt_n_2
+  post_cnt_n_3
+delete:
+  chains_nouns_all
+read:
+  chains_nouns_all
+write:
+  chains_nouns_all
+  tweets_nouns_cur 
+  chains_nouns
+  post_cnt
+  post_cnt_n_1
+  post_cnt_n_2
+  post_cnt_n_3
+  post_reply_cnt
+
+trend.py
+drop:
+  noun_trend
+create:
+  noun_trend
+write:
+  noun_trend
+read:
+  post_cnt
+  post_cnt_n_1
+  post_cnt_n_2
+  post_cnt_n_3
+
+post-profiles.py
+create:
+  noun_similarity
+  noun_sim_new
+delete:
+  noun_sim_new
+drop:
+  noun_similarity
+write:
+  noun_sim_new
+  noun_similarity

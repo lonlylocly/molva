@@ -12,13 +12,16 @@ from profile import NounProfile, ProfileCompare
 import util
 
 def get_cursor(db):
-    print "get cursor for " + db
+    logging.info("get cursor for " + db)
     con = sqlite3.connect(db)
     con.isolation_level = None
     
     cur = con.cursor()
 
     return cur 
+
+def get_main_cursor(db_dir):
+    return get_cursor(db_dir + "/tweets.db")
 
 def get_sources(cur, nouns_only=None):
     return get_nounlikes(cur, nouns_only, "sources")
@@ -27,6 +30,7 @@ def get_nouns(cur, nouns_only=None):
     return get_nounlikes(cur, nouns_only, "nouns")
 
 def get_nounlikes(cur, nouns_only, nouns_table):
+    logging.info("start")
     cond = ""
     if nouns_only is not None:
         cond = ",".join(map(str, nouns_only))
@@ -42,6 +46,8 @@ def get_nounlikes(cur, nouns_only, nouns_table):
     for r in res:
         nouns[r[0]] = r[1]
    
+    logging.info("done")
+
     return nouns
 
 def get_noun_trend(cur):
@@ -426,17 +432,11 @@ def get_some_noun_profiles(cur, posts_list, post_min_freq=10, profiles_table = "
     return profiles_dict
 
 def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_reply_cnt"):
-    limited = """
-    p.post_md5 in (
-            select post_md5 
-            from post_cnt
-            order by post_cnt desc
-            limit 1000 
-        )
-    """
-    create_given_tables(cur, ["valid_replys"])
+    logging.info("start") 
+    cur.execute("attach ':memory:' as tmp") 
+    create_given_tables(cur, {"tmp.valid_replys": "valid_replys"})
     cur.execute("""
-        insert or ignore into valid_replys
+        insert or ignore into tmp.valid_replys
         select reply_md5 
         from (
             select count(*) as c, reply_md5
@@ -452,7 +452,7 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
         from %(profiles_table)s p
         inner join post_cnt p2
         on p.post_md5 = p2.post_md5
-        inner join valid_replys v
+        inner join tmp.valid_replys v
         on p.reply_md5 = v.reply_md5
         where
         p2.post_cnt > %(post_min_freq)d
@@ -472,6 +472,8 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
         if post not in profiles_dict:
             profiles_dict[post] = NounProfile(post, post_cnt=post_cnt) 
         profiles_dict[post].replys[reply] = cnt
+
+    logging.info("done")
 
     return profiles_dict
 

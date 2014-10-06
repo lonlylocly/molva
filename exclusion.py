@@ -219,7 +219,7 @@ def main():
 
     ind = Indexer(DB_DIR)
     
-    cur = stats.get_cursor(DB_DIR + "/tweets.db")
+    cur = stats.get_main_cursor(DB_DIR)
 
     post_nouns, nouns_freqs = get_post_nouns(cur)
 

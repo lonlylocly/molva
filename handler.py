@@ -14,7 +14,6 @@ from datetime import datetime
 
 import KMeanCluster
 import stats
-from StatsDisplay import StatsDisplay
 from Indexer import Indexer
 
 #logging.config.fileConfig("logging.conf")

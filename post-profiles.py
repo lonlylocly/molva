@@ -38,7 +38,7 @@ def main():
     args = parser.parse_args()
 
     ind = Indexer(DB_DIR)
-    cur = stats.get_cursor(DB_DIR + "/tweets.db")
+    cur = stats.get_main_cursor(DB_DIR)
             
     stats.create_given_tables(cur, ["noun_similarity"])
     cur.execute("create table if not exists noun_sim_new as select * from noun_similarity limit 0")
