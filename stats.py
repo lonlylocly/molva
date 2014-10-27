@@ -517,6 +517,10 @@ def count_entropy(profile, repl_p, tot_profiles):
         p = (repl_p[r][freq] + 0.0) / tot_profiles
         entropy += p * math.log(p)
 
+    #if entropy == 0:
+    #    logging.warn("Post %s. Couldnt find entropy (possibly all replys are equally probable" % profile.post)
+    #    return 1
+
     entropy *= -1
 
     for r in profile.replys:
