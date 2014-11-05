@@ -1,0 +1,362 @@
+%
+% File naaclhlt2015.tex
+%
+
+\documentclass[11pt,letterpaper]{article}
+\usepackage{naaclhlt2015}
+\usepackage{times}
+\usepackage{latexsym}
+\setlength\titlebox{6.5cm}    % Expanding the titlebox
+
+\title{Evaluation of Twitter as semantic analysis resource}
+
+\author{}
+
+\date{November, 5 2014}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+  In this paper use of Russian-speaking Twitter segment as a resource for distributional
+  semantic analysis is evaluated. Though gold-standard for task of semantic relatedness
+  of Russian language does not yet exist, some tweaks may be done to substitute it.  
+  There are several gold-standards for English, German and other languages. 
+  Translated versions of one of these, WordSim353, is applied.  It may be biased because of 
+  cultural and language differencies. To overcome this, semantics extracted from Twitter
+  are cross-checked with ones extracted from corpus of contemporary Russian literature.
+\end{abstract}
+
+\section{Introduction}
+
+One of the vital goals in task of distributional semantics of Russian language is building
+a gold-standard, analogous to WordSim353 \cite{finkelstein2001placing} and others. 
+Such datasets are composed with use of expert knowledge. At first, researcher composes pairs
+of words, either related somehow (meronymy, hyponymy, hiponymy, antonymy, etc.), or unrelated.
+Next, a group of individual experts are given the task to estimate relatedness of those pairs.
+Estimations may be four distinct grades, or fraction from 0.0 to 1.0. Typical group size is 
+about 10-15 people.
+
+Apperently, researchers wanting to make such datasets for other languages may try to use existing
+ones as basis, e.g. by simply translating them, because reengineering it from scratch would be much more
+complicated. Some did try, but as far as we know there was no proper evaluation of translated word-sim
+datasets.
+
+There is strong intiution that distributional semantic and all state-of-the-art forecomings may
+be applied to Russian language as well. Information Retrieval in a whole has been successfully applied
+to many languages (by Google, Yandex\footnote{www.yandex.com} and others). Semantic analysis
+has been developing for decades, starting with Latent Semantic Analysis (Landauer, 1998), 
+Latent Semantic Indexing, finally Explicit Semantic Analysis (Gabrilovich, 2007), and numerous
+Wordnet and Wikipedia-based works (Zesch, 2008).
+
+These may be broadly divided into two groups: ones based on graph models and 
+measurements (e.g. Wikipedia-based), and distributional ones (LSA, LSI).
+
+Early models, like LSA, suffered from increasing number of documents and their terms. 
+The core feature of LSA, singular value decomposition, stated as the one to reduce vector-space model 
+of term-document matrix, actually makes it unfeasiable because of expensive SVD operation.
+Tremendous shift in field of vector-space models for natural language processing was made 
+by (Mikolov et al., 2013), with use of simplified neural network models, Continious Bag-of-Words
+and Continious Skip-gram. It was evaluated on word-similarity task. 
+
+On the other hand, increasing popularity of social networks, and in particular Twitter,
+enables users to communicate instantly, and researchers to analyse their activity.
+The area is "hot ground", there are works such as elections prediction (Metaxas, 2011), sentiment
+analysis and so on.
+
+In this paper we focus on word-to-word similarity task for Russian language. The primary goal
+is to evaluate applicability of Twitter stream in this NLP task. The secondary goals are
+construction and validation of word similarity dataset for Russian based on WordSim353 translated 
+subset, and cross-checking it with well-known linguistic resource of Russian literature.
+
+
+\section{Algorythm and input data}
+
+Manuscripts must be in two-column format.  Exceptions to the
+two-column format include the title, as well as the 
+authors' names and complete
+addresses (only in the final version, not in the version submitted for review), 
+which must be centered at the top of the first page (see
+the guidelines in Subsection~\ref{ssec:first}), and any full-width
+figures or tables.  Type single-spaced.  Do not number the pages.
+Start all pages directly under the top margin.  See the guidelines
+later regarding formatting the first page.
+
+%% If the paper is produced by a printer, make sure that the quality
+%% of the output is dark enough to photocopy well.  It may be necessary
+%% to have your laser printer adjusted for this purpose.  Papers that are too
+%% faint to reproduce well may not be included.
+
+%% {\bf Do not print page numbers on the manuscript.}  Write them lightly
+%% on the back of each page in the upper left corner along with the
+%% (first) author's name.
+
+The maximum length of a manuscript is eight (8) pages for the main
+conference, printed single-sided, plus two (2) pages for references
+(see Section~\ref{sec:length} for additional information on the
+maximum number of pages).  Do not number the pages.
+
+The review process is double-blind, so do not include any author information (names, addresses) when submitting a paper for review.  However, you should allocate space for the names and addresses so that they will fit in the final (accepted) version.  This is best done by either providing fake or blank names and addresses (as shown in this paper).
+
+\subsection{Electronically-available resources}
+
+NAACL HLT provides this description in \LaTeX2e{} ({\tt naaclhlt2015.tex}) and PDF
+format ({\tt naaclhlt2015.pdf}), along with the \LaTeX2e{} style file used to
+format it ({\tt naaclhlt2015.sty}) and an ACL bibliography style ({\tt naaclhlt2015.bst}).
+These files are all available at
+{\tt http://naacl2015.naacl.org}.  A Microsoft Word
+template file ({\tt naaclhlt2015.dot}) is also available at the same URL. We
+strongly recommend the use of these style files, which have been
+appropriately tailored for the NAACL HLT 2015 proceedings.
+
+
+\subsection{Format of Electronic Manuscript}
+\label{sect:pdf}
+
+For the production of the electronic manuscript you must use Adobe's
+Portable Document Format (PDF). This format can be generated from
+postscript files: on Unix systems, you can use {\tt ps2pdf} for this
+purpose; under Microsoft Windows, you can use Adobe's Distiller, or
+if you have cygwin installed, you can use {\tt dvipdf} or
+{\tt ps2pdf}.  Note 
+that some word processing programs generate PDF which may not include
+all the necessary fonts (esp. tree diagrams, symbols). When you print
+or create the PDF file, there is usually an option in your printer
+setup to include none, all or just non-standard fonts.  Please make
+sure that you select the option of including ALL the fonts.  {\em
+  Before sending it, test your {\/\em PDF} by printing it from a
+  computer different from the one where it was created}. Moreover,
+some word processor may generate very large postscript/PDF files,
+where each page is rendered as an image. Such images may reproduce
+poorly.  In this case, try alternative ways to obtain the postscript
+and/or PDF.  One way on some systems is to install a driver for a
+postscript printer, send your document to the printer specifying
+``Output to a file'', then convert the file to PDF.
+
+For reasons of uniformity, Adobe's {\bf Times Roman} font should be
+used. In \LaTeX2e{} this is accomplished by putting
+
+\begin{quote}
+\begin{verbatim}
+\usepackage{times}
+\usepackage{latexsym}
+\end{verbatim}
+\end{quote}
+in the preamble.
+
+Additionally, it is of utmost importance to specify the {\bf
+  US-Letter format} (8.5in $\times$ 11in) when formatting the paper.
+When working with {\tt dvips}, for instance, one should specify {\tt
+  -t letter}.
+
+Print-outs of the PDF file on US-Letter paper should be identical to the
+hardcopy version.  If you cannot meet the above requirements about the
+production of your electronic submission, please contact the
+publication chairs above  as soon as possible.
+
+
+\subsection{Layout}
+\label{ssec:layout}
+
+Format manuscripts two columns to a page, in the manner these
+instructions are formatted. The exact dimensions for a page on US-letter
+paper are:
+
+\begin{itemize}
+\item Left and right margins: 1 inch
+\item Top margin: 1 inch
+\item Bottom margin: 1 inch
+\item Column width: 3.15 inches
+\item Column height: 9 inches
+\item Gap between columns: 0.2 inches
+\end{itemize}
+
+\noindent Papers should not be submitted on any other paper size. Exceptionally,
+authors for whom it is \emph{impossible} to format on US-Letter paper,
+may format for \emph{A4} paper. In this case, they should keep the \emph{top}
+and \emph{left} margins as given above, use the same column width,
+height and gap, and modify the bottom and right margins as necessary.
+Note that the text will no longer be centered.
+
+\subsection{The First Page}
+\label{ssec:first}
+
+Center the title, author's name(s) and affiliation(s) across both
+columns (or, in the case of initial submission, space for the names). 
+Do not use footnotes for affiliations.  Do not include the
+paper ID number assigned during the submission process. 
+Use the two-column format only when you begin the abstract.
+
+{\bf Title}: Place the title centered at the top of the first page, in
+a 15 point bold font.  (For a complete guide to font sizes and styles, see Table~\ref{font-table}.)
+Long title should be typed on two lines without
+a blank line intervening. Approximately, put the title at 1in from the
+top of the page, followed by a blank line, then the author's names(s),
+and the affiliation on the following line.  Do not use only initials
+for given names (middle initials are allowed). Do not format surnames
+in all capitals (e.g., ``Bangalore,'' not ``BANGALORE'').  The affiliation should
+contain the author's complete address, and if possible an electronic
+mail address. Leave about 0.75in between the affiliation and the body
+of the first page.
+
+{\bf Abstract}: Type the abstract at the beginning of the first
+column.  The width of the abstract text should be smaller than the
+width of the columns for the text in the body of the paper by about
+0.25in on each side.  Center the word {\bf Abstract} in a 12 point
+bold font above the body of the abstract. The abstract should be a
+concise summary of the general thesis and conclusions of the paper.
+It should be no longer than 200 words.  The abstract text should be in 10 point font.
+
+{\bf Text}: Begin typing the main body of the text immediately after
+the abstract, observing the two-column format as shown in 
+the present document.  Do not include page numbers.
+
+{\bf Indent} when starting a new paragraph. For reasons of uniformity,
+use Adobe's {\bf Times Roman} fonts, with 11 points for text and 
+subsection headings, 12 points for section headings and 15 points for
+the title.  If Times Roman is unavailable, use {\bf Computer Modern
+  Roman} (\LaTeX2e{}'s default; see section \ref{sect:pdf} above).
+Note that the latter is about 10\% less dense than Adobe's Times Roman
+font.
+
+\subsection{Sections}
+
+{\bf Headings}: Type and label section and subsection headings in the
+style shown on the present document.  Use numbered sections (Arabic
+numerals) in order to facilitate cross references. Number subsections
+with the section number and the subsection number separated by a dot,
+in Arabic numerals. 
+
+
+The \LaTeX{} and Bib\TeX{} style files provided roughly fit the
+American Psychological Association format, allowing regular citations, 
+short citations and multiple citations as described above.
+
+{\bf Appendices}: Appendices, if any, directly follow the text and the
+references (but see above).  Letter them in sequence and provide an
+informative title: {\bf Appendix A. Title of Appendix}.
+
+\textbf{Acknowledgment} sections should go as a last (unnumbered) section immediately
+before the references.  
+
+\subsection{Footnotes}
+
+{\bf Footnotes}: Put footnotes at the bottom of the page. They may
+be numbered or referred to by asterisks or other
+symbols.\footnote{This is how a footnote should appear.} Footnotes
+should be separated from the text by a line.\footnote{Note the
+line separating the footnotes from the text.}  Footnotes should be in 9 point font.
+
+\subsection{Graphics}
+
+{\bf Illustrations}: Place figures, tables, and photographs in the
+paper near where they are first discussed, rather than at the end, if
+possible.  Wide illustrations may run across both columns and should be placed at
+the top of a page. Color illustrations are discouraged, unless you have verified that 
+they will be understandable when printed in black ink. 
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|rl|}
+\hline \bf Type of Text & \bf Font Size & \bf Style \\ \hline
+paper title & 15 pt & bold \\
+author names & 12 pt & bold \\
+author affiliation & 12 pt & \\
+the word ``Abstract'' & 12 pt & bold \\
+section titles & 12 pt & bold \\
+document text & 11 pt  &\\
+abstract text & 10 pt & \\
+captions & 10 pt & \\
+bibliography & 10 pt & \\
+footnotes & 9 pt & \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{font-table} Font guide. }
+\end{table}
+
+{\bf Captions}: Provide a caption for every illustration; number each one
+sequentially in the form:  ``Figure 1. Caption of the Figure.'' ``Table 1.
+Caption of the Table.''  Type the captions of the figures and 
+tables below the body, using 10 point text.  
+
+\subsection{Accessibility}
+\label{ssec:accessibility}
+
+In an effort to accommodate the color-blind (as well as those printing
+to paper), grayscale readability for all accepted papers will be
+enforced.  Color is not forbidden, but authors should ensure that
+tables and figures do not rely solely on color to convey critical
+distinctions.
+
+\section{Length of Submission}
+\label{sec:length}
+
+The NAACL HLT 2015 main conference accepts submissions of long papers
+and short papers.  The maximum length of a long paper manuscript is
+eight (8) pages of content and two (2) additional pages of references
+\emph{only} (appendices count against the eight pages, not the
+additional two pages).  The maximum length of a short paper manuscript
+is four (4) pages and two (2) additional pages of references.
+Accepted papers will be granted an additional content page. For both
+long and short papers, all illustrations, references, and appendices
+must be accommodated within these page limits, observing the
+formatting instructions given in the present document.  Papers that do
+not conform to the specified length and formatting requirements are
+subject to be rejected without review.
+
+\section{Double-blind review process}
+\label{sec:blind}
+
+As the reviewing will be blind, the paper must not include the
+authors' names and affiliations.  Furthermore, self-references that
+reveal the author's identity, e.g., ``We previously showed (Smith,
+1991) ...'' must be avoided. Instead, use citations such as ``Smith
+previously showed (Smith, 1991) ...'' Papers that do not conform to
+these requirements will be rejected without review. In addition,
+please do not post your submissions on the web until after the
+review process is complete (in special cases this is permitted: see 
+the multiple submission policy below).
+
+We will reject without review any papers that do not follow the
+official style guidelines, anonymity conditions and page limits.
+
+\section{Multiple Submission Policy}
+
+Papers that have been or will be submitted to other meetings or
+publications must indicate this at submission time. Authors of
+papers accepted for presentation at NAACL HLT 2015 must notify the
+program chairs by the camera-ready deadline as to whether the paper
+will be presented. All accepted papers must be presented at the
+conference to appear in the proceedings. We will not accept for
+publication or presentation papers that overlap significantly in
+content or results with papers that will be (or have been) published
+elsewhere.
+
+Preprint servers such as arXiv.org and ACL-related workshops that
+do not have published proceedings in the ACL Anthology are not
+considered archival for purposes of submission. Authors must state
+in the online submission form the name of the workshop or preprint
+server and title of the non-archival version.  The submitted version
+should be suitably anonymized and not contain references to the
+prior non-archival version. Reviewers will be told: ``The author(s)
+have notified us that there exists a non-archival previous version
+of this paper with significantly overlapping text. We have approved
+submission under these circumstances, but to preserve the spirit
+of blind review, the current submission does not reference the
+non-archival version.'' Reviewers are free to do what they like with
+this information.
+
+Authors submitting more than one paper to NAACL HLT must ensure
+that submissions do not overlap significantly ($>25\%$) with each other
+in content or results. Authors should not submit short and long
+versions of papers with substantial overlap in their original
+contributions.
+
+\section*{Acknowledgments}
+
+Do not number the acknowledgment section.
+
+\bibliography{rutwitter-semantics}
+\bibliographystyle{naaclhlt2015}
+
+\end{document}
