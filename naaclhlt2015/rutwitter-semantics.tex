@@ -44,9 +44,9 @@ datasets.
 There is strong intiution that distributional semantic and all state-of-the-art forecomings may
 be applied to Russian language as well. Information Retrieval in a whole has been successfully applied
 to many languages (by Google, Yandex\footnote{www.yandex.com} and others). Semantic analysis
-has been developing for decades, starting with Latent Semantic Analysis (Landauer, 1998), 
-Latent Semantic Indexing, finally Explicit Semantic Analysis (Gabrilovich, 2007), and numerous
-Wordnet and Wikipedia-based works (Zesch, 2008).
+has been developing for decades, starting with Latent Semantic Analysis \cite{landauer1998introduction}, 
+Latent Semantic Indexing, finally Explicit Semantic Analysis \cite{gabrilovich2007computing}, and numerous
+Wordnet and Wikipedia-based works \cite{zesch2008extracting}.
 
 These may be broadly divided into two groups: ones based on graph models and 
 measurements (e.g. Wikipedia-based), and distributional ones (LSA, LSI).
@@ -55,18 +55,20 @@ Early models, like LSA, suffered from increasing number of documents and their t
 The core feature of LSA, singular value decomposition, stated as the one to reduce vector-space model 
 of term-document matrix, actually makes it unfeasiable because of expensive SVD operation.
 Tremendous shift in field of vector-space models for natural language processing was made 
-by (Mikolov et al., 2013), with use of simplified neural network models, Continious Bag-of-Words
+by \cite{mikolov2013efficient}, with use of simplified neural network models, Continious Bag-of-Words
 and Continious Skip-gram. It was evaluated on word-similarity task. 
 
 On the other hand, increasing popularity of social networks, and in particular Twitter,
 enables users to communicate instantly, and researchers to analyse their activity.
-The area is "hot ground", there are works such as elections prediction (Metaxas, 2011), sentiment
+The area is "hot ground", there are works such as elections prediction \cite{metaxas2011not}, sentiment
 analysis and so on.
+
+\subsection{Goals of this paper}
 
 In this paper we focus on word-to-word similarity task for Russian language. The primary goal
 is to evaluate applicability of Twitter stream in this NLP task. The secondary goals are
 construction and validation of word similarity dataset for Russian based on WordSim353 translated 
-subset, and cross-checking it with well-known linguistic resource of Russian literature.
+subset, and cross-checking it with corpus of Russian literature.
 
 
 \section{Algorythm and input data}
