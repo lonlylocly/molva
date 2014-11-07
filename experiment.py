@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, date
 import stats
 from Indexer import Indexer
 import util
-from Fetcher import to_mysql_timestamp
+import torus 
 
 logging.config.fileConfig("logging.conf")
 
@@ -23,9 +23,10 @@ DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
 BLOCKED_NOUNS_LIST = u"\n".join(list(u"абвгдеёжзиклмнопрстуфхцчшщыьъэюя"))
 
-BLOCKED_NOUNS = ",".join(map( lambda x: str(util.digest(x)), BLOCKED_NOUNS_LIST.split("\n")))
+BLOCKED_NOUNS = ",".join(map( lambda x: str(util.digest(x)),settings["blocked_nouns"]))
+BLOCKED_NOUNS_SHORT = ",".join(map( lambda x: str(util.digest(x)), BLOCKED_NOUNS_LIST.split("\n")))
 
-POST_MIN_FREQ = 10
+POST_MIN_FREQ = 3
 
 @util.time_logger
 def build_chains_nouns_replys(cur ):
@@ -79,11 +80,15 @@ def _get_tweet_chains(cur):
     return posts
 
 @util.time_logger
-def _get_tweets_nouns(cur):
-    cur.execute("""
+def _get_tweets_nouns(cur, limit=None):
+    limit = "" if limit is None else "limit %s" % limit 
+    cmd = """
         select id, noun_md5 
-        from tweets_nouns    
-    """)
+        from tweets_nouns   
+        %s 
+    """ % limit
+    logging.info(cmd)
+    cur.execute(cmd)
     
     tweets_nouns = {}
     while True:
@@ -174,8 +179,8 @@ def build_contexts_in_memory(cur, cur_temp, nouns_limit, do_posts=False, do_repl
     save_contexts(cur_temp, noun_contexts.contexts, nouns_limit)
 
 @util.time_logger
-def build_contexts_straight_in_memory(cur, cur_temp):
-    nouns = _get_tweets_nouns(cur)
+def build_contexts_straight_in_memory(cur, cur_temp, nouns_limit, limit=None):
+    nouns = _get_tweets_nouns(cur, limit)
 
     noun_contexts = NounContexts()
 
@@ -188,9 +193,17 @@ def build_contexts_straight_in_memory(cur, cur_temp):
         for p in post_nouns:
             noun_contexts.put_context(p, post_nouns)
 
+            noun_contexts.contexts[p].cnt += 1
+
     logging.info("Total posts: %s" %(total))
-    
-    save_contexts(cur_temp, noun_contexts.contexts)
+
+
+    new_contexts = {}
+    for k in sorted(noun_contexts.contexts, key=lambda x: noun_contexts.contexts[x].cnt, reverse=True)[:nouns_limit]:
+        if noun_contexts.contexts[k].cnt >= POST_MIN_FREQ:   
+            new_contexts[k] = noun_contexts.contexts[k]
+ 
+    save_contexts(cur_temp, new_contexts, nouns_limit)
 
 def _write_chunk(cur, table, chunk):
     cur.execute("begin transaction")
@@ -218,7 +231,7 @@ def save_contexts(cur, contexts, nouns_limit):
         for context_part in contexts[noun].context.keys():
             noun_cons.append((noun, context_part, contexts[noun].context[context_part]))
             total_noun_cons += 1
-        if len(noun_cons) > 20000:
+        if len(noun_cons) > 200000:
             _write_chunk(cur, "post_reply_cnt", noun_cons)
             noun_cons = []
 
@@ -275,6 +288,16 @@ def build_hard(cur, cur_temp, temp_f, args):
     cur_temp.execute("select count(*) from chains_nouns_all")
     logging.info("tmp.chains_nouns_all cnt = %s " % cur_temp.fetchone()[0])
 
+def get_words_in_scope(translate):
+    if translate is None:
+        return None
+
+    tr_map = torus.get_translations(translate)
+    words = []
+    for k in tr_map:
+        words.append(util.digest(tr_map[k].decode('utf8')))
+
+    return words
 
 def main():
     parser = util.get_dates_range_parser()
@@ -285,10 +308,16 @@ def main():
     parser.add_argument("-m", "--memory", action="store_true")
     parser.add_argument("-x", "--straight", action="store_true")
     parser.add_argument("--nouns-limit", default=2000)
+    parser.add_argument("--limit")
+    parser.add_argument("--tfidf", action="store_true")
+    parser.add_argument("--stopwords", action="store_true")
+    parser.add_argument("--translate")
     args = parser.parse_args()
 
     print args
 
+    translate = get_words_in_scope(args.translate) 
+    
     if args.title is None:
         if args.reply and args.post:
             args.title = "regular"
@@ -296,10 +325,15 @@ def main():
             args.title = "reply"
         elif args.post:
             args.title = "post"
+        elif args.straight:
+            args.title = "straight"
+
+    if args.limit:
+        args.title += ".%s" % args.limit
 
     nouns_limit = int(args.nouns_limit)
 
-    output_file = "profiles/%s.nouns%s.%s.profiles.json" % (args.start, nouns_limit, args.title)
+    output_file = "prof_trans/%s.nouns%s.%s.profiles.json" % (args.start, nouns_limit, args.title)
     logging.info("output file: %s" % output_file)
 
     temp_f = "%s/tweets_%s.db.tmp" % (DB_DIR, args.start )
@@ -315,18 +349,29 @@ def main():
         if args.memory:
             build_contexts_in_memory(cur, cur_temp, nouns_limit, do_posts=args.post, do_replys=args.reply)
         elif args.straight:
-            build_contexts_straight_in_memory(cur, cur_temp)
+            build_contexts_straight_in_memory(cur, cur_temp, nouns_limit, args.limit)
         else:
             build_hard(cur, cur_temp, temp_f, args)
 
-    profiles_dict = stats.setup_noun_profiles(cur_temp, {}, {}, 
-        post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = nouns_limit 
-    )
+    cur.execute("select count(*) from tweet_chains")
+    total_docs = cur.fetchone()[0]
+    logging.info("Total docs: %s" % total_docs)
+
+    blocked_nouns = BLOCKED_NOUNS if args.stopwords else BLOCKED_NOUNS_SHORT  
+ 
+    if args.tfidf: 
+        profiles_dict = stats.noun_profiles_tfidf(cur_temp, POST_MIN_FREQ, blocked_nouns, nouns_limit, total_docs)
+    else:
+        profiles_dict = stats.setup_noun_profiles(cur_temp, {}, {}, 
+            post_min_freq = POST_MIN_FREQ, blocked_nouns = blocked_nouns, nouns_limit = nouns_limit
+        )
 
     logging.info("profiles len %s" % len(profiles_dict))
     profiles_dump = {}
     
     for p in sorted(profiles_dict.keys(), key=int):
+        #if args.translate and p not in translate:
+        #    continue
         profiles_dump[p] = profiles_dict[p].replys
 
     json.dump(profiles_dump, open(output_file, 'w'))

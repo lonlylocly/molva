@@ -29,6 +29,21 @@ BLOCKED_NOUNS = ",".join(map( lambda x: str(util.digest(x)), BLOCKED_NOUNS_LIST.
 NOUNS_LIMIT = 2000
 POST_MIN_FREQ = 10
 
+exp = {
+842505703: "путин",
+3422640972: "россия",
+3811899140: "обама",
+2557218689: "сша",
+3156789482: "мама",
+848893569: "бабушка",
+1368718747: "папа",
+3089392148: "дедушка",
+4078795067: "доллар"
+3462252606: "расти",
+3475785412: "рубль",
+851491985: "падать"
+}
+
 
 def main():
     logging.info(u"По-русски")
@@ -40,20 +55,20 @@ def main():
     sims = open(args.end,'r')
     nouns = stats.get_nouns(cur)
 
-    valid = map(str,[3615091692, 3577221357, 3504712731  ])
-    sim_keys = []
-    while True:
-        l = sims.readline()
-        if l is None or l == '':
-            break
-        n1, n2, sim = l.split(';')
-        #if n1 in valid and n2 in valid:
-        #    print u"%s %s %s" % (nouns[int(n1)], nouns[int(n2)], float(sim.replace(',','.')))
-        sim_keys.append(nouns[int(n1)])
-        sim_keys.append(nouns[int(n2)])
+    #valid = map(str,[3615091692, 3577221357, 3504712731  ])
+    #sim_keys = []
+    #while True:
+    #    l = sims.readline()
+    #    if l is None or l == '':
+    #        break
+    #    n1, n2, sim = l.split(';')
+    #    #if n1 in valid and n2 in valid:
+    #    #    print u"%s %s %s" % (nouns[int(n1)], nouns[int(n2)], float(sim.replace(',','.')))
+    #    sim_keys.append(nouns[int(n1)])
+    #    sim_keys.append(nouns[int(n2)])
 
-    for s in set(sim_keys):
-        print s
+    #for s in set(sim_keys):
+    #    print s
 
     return
 

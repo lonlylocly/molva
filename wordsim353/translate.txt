@@ -19,14 +19,14 @@ Yale	-
 abuse	- (преступление, нарушение, злоупотребление, произвол)
 accommodation	отель ?
 activity	действие ?
-admission	принять ?
+admission	вход
 airport	аэропорт
 alcohol	алкоголь
 aluminum	-
 animal	- 
 announcement	-
 antecedent	предыдущий
-anxiety	страх, страшный, бояться
+anxiety	-
 approach	способ
 architecture	-
 archive	-
@@ -90,7 +90,7 @@ cock	член
 coffee	кофе
 cognition	-
 collection	-
-combination	сбор
+combination	- сбор
 communication	связь
 company	компания
 competition	матч
@@ -114,7 +114,7 @@ culture	культура
 cup	-
 currency	-
 dawn	-
-day	день
+day	-день
 death	смерть
 decoration	-
 defeat	-
@@ -138,7 +138,7 @@ drought	-
 drug	лекарство
 ear	ухо
 earning	зарплата
-eat	есть
+eat	-есть
 ecology	-
 effort	попытка
 egg	яйцо
@@ -223,7 +223,7 @@ kilometer	км
 kind	вид
 king	король
 laboratory	-
-lad	парень
+lad	- парень
 landscape	-
 laundering	-
 law	закон
@@ -282,7 +282,7 @@ number	число
 nurse	-
 object	-
 observation	наблюдать
-office	офис
+office	пост
 oil	нефть
 opera	-
 operation	операция
@@ -323,7 +323,7 @@ project	проект
 prominence	известный
 property	собственный
 proton	-
-proximity	ближе
+proximity	- ближе
 psychiatry	-
 psychology	психолог
 quarrel	-
@@ -377,7 +377,8 @@ space	космос
 sprint	-
 star	звезда
 start	начало
-stock	запас
+stock	акция
+stock-1	рынок
 stove	-
 street	улица
 string	-
@@ -432,6 +433,6 @@ wood	дерево
 woodland	лес
 word	слово
 world	мир
-year	год
+year	-год
 yen	-
 zoo	-
