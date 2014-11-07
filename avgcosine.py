@@ -59,13 +59,13 @@ def main():
 
     res = count(args.start, args.end)
 
-    #print "Self check: equal %s" % ProfileCompare(get_profile({"1": 1}, 1), get_profile({"1": 1},1)).dist 
-    #print "Self check: not equal %s" % ProfileCompare(get_profile({"1": 1}, 1), get_profile({"2": 1},1)).dist
+    print "Self check: equal %s" % ProfileCompare(get_profile({"1": 1}, 1), get_profile({"1": 1},1)).dist 
+    print "Self check: not equal %s" % ProfileCompare(get_profile({"1": 1}, 1), get_profile({"2": 1},1)).dist
 
     #print "total keys %s" % len(measures)
     
-    print "\t" + "\t".join(["d1","d2", "total keys", "misses", "avg cosine, mean", "avg cosine, std dev"])
-    print "\t" + "\t".join([args.start, args.end, len(measures), misses, numpy.mean(vals), numpy.std(vals)])
+    print "\t" + "\t".join(["d1","d2", "total keys",  "avg cosine, mean", "avg cosine, std dev"])
+    print "\t" + "\t".join(map(str,[res["d1"], res["d2"], res["total"], res["mean"], res["stddev"]]))
     
     #print "missed keys %s"  % misses 
     #print "mean %s" % numpy.mean(vals)

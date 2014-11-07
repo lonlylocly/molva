@@ -4,9 +4,11 @@ import argparse
 import codecs
 import re
 import sys
+import logging
 
 import util
 import intercorr
+import stats
 
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
@@ -26,8 +28,8 @@ class SimMap:
         if n2 not in self.sims:
             self.sims[n2] = {}   
         sim = float(sim.replace(',','.'))
-        sim = 1 - sim
-
+        sim = 10 * (1 - sim)
+        
         if sim > self.max_sim:
             self.max_sim = sim
         if sim < self.min_sim:
@@ -38,9 +40,10 @@ class SimMap:
 
     def norm(self):
         
-        for n1 in self.sims:
-            for n2 in self.sims[n1]:        
-                self.sims[n1][n2] = (self.sims[n1][n2] - self.min_sim) #/ (self.max_sim - self.min_sim)
+        #for n1 in self.sims:
+        #    for n2 in self.sims[n1]:        
+        #        self.sims[n1][n2] = (self.sims[n1][n2] - self.min_sim) / (self.max_sim - self.min_sim)
+        pass
 
 
 def get_translations(translate):
@@ -84,7 +87,9 @@ def get_good_etalons(weights, tr_map, sim_map):
             if n2_d not in sim_map[n1_d]:
                 print u"not found '%s' at sim_map" % tr2
                 continue
-            good_wgs.append((n1, tr1, n2, tr2, w, str(sim_map[n1_d][n2_d])))
+            dev=str(float(w) - float(sim_map[n1_d][n2_d])) 
+            approx = str(sim_map[n1_d][n2_d])
+            good_wgs.append((n1, tr1, n2, tr2, w, approx, dev.replace('.',',')))
 
     print "Etalon pairs availale: %s" % len(good_wgs)
 
@@ -108,10 +113,14 @@ def get_measured(measured):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-w", "--weights")
-    parser.add_argument("-t", "--translate")
+    parser.add_argument("-w", "--weights", default="wordsim353/combined.tab")
+    parser.add_argument("-t", "--translate", default="wordsim353/translate.txt")
     parser.add_argument("-m", "--measured")
+    parser.add_argument("--store")
+    parser.add_argument("--alias")
     args = parser.parse_args()
+
+    print args
 
     weights = args.weights 
     translate = args.translate
@@ -127,20 +136,42 @@ def main():
     m1 = []
     m2 = []
     for g in good_weights:
-        print "\t".join(g)
+        g = list(g)
         m1.append(float(g[4]))
         m2.append(float(g[5]))
+        g[4] = g[4].replace('.',',')
+        g[5] = g[5].replace('.',',')
+        print "\t".join(g)
 
-    print m1
-    print m2
+    #print m1
+    #print m2
 
-    p_s = intercorr.get_spearman(m1, m2)
+    r_s = intercorr.get_spearman(m1, m2)
 
-    print "Spearman: %s" % p_s    
+    print "Spearman: %s" % r_s    
 
-    p_p = intercorr.get_pearson(m1, m2)
+    r_p = intercorr.get_pearson(m1, m2)
 
-    print "Pearson: %s" % p_s    
+    print "Pearson: %s" % r_p 
+
+    if args.store:
+        cur = stats.get_cursor(args.store)
+        #cur.execute("create table if not exists torus ( date_id text, pearson float, spearman float)")
+        #cmd = "insert into torus values ('%s', %s, %s)" % (args.alias, r_p, r_s)
+        #logging.info(cmd)
+        #cur.execute(cmd)
+
+        cur.execute("create table if not exists date_wordsim (date_id text, pair text, sim float, primary key(date_id, pair))")
+        cur.execute("delete from date_wordsim where date_id = '%s'" % (args.alias))
+        for g in good_weights:
+            g = list(g)
+            #g[4] = g[4].replace('.',',')
+            #g[5] = g[5].replace('.',',')
+            #print "\t".join(g)
+            cur.execute("insert into date_wordsim values ('%s', '%s', %s)" % (args.alias, " ".join(g[:4]), float(g[5])))
+            cur.execute("insert or ignore into date_wordsim values ('%s', '%s', %s)" % ("wordsim", " ".join(g[:4]), float(g[4])))
+
+
 
 if __name__ == '__main__':
     main()

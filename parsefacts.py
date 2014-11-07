@@ -162,25 +162,33 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
             nouns_preps = get_nouns_preps(elem)
             lemmas = []
             nouns = []
-            for np in nouns_preps:
-                lemmas.append(digest(np.with_prep()))
-                nouns.append(digest(np.noun_lemma))
-                nouns_total.add(np.noun_lemma)
-                sources_total.add(np.with_prep())
 
-                noun_sources.append((post_id, digest(np.noun_lemma), digest(np.with_prep())))
+            current_np = "empty"
+            try:
+                for np in nouns_preps:
+                    current_np = np
+                    lemmas.append(digest(np.with_prep()))
+                    nouns.append(digest(np.noun_lemma))
+                    nouns_total.add(np.noun_lemma)
+                    sources_total.add(np.with_prep())
 
-            lemma_word_pairs += make_lemma_word_pairs(nouns, lemmas)
+                    noun_sources.append((post_id, digest(np.noun_lemma), digest(np.with_prep())))
 
-            if len(noun_sources) > 10000:
-                logging.info("seen %s docid" % (cur_doc))
-                save_tweet_nouns(cur, noun_sources)
-                noun_sources = []
+                lemma_word_pairs += make_lemma_word_pairs(nouns, lemmas)
 
-            if len(lemma_word_pairs) > 20000:
-                save_lemma_word_pairs(cur, lemma_word_pairs) 
-                lemma_word_pairs = []
-               
+                if len(noun_sources) > 10000:
+                    logging.info("seen %s docid" % (cur_doc))
+                    save_tweet_nouns(cur, noun_sources)
+                    noun_sources = []
+
+                if len(lemma_word_pairs) > 20000:
+                    save_lemma_word_pairs(cur, lemma_word_pairs) 
+                    lemma_word_pairs = []
+            except Exception as e:
+                print "Error on docid: %s" % cur_doc
+                s = traceback.format_exc(e)              
+                print s
+ 
             elem.clear()
 
     save_tweet_nouns(cur, noun_sources)

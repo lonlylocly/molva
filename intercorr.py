@@ -7,6 +7,7 @@ import math
 
 import util
 from profile import NounProfile, ProfileCompare
+import stats
 
 logging.config.fileConfig("logging.conf")
 
@@ -121,6 +122,13 @@ def get_keys(d):
 
     return list(ks)
 
+def get_pearson_spearman(m1, m2):
+    r_p = get_pearson( m1, m2)
+
+    r_s = get_spearman( m1, m2)
+
+    return {"pearson": r_p, "spearman": r_s}
+
 def count(start, end):
     d1 = get_dict(start)
     d2 = get_dict(end)
@@ -145,21 +153,34 @@ def count(start, end):
     for i in range(0, len(m1)):
         assert m1[i][0] == m2[i][0]
         assert m1[i][1] == m2[i][1]
- 
-    r_p = get_pearson(map(lambda x: x[2], m1), map(lambda x: x[2], m2))
 
-    r_s = get_spearman(map(lambda x: x[2], m1), map(lambda x: x[2], m2))
+    m1 =  map(lambda x: x[2], m1)
+    m2 = map(lambda x: x[2], m2)
+    r_p = get_pearson(m1, m2)
+
+    r_s = get_spearman(m1, m2)
 
     return {"pearson": r_p, "spearman": r_s}
 
 def main():
     parser = util.get_dates_range_parser()
+    parser.add_argument("--store")
+    parser.add_argument("--alias1")
+    parser.add_argument("--alias2")
     args = parser.parse_args()
 
     res = count(args.start, args.end)
+    
+    if args.store:
+        cur = stats.get_cursor(args.store)
+        cur.execute("create table if not exists intercorr ( date_id1  text, date_id2 text, pearson float, spearman float)")
+        cmd = "insert into intercorr values ('%s', '%s', %s, %s)" % (args.alias1, args.alias2, res["pearson"], res["spearman"])
+        logging.info(cmd)
+        cur.execute(cmd)
 
-    print "\t" + "\t".join(["d1", "d2", "Pearson", "Spearman"])
-    print "\t" + "\t".join([args.start, args.end, r_p, r_s])
+    print json.dumps(res, indent=4)
+    #print "\t" + "\t".join(["d1", "d2", "Pearson", "Spearman"])
+    #print "\t" + "\t".join([args.start, args.end, r_p, r_s])
 
     #print "m1\tm2"
     #for i in range(0,100):

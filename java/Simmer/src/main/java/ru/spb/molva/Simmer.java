@@ -95,10 +95,10 @@ public class Simmer {
     private static List<Long> getCommonKeys(Map<Long, Map<Long, Double>> dict, Long p1, Long p2) {
         final Set<Long> keys1 = dict.get(p1).keySet();
         final Set<Long> keys2 = dict.get(p2).keySet();
-        List<Long> commonKeys = new ArrayList<Long>(keys1.size() + keys2.size());
+        Set<Long> commonKeys = new LinkedHashSet<Long>();
         commonKeys.addAll(keys1);
         commonKeys.addAll(keys2);
-        return commonKeys;
+        return new ArrayList(commonKeys);
     }
 
     public static RealVector getRealVector(Map<Long, Double> profile, List<Long> commonKeys) {
