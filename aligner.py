@@ -62,6 +62,10 @@ def get_best3_trend(cluster):
 
     return trend
 
+def get_best_trend(cluster):
+    best_trend_cluster = sorted(cluster["members"], key=lambda x: float(x["trend"]))[0]
+    return float(best_trend_cluster["trend"])
+
 class TotalFreq:
     def __init__(self, cur, nouns ):
         logging.info("start TotalFreq")
@@ -212,15 +216,16 @@ class BagFreq:
         #logging.info("done nexts")
 
         self.cur.execute("""
-            select noun_md5, source_md5
+            select noun_md5, source_md5, count(*) as cnt
             from tweets_words
             where noun_md5 in (%s)
             group by noun_md5, source_md5
+            order by cnt desc
         """ % (self.get_bag_joined()))
 
         noun_lemmas = {}
         for row in self.cur.fetchall():
-            n, s = row
+            n, s, cnt = row
             if n not in noun_lemmas:
                 noun_lemmas[n] = []
             noun_lemmas[n].append(s)
@@ -367,6 +372,9 @@ def choose_lemmas(chain, bag):
 
 def align(bag, nouns):
     logging.info("Input chain: " + u" ".join(map(lambda x: nouns[x], bag.bag)))
+    if len(bag.bag) == 1:
+        logging.info("One-word chain")
+        return [bag.bag]       
     neighbours = map(lambda x: x , bag.bag)
     first_best_pair =  get_bag_best_pair(bag.bag, bag)
     if first_best_pair is None:
@@ -437,7 +445,7 @@ def align(bag, nouns):
     return chains
 
 def get_aligned_cluster(cur, cur_lemma, cluster, trendy_clusters_limit=20):
-    valid_clusters = filter(lambda x: len(x["members"]) > 1, cluster)
+    valid_clusters = cluster
     trendy_clusters = sorted(valid_clusters, key=lambda x: get_best3_trend(x), reverse=True)
 
     cl_nouns = []

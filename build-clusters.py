@@ -79,7 +79,11 @@ def get_clusters(args, sim_dict, nouns, noun_trend, post_cnt):
     logging.info("Best ratio: %s" % best_ratio) 
     for c in cl:
         for m in c["members"]:
-            m["post_cnt"] = post_cnt[m["id"]]
+            try:
+                m["post_cnt"] = post_cnt[m["id"]]
+            except Exception as e:
+                logging.info("Mess with noun_md5 %s" % m["id"])
+                logging.error(e)
             trend = noun_trend[m["id"]] if m["id"] in noun_trend else 0
             m["trend"] = "%.3f" % trend 
 
@@ -108,7 +112,7 @@ def main():
     #cnt = cur.execute("select count(*) from noun_similarity").fetchone()[0]
 
     used_nouns = get_used_nouns(cur)        
-    logging.info("used nouns %s" % used_nouns)
+    ##logging.info("used nouns %s" % used_nouns)
 
     nouns = stats.get_nouns(cur, used_nouns)
     noun_trend = stats.get_noun_trend(cur)
@@ -119,6 +123,8 @@ def main():
     sim_dict = get_sims(cur) 
 
     cl = get_clusters(args, sim_dict, nouns, noun_trend, post_cnt)
+
+    json.dump(cl, open("./clusters_raw.json","w"), indent=2)
 
     signal.signal(signal.SIGALRM, handler)
     signal.alarm(1200)
