@@ -91,6 +91,7 @@ class SimpleFact:
         self.prep_lemma = None
         self.noun_id = None
         self.prep_id = None
+        self.lead_id = None
 
     def __str__(self):
         s = u"%(prep)s %(noun)s [%(noun_lemma)s %(noun_id)s] [%(prep_lemma)s %(prep_id)s]" %  ({"noun": self.noun, "noun_id": self.noun_id, "noun_lemma": self.noun_lemma,
@@ -111,23 +112,29 @@ def get_nouns_preps(elem):
         fact = SimpleFact()
         fact.noun_lemma = noun
         fact.noun_id = fields_info[0]
+        fact.lead_id = raw_fact.get('LeadID')
 
         if prep is not None:
             fact.prep_lemma = prep.get('val').lower()
             fact.prep_id = fields_info[1]
-
+        
         facts.append(fact)
 
     for lead in elem.findall(".//Lead"):
+        lead_id = lead.get('id')
         text = ElementTree.fromstring(lead.get('text').encode('utf8'))
         # <N lemma="">text</N> 
         # lemma - базовая форма. text - текущая, производная
         for f in text.findall('.//N'):
             for fact in facts:
+                if fact.lead_id != lead_id:
+                    continue
                 if f.get(fact.noun_id) is not None:
                     fact.noun = f.text.replace('"','')
         for f in text.findall('.//P'):
             for fact in facts:
+                if fact.lead_id != lead_id:
+                    continue
                 if f.get(fact.prep_id) is not None:
                     fact.prep = f.text.replace('"','')
 
@@ -163,12 +170,16 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
             lemmas = []
             nouns = []
             for np in nouns_preps:
-                lemmas.append(digest(np.with_prep()))
-                nouns.append(digest(np.noun_lemma))
-                nouns_total.add(np.noun_lemma)
-                sources_total.add(np.with_prep())
+                try:         
+                    lemmas.append(digest(np.with_prep()))
+                    nouns.append(digest(np.noun_lemma))
+                    nouns_total.add(np.noun_lemma)
+                    sources_total.add(np.with_prep())
 
-                noun_sources.append((post_id, digest(np.noun_lemma), digest(np.with_prep())))
+                    noun_sources.append((post_id, digest(np.noun_lemma), digest(np.with_prep())))
+                except Exception as e:
+                    traceback.print_exc()
+                    logging.error(e)
 
             lemma_word_pairs += make_lemma_word_pairs(nouns, lemmas)
 
