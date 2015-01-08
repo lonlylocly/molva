@@ -10,3 +10,6 @@ tomita/tomita-mac
 java/Simmer/.idea*
 java/Simmer/Simmer.iml
 java/Simmer/target*
+
+profiles/*
+results/*

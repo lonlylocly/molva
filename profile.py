@@ -47,28 +47,31 @@ class ProfileCompare:
     def vect_norm(self, vect):
         norm = 0
         for i in vect:
-            norm += math.sqrt(i ** 2)
+            norm += i ** 2
 
-        return norm
+        return math.sqrt(norm)
 
     def cosine(self, one, other):
             
         com_set = (set(one.replys.keys()) | set(other.replys.keys()))
         x1 = []
         x2 = []
-       
+     
+        #print "super %s " % len(com_set) 
+        #print "intersection %s "  % len(set(one.replys.keys()) & set(other.replys.keys()))
+ 
         for reply in com_set:
             x1.append(one.replys[reply] if reply in one.replys else 0) 
             x2.append(other.replys[reply] if reply in other.replys else 0)
-        
-        cos = numpy.dot(x1, x2) / (numpy.linalg.norm(x1) * numpy.linalg.norm(x2))
+       
+        cos = numpy.dot(x1, x2) / (self.vect_norm(x1) * self.vect_norm(x2))
         #print x1
         #print x2
         #print cos
 
         #raise Exception("stop")
 
-        return 1 - cos
+        return cos
 
     def get_spearman(self, one, other):
         sum_spearman = 0
@@ -93,7 +96,7 @@ class ProfileCompare:
         return self.dist # + self.common_tweets
     
     def __str__(self):
-        return u"Похожесть: %f; Общих твитов: %f" % (self.dist, self.common_tweets)         
+        return u"Похожесть: %f; " % (self.dist)         
 
 class NounProfile:
 
@@ -107,22 +110,27 @@ class NounProfile:
         self.replys = {}
         self.replys_rel = {}
         self.post = post
-        self.total = 0
         self.rel_min = reply_min
         self.post_tweet_ids = post_tweet_ids
         self.post_cnt = post_cnt
 
+    def add(self, other, plus=True):
+        new_self = NounProfile(self.post) 
+        for k in self.replys:
+            new_self.replys[k] = self.replys[k]
+        
+        for k in other.replys:
+            if k not in new_self.replys:
+                new_self.replys[k] = 0
+            new_self.replys[k] += (1 if plus else -1) * other.replys[k]
+        
+        return new_self
+
+    def subtract(self, other):
+        return self.add(other, plus=False)
+
     def compare_with(self, other):
         return ProfileCompare(self, other) 
-
-    def common_tweets_with(self, other):
-        t1 = self.post_tweet_ids
-        t2 = other.post_tweet_ids
-
-        common = set(t1) & set(t2)
-        total = set(t1) | set(t2)
-
-        return (len(common) + 0.0) / len(total) if len(total) > 0 else 0
 
     def apply_log(self):
         for r in self.replys:

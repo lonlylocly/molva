@@ -52,7 +52,7 @@ def try_several_times(f, times, error_return=[]):
 def time_logger(func):
     def inner(*args, **kwargs):
         inner.__name__ = func.__name__
-        logging.info("Stating <%s>" % func.__name__)
+        logging.info("Starting <%s>" % func.__name__)
         start_time =time.time()
         try:
             res = func(*args, **kwargs) 
