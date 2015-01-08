@@ -1,0 +1,375 @@
+%
+% File naaclhlt2015.tex
+%
+
+\documentclass[11pt,letterpaper]{article}
+\usepackage{naaclhlt2015}
+\usepackage{times}
+\usepackage{latexsym}
+
+\usepackage{polyglossia}
+\setdefaultlanguage{english}
+\setotherlanguage{russian}
+
+\newfontfamily\cyrillicfont{Times}
+
+\setlength\titlebox{6.5cm}    % Expanding the titlebox
+
+\title{Evaluation of Twitter as semantic analysis resource}
+
+\author{}
+
+\date{November, 5 2014}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+  In this paper we evaluate the use of Russian-speaking Twitter segment as a resource 
+  for distributional semantic analysis. Though gold-standard for task of semantic relatedness
+  of Russian language does not yet exist, some tweaks may be done to substitute it.  
+  There are several gold-standards for English, German and other languages. 
+  We translate WordSim353 and evaluate it against two corpora - the one of Twitter stream and 
+  corpus made of contemporary Russian literature.
+\end{abstract}
+
+\section{Introduction}
+
+One of the vital goals in task of distributional semantics of Russian language is building
+a gold-standard, analogous to WordSim353 \cite{finkelstein2001placing}, ZG222 \cite{zesch2006auto} 
+and others. 
+Such datasets are composed with use of expert knowledge. At first, researcher composes pairs
+of words, either related somehow (meronymy, hyponymy, hyperonymy, antonymy, etc.), or unrelated.
+Next, a group of individual experts are given the task to estimate relatedness of those pairs.
+Estimations may vary, e.g. four distinct grades, or fraction from 0.0 to 1.0. Typical group size is 
+about 10-15 people.
+
+Apparently, researchers wanting to make such datasets for other languages may try to use existing
+ones as basis, e.g. by simply translating them, because reengineering it from scratch would be much more
+complicated. Some did try, but as far as we know there was no proper evaluation of translated word-sim
+datasets.
+
+Semantic analysis
+was under study for decades, starting with Latent Semantic Analysis \cite{landauer1998introduction}, 
+Latent Semantic Indexing, finally Explicit Semantic Analysis \cite{gabrilovich2007computing}, and numerous
+Wordnet and Wikipedia-based works \cite{zesch2008extracting}.
+
+Early models, like LSA, worked well on smaller dataset, compared to those we have nowadays. 
+Tremendous shift in efficient vector-space models estimation was made 
+by \cite{mikolov2013efficient}, with use of simplified neural network models, Continuous Bag-of-Words
+and Continuous Skip-gram. It was evaluated on word-similarity task. 
+
+On the other hand, increasing popularity of social networks, and in particular Twitter,
+enables users to communicate instantly, and researchers to analyse their activity.
+The area is "hot ground", there are works such as elections prediction \cite{metaxas2011not}, sentiment
+analysis and so on.
+
+
+\subsection{Goals of this paper}
+
+In this paper we focus on word-to-word similarity task for Russian language. The primary goal
+is to evaluate applicability of Twitter stream in this NLP task. The secondary goals are
+construction and validation of word similarity dataset for Russian based on WordSim353 translated 
+subset, and cross-checking it with corpus of Russian literature.
+
+
+\section{Input data and algorithm}
+
+\subsection{Input data}
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r|r|}
+\hline \bf Alias & \bf Word count & \bf $\rho_P$  \\ \hline
+{\tt 01} & 1.2M  & 0.25\\
+{\tt 01\_10} & 12.5M & 0.27 \\
+{\tt 01\_20} & 22.5M & 0.28 \\
+{\tt books} & 450K & 0.31 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{chunk-size-table} Corpus under study. 
+(Here $\rho_P$ is Pearson correlation with WordSim) }
+\end{table}
+
+
+Twitter data is mined from Twitter streaming API\footnote{https://dev.twitter.com/streaming/overview}. It is assumed to be random subset of actual Twitter stream.
+
+Big picture of algorithm:
+\begin{itemize}
+\item fetch tweets
+\item filter non-Cyrillic ones
+\item stemming (each tweet as one sentence)
+\item remove stopwords
+\item store words in database.
+\end{itemize}
+
+All fetched data is stored in daily chunks, $\approx$ 450k Tweets per day.
+
+We detect Russian words by simply counting cyrillic symbols. We use Yandex Tomita 
+Parser\footnote{https://tech.yandex.ru/tomita/} for stemming.
+
+Algorithm for parsing books slightly differs:
+it splits continuous text by sentence.
+
+\subsection{Counting distributions}
+
+The word distribution matrix has word-by-word structure. 
+Each row is frequency distribution of word context. 
+Every cell X in row Y describes number of sentences with both x and y.
+
+Each cell in matrix is then weighted with entropy: 
+$- \sum p \log p$, as stated by \cite{landauer1998introduction}.
+
+Semantic relatedness is computed as cosine similarity between word distributions 
+(which is common for such task).
+We will use notation where 0.0 is no similarity, and 10.0 is identically similar, 
+as in WordSim353.
+
+\section{Evaluation}
+
+Common approach for evaluation of word semantic relatedness is to use several datasets (3-4 typically). 
+Since we want to evaluate if translated one is worthwhile, it's enough to translate just one. 
+We make an assumption that bias of translation would be more significant than the one of a dataset.
+
+\subsection{Method of translation}
+
+First of all, we consider only 2000 most frequent words in our Twitter corpus.  
+We make list of words from WordSim353 combined set. For each word we manually 
+lookup translation with dictionary \footnote{slovari.yandex.ru} and write down short-list 
+of possible translations. If translation is not present in 2000 list, we remove it. 
+Empty translation lists are removed. Pairs from WordSim with partial or none 
+translation are also removed.
+
+Still we managed to translate roughly 250 words out of 450, giving us 100 translated pairs.
+This is the baseline for all our subsequent experiments. 
+
+\subsection{Twitter corpus}
+
+Twitter corpus under study consists of 20 chunks since 1 to 20 August, 2014, one chunk per day.
+Each chunk contains $\approx 1.3M$ words.
+We also consider joined chunks, namely {\tt 01\_10}, {\tt 11\_20} containing 10 days each, and 
+{\tt 01\_20} containing entire corpus.
+We use Pearson correlation coefficient to estimate accuracy of our method.
+
+\section{Experimental results}
+
+\begin{table*}[t]
+\begin{center}
+\begin{tabular}{|l|ll|r|r|}
+\hline \bf \# & \bf Pair &  &   $\Delta {\tt books} $ & $ \Delta {\tt 01\_10} $  \\ \hline
+1 & psychology  \begin{russian}(психолог)\end{russian} & depression \begin{russian}(депрессия)\end{russian} & 6.25 & -0.14 \\
+ & psychology  \begin{russian}(психология)\end{russian} &  & 5.32 & 1.48 \\
+\hline
+2 & precedent \begin{russian}(случай)\end{russian} & group \begin{russian}(группа)\end{russian}  & -3.13 & -7.11  \\
+ & precedent \begin{russian}(прецедент)\end{russian} &  & 0.04 & -2.55  \\
+\hline
+3 & network \begin{russian}(сеть)\end{russian} & hardware \begin{russian}(техника)\end{russian} & 7.21 & 0.35 \\
+ &  & hardware \begin{russian}(оборудование)\end{russian} & 5.10 & 1.77 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{translation-error} Translation errors. 
+  (Here: $\Delta {\tt books} =  m_{WordSim353} - m_{\tt books}$,
+$\Delta {\tt 01\_10} =  m_{WordSim353} - m_{\tt 01\_10}$)
+}
+\end{table*}
+
+First measurements of Pearson correlation for single-day chunk, without using stopwords, 
+showed as low as 0.20, in contrast with 0.6 being state-of-the-art accuracy 
+for this task \cite{mikolov2013efficient}.  
+
+
+This low accuracy may be in result of following factors:
+
+\begin{itemize}
+\item errors in translation 
+\item algorithm issues
+\item corpus quality
+\item size of corpus
+\end{itemize}
+
+Usage of stopwords helped us to make 0.25. 
+
+Next obvious step was to determine if we can improve accuracy with just more data.
+
+It gave us another 2-3\% (Table~\ref{chunk-size-table}), with 20 times larger
+corpus. Apparently, enlarging it further doesn't make much sense.
+
+Still we had to mitigate possible translation issues and corpus-related ones.
+
+\begin{table*}[t]
+\begin{center}
+\begin{tabular}{|l|ll|r|r|}
+\hline \bf \# & \bf Pair &  & Relatedness estimation  \\ \hline
+1 & Maidan  \begin{russian}(майдан)\end{russian} & Ukraine \begin{russian}(украина)  \end{russian} & 8.70  \\
+2 & Maidan  \begin{russian}(майдан)\end{russian} & people  \begin{russian}(народ)    \end{russian} & 8.58 \\
+3 & Maidan  \begin{russian}(майдан)\end{russian} & war     \begin{russian}(война)    \end{russian} & 8.58 \\
+\hline
+1 & iPhone  \begin{russian}(айфон)\end{russian} & telephone \begin{russian}(телефон)\end{russian} & 7.63 \\
+2 & iPhone  \begin{russian}(айфон)\end{russian} & computer \begin{russian}(комп)\end{russian} & 7.17 \\
+3 & iPhone  \begin{russian}(айфон)\end{russian} & internet \begin{russian}(интернет)\end{russian} & 7.09 \\
+\hline
+1 & internet  \begin{russian}(интернет)\end{russian} & work \begin{russian}(работать)\end{russian} & 8.44 \\
+2 & internet  \begin{russian}(интернет)\end{russian} & problem \begin{russian}(проблема)\end{russian} & 8.41 \\
+3 & internet  \begin{russian}(интернет)\end{russian} & inet \begin{russian}(инет)\end{russian} & 8.36 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{discovered-table} Terms defined by Twitter corpus }
+\end{table*}
+
+\subsection{Russian literature corpus}
+
+To overcome translation issues we mined different corpus, using publicly 
+available words of Russian contemporary authors (late 20th century - beginning
+of 21th, for list of them see Appendix A). In this paper we address it 
+{\tt books}.
+
+Size of corpus was chosen empirically: we stopped adding texts when 
+no significant improvement in accuracy could be noticed.
+
+It's top was around 0.30, which is slightly better than {\tt 01\_20}, 
+and much better than {\tt 01}. 
+
+Inter-correlation between {\tt 01\_20} 
+and {\tt books} appeared to be 0.63 (on the set of pairs
+from translated WordSim).
+Hence Twitter may be used as linguistic resource (as far as literature may). 
+
+On the other side, considering that {\tt books} is 50
+times smaller than {\tt 01\_20}, it's closest contestant with 0.28 accuracy, 
+one may conclude that literature is more information-dense linguistic resource.
+Which is not surprising.
+
+
+\subsection{Language issues}
+
+In order to validate our word translations, we count errors for estimated
+relatedness values. Some of them can be seen at Table~\ref{translation-error} 
+(translation comes in parenthesis). 
+This table helps to get the picture of how translation influences the error
+of relatedness estimation.
+
+The first row for each WordSim pair
+comes with original translation, and second row is for adjusted translation.
+
+"Psychology" was originally translated as "psychologist", the {\em occupation}, 
+not the {\em science},
+"hardware" --- as general "technics", and "precedent" as "case", rather than, 
+literally, precedent. 
+
+After adjusting translation for these three words, we measured accuracy again, 
+and saw significant shift. Firstly, $ \rho_{\tt books}$ jumped to 0.39, 
+but somehow $ \rho_{\tt 01\_20} $ bumped down to 0.23. {\tt books} and {\tt 01\_20}
+correlation also declined to 0.51.
+
+Such big shift in just 12 out of 100 pairs (these words occur in 12 wordsim pairs) 
+tells us that our translated version
+of WordSim isn't robust enough, and a posteriori tweaks are dangerous, because
+outcome can be easily manipulated. 
+
+For this reason correlation with translated WordSim cannot be compared with
+state-of-the-art values. 
+
+\subsection{Corpus issues}
+
+Another interesting observation deals with over- and under-estimation of 
+semantic relatedness. 
+
+Let the value of word pair relatedness be {\em underestimated} if its standard value is more than 
+3 points higher, than generated by algorithm, and {\em overestimated} if it is more than 3 points  
+lower.
+
+It turns out that {\tt books} underestimate value in 45\% cases, and never overestimate;
+{\tt 01\_10} overestimate value in 35\% cases, and never underestimate. 
+
+They both give large estimation error in only 2\% cases, i.e. they guess wrong in different cases.
+Hence their estimations can be combined to improve accuracy:
+
+$m_{combo} = (m_{\tt books} + m_{\tt 01\_10}) / 2 $
+
+Its correlation with WordSim happens to be 0.32, the best observed.
+So these corpora can be considered complementing each other.
+
+\subsection{Empirical study}
+
+Taking into account that Twitter posts are often
+related to current events and terms, we assume that it is possible to identify
+these events and get some knowledge of what do they look like.
+
+Here we present few words with their most related (according to {\tt 01\_10}) allies.
+They may be seen at Table~\ref{discovered-table}.
+
+The first case describes term Maidan, which shifted from general "square" meaning
+to something related to situation in Ukraine. 
+
+The last one, {\em internet}, is actually more blurred, and seem unrelated, but it can
+be explained that people often post Tweets about problems with internet link quality.
+
+\section{Conclusion}
+
+During this research we evaluated the translated version of WordSim353.
+It turned out that such method can be used to estimate accuracy
+of semantic relatedness algorithm. 
+
+Although term {\em accuracy} seems a little bit confusing, because it cannot 
+be compared to that of state-of-the-art (the absolute value). 
+It still can be used as relative
+quality measure, e.g. for estimating quality change between two versions
+of same algorithm.
+
+We also evaluated Twitter stream as linguistic resource, which performed
+slightly worse than same algorithm trained with set of several Russian contemporary
+literature texts. However, Twitter-based dataset was an order of magnitude larger
+than former one. 
+
+Twitter stream can also be used to estimate meaning of new words.
+It also may be considered to detect word semantic change.
+
+\section{Future work}
+
+There are number of ways to continue this work.
+
+WordSim353 can be translated completely and analogous evaluation performed.
+
+Several other resources may be tried, e.g. Wikipedia articles, Wictionary and 
+WordNets.
+
+Several modifications may be applied to the algorithm, including different
+{\tt td-idf} modifications, different stopword lists, and usage of methods
+introduced by \cite{mikolov2013efficient}.  
+
+Twitter-based semantic relatedness may be combined with trend analysis to
+produce trending topics.
+
+\bibliography{rutwitter-semantics}
+\bibliographystyle{naaclhlt2015}
+
+{\bf Appendix A. Texts in {\tt books} corpus}.
+
+B. Akunin. Almaznaya kolesnitsa. 
+
+B. Akunin. Vneklassnoe chtenie.
+
+D. Granin. Zubr. 
+
+V. Pelevin. Prince gosplana.
+
+V. Pelevin. Pokolenie "P". 
+
+S. Lukianenko. 13 gorod.
+
+S. Lukianenko. Pristan zheltih korablei.
+
+A. Strugatsky, B. Strugatsky. Ponedelnik nachinaetsa v subbotu.
+
+A. Strugatsky, B. Strugatsky. Ulitka na sklone. 
+
+M. Veller. Vse o zhizni.
+
+A. Zhitinksi. Ditia epokhi.
+
+
+
+
+\end{document}

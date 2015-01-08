@@ -441,13 +441,14 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
         from (
             select count(*) as c, reply_md5
             from post_reply_cnt 
+            where reply_md5 not in (%s)
             group by reply_md5
             order by c desc
             limit 8000
-        ) 
-    """)
+        )
+    """ % blocked_nouns)
 
-    cur.execute("""
+    cmd = """
         select p.post_md5, p.reply_md5, p.reply_cnt, p2.post_cnt
         from %(profiles_table)s p
         inner join post_cnt p2
@@ -460,7 +461,11 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
         and p.reply_md5 not in (%(blocked_nouns)s)
         order by p2.post_cnt desc
     """ % {"profiles_table": profiles_table, "post_min_freq": post_min_freq, 
-        "blocked_nouns": blocked_nouns})
+        "blocked_nouns": blocked_nouns}
+
+    #logging.debug(cmd)
+
+    cur.execute(cmd)
 
     profiles_dict = {}
 
@@ -517,6 +522,10 @@ def count_entropy(profile, repl_p, tot_profiles):
         p = (repl_p[r][freq] + 0.0) / tot_profiles
         entropy += p * math.log(p)
 
+    #if entropy == 0:
+    #    logging.warn("Post %s. Couldnt find entropy (possibly all replys are equally probable" % profile.post)
+    #    return 1
+
     entropy *= -1
 
     for r in profile.replys:
@@ -524,6 +533,28 @@ def count_entropy(profile, repl_p, tot_profiles):
 
     return entropy
 
+@util.time_logger
+def tfidf(profiles_dict, total_docs):
+    inverse_reply_freq = {}
+    for k in profiles_dict.keys():
+        profile = profiles_dict[k]
+        for r in profile.replys:
+            if r not in inverse_reply_freq:
+                inverse_reply_freq[r] = 0
+            inverse_reply_freq[r] += profile.replys[r]
+
+    for r in inverse_reply_freq:
+        inverse_reply_freq[r] = math.log(float(total_docs) / inverse_reply_freq[r] )
+
+    for k in profiles_dict.keys():
+        profile = profiles_dict[k]
+        total_doc_words = 0
+        for r in profile.replys:
+            total_doc_words += profile.replys[r]
+        for r in profile.replys:
+            profile.replys[r] = (float(profile.replys[r]) / total_doc_words) * inverse_reply_freq[r]
+        
+@util.time_logger
 def weight_profiles_with_entropy(cur, profiles_dict, nouns):
     logging.info("start")
     post_cnt = get_noun_cnt(cur) 
@@ -549,6 +580,25 @@ def weight_profiles_with_entropy(cur, profiles_dict, nouns):
         count_entropy(profiles_dict[pr], repl_ps, len(profiles_dict.keys()))
 
     logging.info("done")
+
+def noun_profiles_tfidf(cur, post_min_freq, blocked_nouns, nouns_limit, total_docs):
+    profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns, "post_reply_cnt")
+
+    logging.info("Profiles len: %s" % len(profiles_dict))
+    if False or len(profiles_dict) > nouns_limit:
+        short_profiles_dict = {}
+        
+        for k in sorted(profiles_dict.keys(), key=lambda x: profiles_dict[x].post_cnt, reverse=True)[:nouns_limit]:
+            short_profiles_dict[k] = profiles_dict[k]
+
+        profiles_dict = short_profiles_dict
+
+        logging.info("Short-list profiles len: %s" % len(profiles_dict))
+
+    tfidf(profiles_dict, total_docs) 
+   
+    return profiles_dict
+
 
 def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt"):
     profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table)
