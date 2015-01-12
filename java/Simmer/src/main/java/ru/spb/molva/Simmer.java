@@ -1,8 +1,7 @@
 package ru.spb.molva;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealVector;
@@ -24,23 +23,12 @@ public class Simmer {
 
         String content = FileUtils.readFileToString(inputFile);
 
-        Map<Long,Map<Long,Double>> dict = new HashMap<Long, Map<Long, Double>>();
+        final Gson gson = new Gson();
+        Map<Long, Map<Long, Double>> dict = gson.fromJson(content, new TypeToken<Map<Long, Map<Long, Double>>>() {
+        }.getType());
 
-        final JsonObject profiles = new JsonParser().parse(content).getAsJsonObject();
-
-        for (Map.Entry<String, JsonElement> profileDesc : profiles.entrySet()) {
-            Long postMd5 = Long.parseLong(profileDesc.getKey());
-
-            final JsonObject postReplys = profileDesc.getValue().getAsJsonObject();
-            final HashMap<Long, Double> replysDict = new HashMap<Long, Double>();
-            for (Map.Entry<String, JsonElement> repl : postReplys.entrySet()) {
-                Long replyMd5 = Long.parseLong(repl.getKey());
-                replysDict.put(replyMd5, repl.getValue().getAsDouble());
-            }
-            dict.put(postMd5, replysDict);
-
-        }
         System.out.println("init ready");
+        System.out.println("Total keys: " + dict.size());
 
         List<Long> posts = new ArrayList<Long>();
         posts.addAll(dict.keySet());
