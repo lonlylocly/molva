@@ -18,6 +18,14 @@ function getCurUrlParams() {
     return params;
 }
 
+function getCurUrlStringParam(param, default_val) {
+    if (param in getCurUrlParams()) {
+        return getCurUrlParams()[param];
+    } else {
+        return default_val;
+    }
+};
+
 function getCurUrlIntParam(param, default_val) {
     var p_val = parseInt(getCurUrlParams()[param]);
     if (isNaN(p_val)) {
@@ -140,6 +148,17 @@ function parseResponse(resp){
     return topics;
 }
 
+function getLocalPageTranslateUrl(lang){
+    var url = document.URL.replace(new RegExp("&?lang=[^&]*"), "");
+    if (url.indexOf("?") > -1) {
+        url += "&lang=" + lang;
+    } else {
+        url += "?lang=" + lang;
+    }
+
+    return url;
+}
+
 function loadTopic() {
     var request = getApiRequest();
     var offset = getCurUrlIntParam("offset",0);
@@ -149,6 +168,8 @@ function loadTopic() {
             var resp = JSON.parse(data);
             var topic = parseResponse(resp)[offset];
             topic["update_time"] = resp["update_time"];
+            
+            topic["i18n"] = getI18n();
 
             var source = $("#cluster-template").html();
             var template = Handlebars.compile(source);
@@ -160,6 +181,7 @@ function loadTopic() {
             var template2 = Handlebars.compile(source2);
             $( "#shares-holder" ).html( template2({"shareUrl": shareUrl, "shareTitle": '"' + topic["title_string"] + '"'}) );
 
+            $("#choose-lang").html(getI18n()["choose_lang"]);
         } catch (e){
             console.log(e);
         }
@@ -170,10 +192,57 @@ function loadTopic() {
    
 }
 
+function getI18n(){
+    var lang = getCurUrlStringParam("lang","ru");
+    if (lang == "en") {
+        return {
+            "lang": "en",
+            "earlier": "Earlier",
+            "now": "Now",
+            "updated": "Last update",
+            "lookup": "Search with...",
+            "this_topic": "Show this topic only",
+            "howto": {
+                "caption": "Molva how-to",
+                "first_line": "Pick topic from list",
+                "second_line": "Click \"Search with...\" and select one",
+                "search": "Check out",
+                "in_twitter": "via Twitter search" 
+            },
+            "choose_lang": "<a href=\"" + getLocalPageTranslateUrl("ru") + "\">Ru</a>",
+            "lookup_topic": "Search with:"
+        };
+    } else {
+        return {
+            "lang": "ru",
+            "earlier": "Раньше",
+            "now": "Сейчас",
+            "updated": "Обновлено",
+            "lookup": "Уточнить",
+            "this_topic": "Только эта тема",
+            "howto": {
+                "caption": "Как пользоваться молвой",
+                "first_line": "Выберите интересующую вас тему из списка",
+                "second_line": "Нажмите \"Уточнить\", и выберите способ",
+                "search": "Например, поищите",
+                "in_twitter": "в Твиттере"
+            },
+            "choose_lang": "<a href=\"" + getLocalPageTranslateUrl("en") + "\">En</a>",
+            "lookup_topic": "Уточнить:"
+        };
+    }
+}
+
+Handlebars.registerHelper('i18n', function(smth) {
+    var i18n = getI18n();
+    return  (smth in i18n ? i18n[smth] : "") ;
+});
+
 function loadClusters() {
     var request = getApiRequest();
     var limit = getCurUrlIntParam("limit",20);
     var offset = getCurUrlIntParam("offset",0);
+    var lang = getCurUrlStringParam("lang","ru");
 
     console.log("loadClusters");
     $.get( request, function( data ) {
@@ -182,14 +251,22 @@ function loadClusters() {
             var cl2 = parseResponse(resp);
             var source = $("#cluster-template").html();
             var template = Handlebars.compile(source);
+            var renderDoc = {
+                "groups": cl2.slice(offset, offset + limit), 
+                "update_time": resp["update_time"],
+                "i18n": getI18n() 
+            };
 
-            $( "#cluster-holder" ).html( template({"groups": cl2.slice(offset, offset + limit), "update_time": resp["update_time"]}) );
+            $( "#cluster-holder" ).html( template(renderDoc) );
 
             var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset + "&limit=" + limit;;
             var source2 = $("#shares-template").html();
             var template2 = Handlebars.compile(source2);
             $( "#shares-holder" ).html( template2({"shareUrl": shareUrl, "shareTitle": "О чем говорит Twitter"}) );
+            
+            var chooseLangTemplate = "<a href=\"./?lang=en\">En</a>";
 
+            $("#choose-lang").html(getI18n()["choose_lang"]);
         } catch (e){
             console.log(e);
         }
