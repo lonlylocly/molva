@@ -24,7 +24,7 @@ def main():
         run("%s/post-tomita.py -s %s -e %s 1>> post-tomita.log 2>&1 " % (SCRIPTDIR, d, d))
         logging.info("done")
 
-    run("%s/current-post-cnt.py >> current-post-cnt.log 2>&1 " % SCRIPTDIR)
+    run("python -m cProfile %s/current-post-cnt.py >> current-post-cnt.log 2>&1 " % SCRIPTDIR)
 
     run("%s/prepare-profiles.py -o profiles.json  > prepare-profiles.log 2>&1" % SCRIPTDIR) 
     run("java -Xmx700m -jar %s/%s profiles.json sims.csv > simmer.log 2>&1 " % (SCRIPTDIR, SIMMER_JAR))
@@ -33,8 +33,8 @@ def main():
     run("%s/trend.py  1>> trend.log 2>&1 " % SCRIPTDIR) 
     #run("%s/exclusion.py  1>> exclusion.log 2>&1 " % SCRIPTDIR) 
 
-    run("%s/prepare-aligner.py >> prepare-aligner.log 2>&1" % SCRIPTDIR) 
-    run("%s/build-clusters.py   -i 10 1>> clusters.log 2>&1 " % SCRIPTDIR) 
+    run("python -m cProfile %s/prepare-aligner.py >> prepare-aligner.log 2>&1" % SCRIPTDIR) 
+    run("python -m cProfile %s/build-clusters.py   -i 10 1>> clusters.log 2>&1 " % SCRIPTDIR) 
 
     logging.info("done")
 

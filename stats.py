@@ -333,7 +333,7 @@ CREATE_TABLES = {
             source1_md5 integer,
             source2_md5 integer,
             cnt integer default 0,
-            PRIMARY KEY (noun1_md5, noun2_md5, source1_md5, source2_md5)
+            PRIMARY KEY (noun1_md5, noun2_md5)
         )
     """ 
 }
