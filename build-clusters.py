@@ -104,6 +104,8 @@ def main():
 
     cur = stats.get_main_cursor(DB_DIR)
     cur_lemma = stats.get_cursor(DB_DIR + "/tweets_lemma.db")
+    lemma_word_pairs = DB_DIR + "/tweets_lemma_word_pairs.db"
+    cur_lemma.execute('attach "%s" as lwp' % lemma_word_pairs)
     cur_display = stats.get_cursor(DB_DIR + "/tweets_display.db")
     #cur.execute("drop table if exists clusters")
 
@@ -127,7 +129,7 @@ def main():
     json.dump(cl, open("./clusters_raw.json","w"), indent=2)
 
     signal.signal(signal.SIGALRM, handler)
-    signal.alarm(1200)
+    signal.alarm(1500)
     cl = aligner.get_aligned_cluster(cur, cur_lemma, cl)
     signal.alarm(0)
     

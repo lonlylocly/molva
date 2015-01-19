@@ -81,7 +81,7 @@ class TotalFreq:
     def init_total_cnt(self):
         self.cur.execute("""
             select sum(cnt), count(*)
-            from lemma_word_pairs l
+            from lwp.lemma_word_pairs l
             where cnt > 1 
             and (noun1_md5 in (%s)
             or noun2_md5 in (%s))
@@ -166,7 +166,7 @@ class BagFreq:
     def init_pair_freqs(self):
         self.cur.execute("""
             select noun1_md5, noun2_md5, sum(cnt)
-            from lemma_word_pairs
+            from lwp.lemma_word_pairs
             where noun1_md5 in (%s) 
             and noun2_md5 in (%s)
             and cnt > 1 
@@ -198,7 +198,7 @@ class BagFreq:
         #logging.info("start")
         self.cur.execute("""
             select noun1_md5, source2_md5
-            from lemma_word_pairs
+            from lwp.lemma_word_pairs
             where cnt > 1 
             and noun1_md5 in (%s)
             group by noun1_md5, source2_md5
@@ -238,7 +238,7 @@ class BagFreq:
         #logging.info("start")
         self.cur.execute("""
             select noun1_md5, noun2_md5, source1_md5, source2_md5, cnt
-            from lemma_word_pairs l
+            from lwp.lemma_word_pairs l
             where cnt > 1
             and noun1_md5 in (%s)
             and noun2_md5 in (%s)
