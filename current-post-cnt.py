@@ -67,36 +67,58 @@ def build_tweets_nouns_cur(cur, db, time_bound):
     """ % {"db": db, "time": time_bound})
 
 @util.time_logger
-def build_chains_nouns(cur, time_ranges):
-    logging.info("chains_nouns; time (%s, %s)" % (time_ranges[0]["min"], time_ranges[0]["max"]))
+def _build_chains_nouns_init(cur, time_min, time_max):
     cur.execute("""
         insert into chains_nouns
         select p_id, p_md5, r_id, r_md5  from chains_nouns_all
         where created_at > '%(min_time)s' and created_at <= '%(max_time)s'
-    """ % {"min_time": time_ranges[0]["min"], "max_time": time_ranges[0]["max"]})
+    """ % {"min_time": time_min, "max_time": time_max})
+
+@util.time_logger
+def _build_post_cnt(cur, suff, time_min, time_max):
+    logging.info("post_cnt%s" % (suff))
+    cmd = """
+        insert or ignore into post_cnt%(suff)s 
+        select p_md5,  count(*) 
+        from (
+            select p_id, p_md5 
+            from chains_nouns_all
+            where created_at > '%(min_time)s' and created_at <= '%(max_time)s' 
+            group by p_md5, p_id
+        ) group by p_md5
+    """ % {"suff": suff, "min_time": time_min, "max_time": time_max}
+    logging.info(cmd)
+    cur.execute(cmd)
+
+@util.time_logger
+def build_chains_nouns(cur, time_ranges):
+    logging.info("chains_nouns; time (%s, %s)" % (time_ranges[0]["min"], time_ranges[0]["max"]))
+    _build_chains_nouns_init(cur, time_ranges[0]["min"], time_ranges[0]["max"])
 
     for i in range(0, len(time_ranges)):
         suff = time_ranges[i]["suff"]
-        #logging.info("chains_nouns%s; time (%s, %s)" % (suff, time_ranges[i]["min"], time_ranges[i]["max"]))
-        #cur.execute("""
-        #    insert into chains_nouns%(suff)s
-        #    select p_id, p_md5, r_id, r_md5  from chains_nouns_all
-        #    where created_at > '%(min_time)s' and created_at <= '%(max_time)s'
-        #""" % {"suff": suff, "min_time": time_ranges[i]["min"], "max_time": time_ranges[i]["max"]})
+        _build_post_cnt(cur, suff, time_ranges[i]["min"], time_ranges[i]["max"])
 
-        logging.info("post_cnt%s" % (suff))
-        cmd = """
-            insert or ignore into post_cnt%(suff)s 
-            select p_md5,  count(*) 
-            from (
-                select p_id, p_md5 
-                from chains_nouns_all
-                where created_at > '%(min_time)s' and created_at <= '%(max_time)s' 
-                group by p_md5, p_id
-            ) group by p_md5
-        """ % {"suff": suff, "min_time": time_ranges[i]["min"], "max_time": time_ranges[i]["max"]}
-        logging.info(cmd)
-        cur.execute(cmd)
+@util.time_logger
+def build_post_reply_cnt(cur):
+    cur.execute("""
+        insert or ignore into post_reply_cnt (post_md5, reply_md5, reply_cnt) 
+        select p_md5, r_md5, count(*) 
+        from chains_nouns 
+        group by p_md5, r_md5;
+    """)
+
+@util.time_logger
+def _delete_from_chains_nouns(cur, time_min):
+    cur.execute("""
+        delete from chains_nouns_all
+        where created_at <= '%(time)s'
+    """ % {'time': time_min})
+
+def _print_counts(cur, t):
+    cnt = cur.execute("select count(*) from %s" % t).fetchone()[0]
+    logging.info("count(*) from %s = %s" % (t, cnt))
+
 
 @util.time_logger
 def count_currents(cur, utc_now):
@@ -128,10 +150,7 @@ def count_currents(cur, utc_now):
         cur.execute("drop table if exists %s" % t)
     stats.create_given_tables(cur, cur_tables2)
 
-    cur.execute("""
-        delete from chains_nouns_all
-        where created_at <= '%(time)s'
-    """ % {'time': time_ranges[-1]["min"]})
+    _delete_from_chains_nouns(cur,  time_ranges[-1]["min"])
 
     for db in ("today", "ystd"):
         build_chains_nouns_all(cur, db, time_ranges[-1]["min"])
@@ -140,19 +159,10 @@ def count_currents(cur, utc_now):
 
     build_chains_nouns(cur, time_ranges)
 
-    logging.info("post_reply_cnt")
-    cur.execute("""
-        insert or ignore into post_reply_cnt (post_md5, reply_md5, reply_cnt) 
-        select p_md5, r_md5, count(*) 
-        from chains_nouns 
-        group by p_md5, r_md5;
-    """)
-
-    logging.info("done")
+    build_post_reply_cnt(cur)
     
     for t in cur_tables + cur_tables2.keys():
-        cnt = cur.execute("select count(*) from %s" % t).fetchone()[0]
-        logging.info("count(*) from %s = %s" % (t, cnt))
+        _print_counts(cur, t) 
 
 def main():
 
