@@ -16,7 +16,7 @@
 <script id="cluster-template" type="text/x-handlebars-template">
 <div class="row" style="padding-bottom: 10 px; margin-bottom: 20px;">
     <div class="col-md-8">
-        <span>Обновлено <span id="current-timestamp">{{update_time}}</span>.</span>
+        <span>{{i18n.updated}} <span id="current-timestamp">{{update_time}}</span>.</span>
     </div>
 </div>
 <ul class="list-group">
@@ -35,7 +35,7 @@
         </div>
     </div>
     <div class="row">
-        <div class="col-md-2 lead">Уточнить:</div>
+        <div class="col-md-2 lead">{{i18n.lookup_topic}}</div>
         <div class="col-md-10">
               <a class="dropdown-toggle btn btn-sm btn-default" href="http://google.com/search?q={{this.query_string}}"  target="_blank" 
                 title='Уточнить тему "{{this.query_string}}" поиском в Google'>Google</a>
@@ -85,6 +85,7 @@
           <ul class="nav navbar-nav">
             <li><a href="/about">About</a></li>
             <li><a href="/contact">Contact</a></li>
+            <li id="choose-lang"></li>
           </ul>
         </div><!-- /.nav-collapse -->
       </div><!-- /.container -->

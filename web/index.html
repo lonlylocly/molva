@@ -17,9 +17,18 @@
 <script id="cluster-template" type="text/x-handlebars-template">
 <div class="row" style="padding-bottom: 10 px; margin-bottom: 20px;">
     <div class="col-md-8">
-        <a href="#" class="btn btn-sm btn-default" onClick="goBack()">Раньше</a> 
-        <a href="#" class="btn btn-sm btn-default" onClick="goNow()">Сейчас</a>
-        <span>Обновлено <span id="current-timestamp">{{update_time}}</span>.</span>
+        <h2>{{i18n.howto.caption}}</h2>
+        <p>
+        <ol>
+        <li>{{i18n.howto.first_line}}</li>
+        <li>{{i18n.howto.second_line}}</li>
+        </ol>
+        {{i18n.howto.search}} <a href="https://twitter.com/search?q={{groups.0.query_string}}"  target="_blank" 
+                        title='Уточнить тему "{{groups.0.query_string}}" поиском в Twitter'>"{{groups.0.gen_title}}"</a> {{i18n.howto.in_twitter}}.
+        </p> 
+        <a href="#" class="btn btn-sm btn-default" onClick="goBack()">{{i18n.earlier}}</a> 
+        <a href="#" class="btn btn-sm btn-default" onClick="goNow()">{{i18n.now}}</a>
+        <span>{{i18n.updated}} <span id="current-timestamp">{{update_time}}</span>.</span>
     </div>
 
 </div>
@@ -32,13 +41,12 @@
             <span class="{{this.trend_class}}" title="Прирост активности по теме">{{this.avg_trend}}</span>
         </div>
         <div class="col-md-7">
-            {{#each members}}
-                <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'>{{this.text}}</a> 
-            {{/each}}
+            <a href="https://twitter.com/search?q={{this.query_string}}"  target="_blank" 
+                        title='Уточнить тему "{{this.query_string}}" поиском в Twitter'>{{this.gen_title}}</a>
         </div>
         <div class="col-md-4">
               <ul class="dropdown">
-                <a href="#" class="dropdown-toggle btn btn-sm btn-default" data-toggle="dropdown" style="float: left; margin-right: 10px;">Уточнить <span class="caret"></span></a>
+                <a href="#" class="dropdown-toggle btn btn-sm btn-default" data-toggle="dropdown" style="float: left; margin-right: 10px;">{{../i18n.lookup}} <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
                   <li><a href="http://google.com/search?q={{this.query_string}}"  target="_blank" 
                         title='Уточнить тему "{{this.query_string}}" поиском в Google'>Google</a></li>
@@ -50,7 +58,7 @@
                         title='Уточнить тему "{{this.query_string}}" поиском в Twitter'>Twitter</a></li>
                 </ul>
             </ul>
-            <a href="http://molva.spb.ru/topic?date={{urlEscape ../update_time}}&offset={{@index}}" class=" btn btn-sm btn-default">Только эта тема</a>
+            <a href="http://molva.spb.ru/topic?date={{urlEscape ../update_time}}&offset={{@index}}&lang={{../i18n.lang}}" class=" btn btn-sm btn-default">{{../i18n.this_topic}}</a>
         </div>
     </div>
     </li>
@@ -92,6 +100,7 @@
           <ul class="nav navbar-nav">
             <li><a href="/about">About</a></li>
             <li><a href="/contact">Contact</a></li>
+            <li id="choose-lang"></li>
           </ul>
         </div><!-- /.nav-collapse -->
       </div><!-- /.container -->
