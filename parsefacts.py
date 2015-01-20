@@ -7,7 +7,6 @@ import os
 import logging, logging.config
 import json
 import traceback
-import HTMLParser
 
 import xml.etree.cElementTree as ElementTree
 
@@ -152,8 +151,6 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
     ids = open(tweet_index, 'r').read().split("\n")
 
     logging.info("Got tweet %s ids" % (len(ids)))
-
-    h = HTMLParser.HTMLParser()
 
     tree = ElementTree.iterparse(facts, events = ('start', 'end'))
 
