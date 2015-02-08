@@ -121,9 +121,9 @@ def main():
     cur1 = ind.get_db_for_date(today)
     cur2 = ind.get_db_for_date(day_ago)
 
-    tmp_db_file = DB_DIR + "/tweets_lemma.db.tmp"
-    delete_if_exists(tmp_db_file)
-    lwp_db_file = DB_DIR + "/tweets_lemma_word_pairs_new.db"
+    #tmp_db_file = DB_DIR + "/tweets_lemma.db.tmp"
+    #delete_if_exists(tmp_db_file)
+    #lwp_db_file = DB_DIR + "/tweets_lemma_word_pairs_new.db"
     lwp_db_file_final = DB_DIR + "/tweets_lemma_word_pairs.db"
 
     for table in ["tweets_words", "lwp_inc_tmp"]:
@@ -138,18 +138,18 @@ def main():
 
     cur.execute("attach '%s' as day_ago" % ind.dates_dbs[day_ago]) 
     cur.execute("attach '%s' as today" % ind.dates_dbs[today]) 
-    cur.execute("attach '%s' as tmp" % tmp_db_file) 
-    cur.execute("attach '%s' as lwp_new" % lwp_db_file) 
+    #cur.execute("attach '%s' as tmp" % tmp_db_file) 
+    #cur.execute("attach '%s' as lwp_new" % lwp_db_file) 
 
-    logging.info("get united lemma_word_pairs")
+    #logging.info("get united lemma_word_pairs")
 
-    count_increment(cur) 
-    apply_increment(cur) 
+    #count_increment(cur) 
+    #apply_increment(cur) 
 
-    delete_if_exists(tmp_db_file)
-    os.rename(lwp_db_file, lwp_db_file_final)
+    #delete_if_exists(tmp_db_file)
+    #os.rename(lwp_db_file, lwp_db_file_final)
 
-    logging.info("done (get united lemma_word_pairs)")
+    #logging.info("done (get united lemma_word_pairs)")
 
     write_tweets_words(cur)
 

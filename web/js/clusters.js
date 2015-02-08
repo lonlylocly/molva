@@ -81,10 +81,12 @@ function goBackOld() {
 }
 function goBack() {
     var before = $("#current-timestamp").text();
-    window.location.assign("/?before=" + before);
+    var lang = getCurUrlStringParam("lang","ru");
+    window.location.assign("/?before=" + before + "&lang=" + lang);
 }
 function goNow() {
-    window.location.assign("/");
+    var lang = getCurUrlStringParam("lang","ru");
+    window.location.assign("/?lang=" + lang);
 }
 
 
