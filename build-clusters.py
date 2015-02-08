@@ -104,7 +104,7 @@ def main():
 
     cur = stats.get_main_cursor(DB_DIR)
     cur_lemma = stats.get_cursor(DB_DIR + "/tweets_lemma.db")
-    lemma_word_pairs = DB_DIR + "/tweets_lemma_word_pairs.db"
+    lemma_word_pairs = DB_DIR + "/tweets_bigram.db"
     cur_lemma.execute('attach "%s" as lwp' % lemma_word_pairs)
     cur_display = stats.get_cursor(DB_DIR + "/tweets_display.db")
     #cur.execute("drop table if exists clusters")

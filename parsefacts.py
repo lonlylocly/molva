@@ -10,13 +10,15 @@ import traceback
 
 import xml.etree.cElementTree as ElementTree
 
-from util import digest
 from Indexer import Indexer
 import stats
+import util
 
 logging.config.fileConfig("logging.conf")
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
+
+CHUNK_SIZE = 10000
 
 settings = {} 
 try:
@@ -32,7 +34,7 @@ def create_tables(cur):
 def save_nouns(cur, nouns, table="nouns"):
     cur.execute("begin transaction")
     for n in nouns:
-        cur.execute("insert or ignore into %s (noun_md5, noun) values (?, ?)" % (table), (digest(n), n)) 
+        cur.execute("insert or ignore into %s (noun_md5, noun) values (?, ?)" % (table), (util.digest(n), n)) 
     
     cur.execute("commit")
 
@@ -46,19 +48,41 @@ def save_tweet_nouns(cur, vals):
 
     cur.execute("commit")   
 
-def save_lemma_word_pairs(cur, lemma_word_pairs):
-    logging.info("save %d lemma pairs" % len(lemma_word_pairs))
-    cur.execute("begin transaction")
+def _sort_part(lemma_word_pairs):
+    l = sorted(lemma_word_pairs, key=lambda x: (x[0], x[1]))
 
+    return l
+
+def _filter_part(lemma_word_pairs, keep_ratio):
+    l = []
+    for i in range(0,len(lemma_word_pairs),keep_ratio):
+        l.append(lemma_word_pairs[i])
+
+    return l
+
+def _insert_part(cur, lemma_word_pairs):
     cur.executemany("""
         insert or ignore into lemma_word_pairs (noun1_md5, noun2_md5, source1_md5, source2_md5)
         values (?, ?, ?, ?) 
     """, lemma_word_pairs)
 
+
+def _update_part(cur, lemma_word_pairs):
     cur.executemany("""
         update lemma_word_pairs set cnt = cnt + 1
         where noun1_md5 = ? and noun2_md5 = ? and source1_md5 = ? and source2_md5 = ?
     """, lemma_word_pairs )
+
+@util.time_logger
+def save_lemma_word_pairs(cur, lemma_word_pairs, db_type="", keep_ratio=1):
+    logging.info("save %d lemma pairs, type: %s" % (len(lemma_word_pairs), db_type))
+    cur.execute("begin transaction")
+
+    lemma_word_pairs = _filter_part(lemma_word_pairs, keep_ratio)
+
+    _insert_part(cur, lemma_word_pairs)
+
+    _update_part(cur, lemma_word_pairs)
     
     cur.execute("commit")
     logging.info("done")
@@ -140,8 +164,9 @@ def get_nouns_preps(elem):
     return facts
         
 
-def parse_facts_file(tweet_index, facts, cur, cur_main):
+def parse_facts_file(tweet_index, facts, cur, cur_main, cur_bigram):
     stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words", "lemma_word_pairs"])
+    stats.create_given_tables(cur_bigram, ["lemma_word_pairs"])
     stats.create_given_tables(cur, {"sources": "nouns"})
     stats.create_given_tables(cur_main, ["nouns"])
     stats.create_given_tables(cur_main, {"sources": "nouns"})
@@ -153,6 +178,9 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
     logging.info("Got tweet %s ids" % (len(ids)))
 
     tree = ElementTree.iterparse(facts, events = ('start', 'end'))
+
+    # set larger cache, default 2000 * 1024, this 102400*1024
+    #cur_bigram.execute("pragma cache_size = -102400") 
 
     nouns_total = set()
     sources_total = set()
@@ -168,12 +196,12 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
             nouns = []
             for np in nouns_preps:
                 try:         
-                    lemmas.append(digest(np.with_prep()))
-                    nouns.append(digest(np.noun_lemma))
+                    lemmas.append(util.digest(np.with_prep()))
+                    nouns.append(util.digest(np.noun_lemma))
                     nouns_total.add(np.noun_lemma)
                     sources_total.add(np.with_prep())
 
-                    noun_sources.append((post_id, digest(np.noun_lemma), digest(np.with_prep())))
+                    noun_sources.append((post_id, util.digest(np.noun_lemma), util.digest(np.with_prep())))
                 except Exception as e:
                     traceback.print_exc()
                     logging.error(e)
@@ -185,14 +213,14 @@ def parse_facts_file(tweet_index, facts, cur, cur_main):
                 save_tweet_nouns(cur, noun_sources)
                 noun_sources = []
 
-            if len(lemma_word_pairs) > 20000:
-                save_lemma_word_pairs(cur, lemma_word_pairs) 
+            if len(lemma_word_pairs) >= CHUNK_SIZE :
+                save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = 50) 
                 lemma_word_pairs = []
                
             elem.clear()
 
     save_tweet_nouns(cur, noun_sources)
-    save_lemma_word_pairs(cur, lemma_word_pairs) 
+    save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = 50) 
 
     save_nouns(cur, nouns_total)
     save_nouns(cur, sources_total, table="sources")
@@ -226,13 +254,14 @@ def main():
     ind = Indexer(DB_DIR)
 
     cur_main = stats.get_main_cursor(DB_DIR)
+    cur_bigram = stats.get_cursor(DB_DIR + "/tweets_bigram.db")
 
     files_for_dates = ind.get_nouns_to_parse()
     for date in sorted(files_for_dates.keys()):
         for t in files_for_dates[date]:
             tweet_index, facts = t 
 
-            f = lambda : parse_facts_file(tweet_index, facts, ind.get_db_for_date(date), cur_main)
+            f = lambda : parse_facts_file(tweet_index, facts, ind.get_db_for_date(date), cur_main, cur_bigram)
             try_several_times(f, 3)
 
             logging.info("Remove index: %s; facts: %s" % (tweet_index, facts))
