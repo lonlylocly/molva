@@ -483,10 +483,12 @@ def get_aligned_cluster(cur, cur_lemma, cluster, trendy_clusters_limit=20):
                 text = sources[lemmas[i]] if len(lemmas) > 0 else nouns[c[i]]
                 members.append({"id": c[i], "text": text, "stem_text": nouns[c[i]], "trend": trends[c[i]]})
 
+            member_ids = map(lambda x: x["id"], members) 
             new_clusters.append({
                 "members": members, 
                 "gen_title": lemmas_title if len(lemmas)>0 else nouns_title,
                 "members_len": len(members),
+                "members_md5": str(util.digest_large(member_ids)),
                 "unaligned": cluster
             })
 
