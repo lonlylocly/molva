@@ -9,6 +9,11 @@ import time
 
 from Exceptions import WoapeException
 
+def digest_large(s):
+    large = int(hashlib.md5(s.encode('utf-8')).hexdigest(), 16)
+
+    return large
+
 def digest(s):
     large = int(hashlib.md5(s.encode('utf-8')).hexdigest(), 16)
 
