@@ -5,13 +5,14 @@ from datetime import time as datetimeTime
 import json
 import re
 from datetime import date
+import traceback
 
 import stats
 from TwitterClient import TwitterClient
 from Exceptions import WoapeException
 import util
 
-MYSQL_TIMESTAMP = "%Y%m%d_%H%M%S"
+MYSQL_TIMESTAMP = "%Y%m%d%H%M%S"
 
 RETRY_TIMEOUT = 60
 
@@ -134,6 +135,9 @@ class Fetcher:
 
     def save_tweet(self, reply):
         try:
+            if "text" not in reply:
+                return
+
             mysql_time = to_mysql_timestamp(get_tw_create_time(reply))
             cur = self.get_db_for_date(mysql_time)
             cur.execute("""
