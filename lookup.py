@@ -30,13 +30,19 @@ class Word:
 
 class Tweet:
 
-    def __init__(self, text, tw_id):
+    def __init__(self, text, tw_id, created_at):
         self.text = text
         self.words = []
         self.tw_id = tw_id
-    
+        self.created_at = created_at
+
+    def to_json(self):
+        j = {"text": self.text, "words": self.words, "created_at": self.created_at}
+            
+        return j
+
     def __str__(self):
-        j = {"text": self.text, "words": self.words}
+        j = self.to_json()
 
         return json.dumps(j, indent=2, ensure_ascii=False)
 
@@ -101,7 +107,7 @@ def get_related_tweets(cur, words):
     tweets = {}
 
     cur.execute("""
-        select n.id, n.noun_md5, t.tw_text
+        select n.id, n.noun_md5, t.tw_text, t.created_at
         from tweets_nouns n
         inner join tweets t
         on n.id = t.id
@@ -111,9 +117,9 @@ def get_related_tweets(cur, words):
     r = cur.fetchall()
 
     for l in r:
-        tw_id, noun_md5, tw_text = l
+        tw_id, noun_md5, tw_text, created_at = l
         if tw_id not in tweets:
-            tweets[tw_id] = Tweet(tw_text, tw_id)
+            tweets[tw_id] = Tweet(tw_text, tw_id, created_at)
 
         tweets[tw_id].words.append(noun_md5)
     
@@ -152,15 +158,44 @@ def main2():
     print_list(words)
 
     tweets = lookup_two_days(cur, cur, words)
-    for t in sorted(tweets.keys(), key=lambda x: len(tweets[x].words), reverse=True)[:10]:
-        print tweets[t].__str__()
+    # len(tweets[x].words), 
+    #for t in sorted(tweets.keys(), key=lambda x: (tweets[x].created_at), reverse=True)[:10]:
+    #    print tweets[t].__str__()
 
     return
+
+def get_relevant_tweets(cur1, cur2, cluster):
+
+    words = map(lambda x: Word(word_md5=x["id"]), cluster["members"])
+    print_list(words)
+    logging.info(cluster["gen_title"])
+
+    tweets = lookup_two_days(cur1, cur2, words)
+    print "total tweets: %s" % len(tweets.keys())
+
+    tw_cnt = {}
+    for t in tweets.keys():
+        l = len(tweets[t].words)
+        if l not in tw_cnt:
+            tw_cnt[l] = 0
+        tw_cnt[l] += 1
+
+    rel_tw = []
+    for i in sorted(tweets.keys(), key=lambda x: (len(tweets[x].words), tweets[x].created_at), reverse=True)[:10]:
+        rel_tw.append(tweets[i].to_json())
+
+    return {"tweets": rel_tw, 
+        "relevance_distribution": tw_cnt, 
+        "words": map(lambda x: x.word_md5, words), 
+        "tweets_cnt": len(tweets.keys()),
+        "members_md5": str(cluster["unaligned"]["members_md5"])
+    }
 
 def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--dir")
+    parser.add_argument("--num")
     args = parser.parse_args()
 
     today=date.today().strftime('%Y%m%d')
@@ -168,9 +203,12 @@ def main():
 
 
     cur_display = stats.get_cursor("%s/tweets_display.db" % args.dir) 
+    cur_rel = stats.get_cursor("%s/tweets_relevant.db" % args.dir) 
     cur1 = stats.get_cursor("%s/tweets_%s.db" % (args.dir, today))
     cur2 = stats.get_cursor("%s/tweets_%s.db" % (args.dir, ystd))
    
+    stats.create_given_tables(cur_rel, ["relevant"])
+
     cur_display.execute("""
         select cluster_date, cluster from clusters
         order by cluster_date desc
@@ -179,13 +217,16 @@ def main():
 
     d, c = cur_display.fetchone()
     c = json.loads(c)
+    rel_tweets = []
+    for cluster in c["clusters"]:
+        r = get_relevant_tweets(cur1, cur2, cluster)
+        rel_tweets.append(r)
 
-    words = map(lambda x: Word(word_md5=x["id"]), c[0]["members"])
+        #print json.dumps(r, indent=2, ensure_ascii=False)
 
-    tweets = lookup_two_days(cur, cur, words)
-    for t in sorted(tweets.keys(), key=lambda x: len(tweets[x].words), reverse=True)[:10]:
-        print tweets[t].__str__()
 
+    cur_rel.execute("replace into relevant values (?, ?)" , (d, json.dumps(rel_tweets)))
+    
     return
 
             
