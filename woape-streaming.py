@@ -40,24 +40,38 @@ DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
 fetcher = Fetcher(DB_DIR, {})
 
+NOTIFY_PERIOD = 50
+
 class RussianMentionsListener(tweepy.StreamListener):
+
+    def __init__(self):
+        self.queue_cnt = 0
+    
     def on_data(self, data):
+        t = {}
         try:
             t = json.loads(data)
 
-                    
+            if "text" not in t:
+                return
+                                
             if not util.got_russian_letters(t["text"]):
                 return
 
-            if t["in_reply_to_status_id"] is None:
-                return 
-
+            #if t["in_reply_to_status_id"] is None:
+            #    return 
+            
             fetcher.save_tweet(t) 
-            logging.info("Save tweet: %s" % t["text"])
+            self.queue_cnt += 1
+            if self.queue_cnt == NOTIFY_PERIOD:
+                logging.info("Got %s tweets" % (NOTIFY_PERIOD))
+                self.queue_cnt = 0
 
             return
         except Exception as e:
-            print e
+            logging.error(e)
+            traceback.print_exc()
+            print t
             return
 
     def on_error(self, status):
