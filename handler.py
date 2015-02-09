@@ -81,10 +81,50 @@ class ClusterHandler(tornado.web.RequestHandler):
 
         self.write(cl)
 
+class RelevantHandler(tornado.web.RequestHandler):
+
+    def get_relevant(self, date):
+        cur = stats.get_cursor(settings["db_dir"] + "/tweets_relevant.db") 
+        if date is not None:
+            cur.execute("""
+                select relevant 
+                from relevant
+                where cluster_date = '%(date)s'
+            """  % ({'date': date}))
+
+        res = cur.fetchone()[0] 
+
+        return res
+
+    def parse_date(self, mydate):
+        if mydate is None or mydate == "":
+            return None
+        try:
+            mydate = mydate.replace("-","").replace(" ","").replace(":","") 
+
+            unixtime = datetime.strptime(mydate, "%Y%m%d%H%M%S").strftime("%s")
+            mydate_dt = datetime.utcfromtimestamp(int(unixtime))
+            mydate = mydate_dt.strftime("%Y%m%d%H%M%S")
+            
+            return mydate
+        except Exception as e:
+            logging.info(e)
+            return None
+
+    def get(self):
+        date = self.parse_date(self.get_argument("date", default=None))
+        
+        logging.info("Date %s (UTC)" % date)
+
+        r = self.get_relevant(date)
+
+        self.write(r)
+
    
 if __name__ == '__main__':
     application = tornado.web.Application([
-        (r"/api/cluster", ClusterHandler)
+        (r"/api/cluster", ClusterHandler),
+        (r"/api/relevant", RelevantHandler)
     ])
     application.listen(8000)
     tornado.ioloop.IOLoop.instance().start()

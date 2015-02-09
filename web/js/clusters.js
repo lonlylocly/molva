@@ -161,6 +161,66 @@ function getLocalPageTranslateUrl(lang){
     return url;
 }
 
+function loadTopicDebug() {
+    
+    var request = getApiRequest();
+    var offset = getCurUrlIntParam("offset",0);
+    var members_md5 = "";     
+    var date = getCurUrlParams()["date"];
+
+    $.get( request, function( data ) {
+        try{
+            var resp = JSON.parse(data);
+            var topic = parseResponse(resp)[offset];
+            topic["update_time"] = resp["update_time"];
+            members_md5 = topic["unaligned"]["members_md5"]
+            
+            topic["i18n"] = getI18n();
+
+            var source = $("#cluster-template").html();
+            var template = Handlebars.compile(source);
+
+            $( "#cluster-holder" ).html( template(topic) );
+
+            var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset;
+            var source2 = $("#shares-template").html();
+            var template2 = Handlebars.compile(source2);
+            $( "#shares-holder" ).html( template2({"shareUrl": shareUrl, "shareTitle": '"' + topic["title_string"] + '"'}) );
+
+            $("#choose-lang").html(getI18n()["choose_lang"]);
+        } catch (e){
+            console.log(e);
+        }
+    })
+    .fail(function() {
+        $( "#cluster-holder" ).html("Произошла ошибка.")
+    });
+
+    $.get( '/api/relevant?date=' + date, function( data ) {
+        try{
+            var resp = JSON.parse(data);
+            var tw_rel = null;
+            console.log(members_md5);
+            for(var i=0; i<resp.length; i++) {
+                if (resp[i]["members_md5"] == members_md5) {
+                    tw_rel = resp[i];
+                    break;
+                }
+            }
+
+            var source = $("#relevant-template").html();
+            var template = Handlebars.compile(source);
+
+            $( "#relevant-holder" ).html( template(tw_rel) );
+
+        } catch (e){
+            console.log(e);
+        }
+    })
+    .fail(function() {
+    });
+}
+
 function loadTopic() {
     var request = getApiRequest();
     var offset = getCurUrlIntParam("offset",0);

@@ -298,6 +298,13 @@ CREATE_TABLES = {
             PRIMARY KEY (cluster_date, k)
         )
     """,
+    "relevant": """
+        CREATE TABLE IF NOT EXISTS relevant (
+            cluster_date text,
+            relevant text,
+            PRIMARY KEY (cluster_date)
+        )
+    """,
     "titles": """
         CREATE TABLE IF NOT EXISTS titles (
             title text,

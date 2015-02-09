@@ -35,6 +35,7 @@ def main():
 
     run("python -m cProfile %s/prepare-aligner.py >> prepare-aligner.log 2>&1" % SCRIPTDIR) 
     run("python -m cProfile %s/build-clusters.py   -i 10 1>> clusters.log 2>&1 " % SCRIPTDIR) 
+    run("%s/lookup.py --dir /home/lonlylocly/streaming/ 1>> lookup.log 2>&1 " % (SCRIPTDIR)) 
 
     logging.info("done")
 
