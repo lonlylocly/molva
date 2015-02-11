@@ -53,11 +53,11 @@ def main():
 
     lwp_db_file_final = DB_DIR + "/tweets_lemma_word_pairs.db"
 
-    for table in ["tweets_words"]:
+    for table in ["tweets_words_simple"]:
         cur.execute("drop table if exists %s" % table)
 
     for c in [cur, cur1, cur2]:
-        stats.create_given_tables(c, ["tweets_words"])
+        stats.create_given_tables(c, ["tweets_words_simple"])
 
     cur.execute("attach '%s' as day_ago" % ind.dates_dbs[day_ago]) 
     cur.execute("attach '%s' as today" % ind.dates_dbs[today]) 
