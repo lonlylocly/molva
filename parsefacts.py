@@ -19,6 +19,7 @@ logging.config.fileConfig("logging.conf")
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 CHUNK_SIZE = 10000
+KEEP_RATIO = 100
 
 settings = {} 
 try:
@@ -31,7 +32,33 @@ DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 def create_tables(cur):
     stats.create_given_tables(cur, ["nouns", "tweets_nouns"])
 
+class FailedSeveralTimesException(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
+def try_several_times(f, times, finilizer=None):
+    tries = 0
+    while tries < times:
+        try:
+            tries += 1
+            logging.info("Starting try #%s" % tries)
+            res = f()
+            return res
+        except Exception as e:
+            traceback.print_exc()
+            logging.error(e)
+            if finilizer is not None:
+                finilizer()
+
+    raise FailedSeveralTimesException("")
+
 def save_nouns(cur, nouns, table="nouns"):
+    f = lambda : _save_nouns(cur, nouns, table)
+    try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
+
+def _save_nouns(cur, nouns, table="nouns"):
     cur.execute("begin transaction")
     for n in nouns:
         cur.execute("insert or ignore into %s (noun_md5, noun) values (?, ?)" % (table), (util.digest(n), n)) 
@@ -39,6 +66,10 @@ def save_nouns(cur, nouns, table="nouns"):
     cur.execute("commit")
 
 def save_tweet_nouns(cur, vals):
+    f = lambda : _save_tweet_nouns(cur, vals)
+    try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
+
+def _save_tweet_nouns(cur, vals):
     cur.execute("begin transaction")
 
     for v in vals:
@@ -47,6 +78,7 @@ def save_tweet_nouns(cur, vals):
         cur.execute("insert or ignore into tweets_words (id, noun_md5, source_md5) values (?, ?, ?)", v) 
 
     cur.execute("commit")   
+
 
 def _sort_part(lemma_word_pairs):
     l = sorted(lemma_word_pairs, key=lambda x: (x[0], x[1]))
@@ -74,9 +106,12 @@ def _update_part(cur, lemma_word_pairs):
     """, lemma_word_pairs )
 
 @util.time_logger
-def save_lemma_word_pairs(cur, lemma_word_pairs, db_type="", keep_ratio=1):
+def _save_lemma_word_pairs(cur, lemma_word_pairs, db_type="", keep_ratio=1):
     logging.info("save %d lemma pairs, type: %s" % (len(lemma_word_pairs), db_type))
     cur.execute("begin transaction")
+    
+    #for l in lemma_word_pairs:
+    #    logging.debug("INSERT: (%s)," % ",".join(map(str,l)))
 
     lemma_word_pairs = _filter_part(lemma_word_pairs, keep_ratio)
 
@@ -86,6 +121,12 @@ def save_lemma_word_pairs(cur, lemma_word_pairs, db_type="", keep_ratio=1):
     
     cur.execute("commit")
     logging.info("done")
+
+
+@util.time_logger
+def save_lemma_word_pairs(cur, lemma_word_pairs, db_type="", keep_ratio=1):
+    f = lambda : _save_lemma_word_pairs(cur, lemma_word_pairs, db_type, keep_ratio)
+    try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
 
 def make_lemma_word_pairs(words, lemmas):
     word_pairs = make_word_pairs(words)
@@ -164,7 +205,13 @@ def get_nouns_preps(elem):
     return facts
         
 
-def parse_facts_file(tweet_index, facts, cur, cur_main, cur_bigram):
+def parse_facts_file(tweet_index, facts, date):
+    ind = Indexer(DB_DIR)
+
+    cur = ind.get_db_for_date(date) 
+    cur_main = stats.get_main_cursor(DB_DIR)
+    cur_bigram = stats.get_cursor(DB_DIR + "/tweets_bigram.db")
+
     stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words", "lemma_word_pairs"])
     stats.create_given_tables(cur_bigram, ["lemma_word_pairs"])
     stats.create_given_tables(cur, {"sources": "nouns"})
@@ -214,13 +261,13 @@ def parse_facts_file(tweet_index, facts, cur, cur_main, cur_bigram):
                 noun_sources = []
 
             if len(lemma_word_pairs) >= CHUNK_SIZE :
-                save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = 50) 
+                save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = KEEP_RATIO) 
                 lemma_word_pairs = []
                
             elem.clear()
 
     save_tweet_nouns(cur, noun_sources)
-    save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = 50) 
+    save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = KEEP_RATIO) 
 
     save_nouns(cur, nouns_total)
     save_nouns(cur, sources_total, table="sources")
@@ -229,39 +276,18 @@ def parse_facts_file(tweet_index, facts, cur, cur_main, cur_bigram):
 
     return
 
-class FailedSeveralTimesException(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
-
-def try_several_times(f, times):
-    tries = 0
-    while tries < times:
-        try:
-            tries += 1
-            res = f()
-            return res
-        except Exception as e:
-            traceback.print_exc()
-            logging.error(e)
-
-    raise FailedSeveralTimesException("")
 
 def main():
     logging.info("Start parsing extracted nouns")
 
     ind = Indexer(DB_DIR)
 
-    cur_main = stats.get_main_cursor(DB_DIR)
-    cur_bigram = stats.get_cursor(DB_DIR + "/tweets_bigram.db")
-
     files_for_dates = ind.get_nouns_to_parse()
     for date in sorted(files_for_dates.keys()):
         for t in files_for_dates[date]:
             tweet_index, facts = t 
 
-            f = lambda : parse_facts_file(tweet_index, facts, ind.get_db_for_date(date), cur_main, cur_bigram)
+            f = lambda : parse_facts_file(tweet_index, facts, date)
             try_several_times(f, 3)
 
             logging.info("Remove index: %s; facts: %s" % (tweet_index, facts))
