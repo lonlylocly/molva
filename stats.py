@@ -273,6 +273,12 @@ CREATE_TABLES = {
             PRIMARY KEY(id, noun_md5, source_md5)
         )
     """,
+    "tweets_words_simple": """
+        CREATE TABLE IF NOT EXISTS tweets_words_simple(
+            noun_md5 integer,
+            source_md5 integer
+        )
+    """,
     "noun_similarity": """
         CREATE TABLE IF NOT EXISTS noun_similarity (
             post1_md5 integer,
@@ -339,8 +345,7 @@ CREATE_TABLES = {
             noun2_md5 integer,
             source1_md5 integer,
             source2_md5 integer,
-            cnt integer default 0,
-            PRIMARY KEY (noun1_md5, noun2_md5)
+            cnt integer default 0
         )
     """ 
 }
