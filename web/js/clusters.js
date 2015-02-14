@@ -173,7 +173,7 @@ function loadTopicDebug() {
             var resp = JSON.parse(data);
             var topic = parseResponse(resp)[offset];
             topic["update_time"] = resp["update_time"];
-            members_md5 = topic["unaligned"]["members_md5"]
+            members_md5 = topic["members_md5"]
             
             topic["i18n"] = getI18n();
 
