@@ -7,6 +7,7 @@ import json
 from datetime import datetime
 import math
 import signal
+import argparse
 
 import stats
 from Indexer import Indexer
@@ -20,6 +21,10 @@ try:
     settings = json.load(open('global-settings.json', 'r'))
 except Exception as e:
     logging.warn(e)
+
+def handler(signum, frame):
+    logging.error('Signal handler called with signal %s' % signum)
+    raise Exception("Failed")
 
 DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
@@ -67,46 +72,71 @@ def get_best_trend(cluster):
     return float(best_trend_cluster["trend"])
 
 class TotalFreq:
-    def __init__(self, cur, nouns ):
+    def __init__(self, words_db, bigram_db, nouns ):
         logging.info("start TotalFreq")
-        self.cur = cur
         self.nouns = nouns
+        self.words_db = words_db
+        self.bigram_db = bigram_db
+        self.lemma_freqs = {}
+        self.lemma_nexts = {}
         self.init_total_cnt()
         self.init_lemma_freqs()
+        self.fill_lemma_nexts()
         logging.info("done TotalFreq")
 
     def get_nouns_joined(self):
         return ",".join(map(str,self.nouns))
 
+    @util.time_logger
     def init_total_cnt(self):
-        self.cur.execute("""
+        cur = stats.get_cursor(self.bigram_db)
+        cur.execute("""
             select sum(cnt), count(*)
-            from lwp.lemma_word_pairs l
+            from lemma_word_pairs l
             where cnt > 1 
             and (noun1_md5 in (%s)
             or noun2_md5 in (%s))
         """ % (self.get_nouns_joined(), self.get_nouns_joined()))
 
-        sum_, cnt = self.cur.fetchone()
+        sum_, cnt = cur.fetchone()
         self.total_cnt = sum_
 
+    @util.time_logger
     def init_lemma_freqs(self):
-        #logging.info("start")
-        self.cur.execute("""
-            select noun_md5, source_md5, count(*)
-            from tweets_words
+        logging.info("Total words len: %s" % len(self.nouns))
+        cur = stats.get_cursor(self.words_db)
+        cur.execute("""
+            select noun_md5, source_md5
+            from tweets_words_simple
             where noun_md5 in (%s)
-            group by noun_md5, source_md5
-        """ % self.get_nouns_joined())
+        """ % (self.get_nouns_joined()))
 
-        lemma_freqs = {}
-        for row in self.cur.fetchall():
-            n, s, cnt = row
-            if n not in lemma_freqs:
-                lemma_freqs[n] = {}
-            lemma_freqs[n][s] = - math.log(float(cnt) / self.total_cnt, 2)
+        f = {}
+        rows = 0
+        while True:
+            res = cur.fetchone()
+            if res is None:
+                break
+            n, s = res
+            if n not in f:
+                f[n] = {}
+            if s not in f[n]:
+                f[n][s] = 0
+            f[n][s] += 1
+            rows +=1
+            if rows % 1000000 == 0:
+                logging.info("Rows seen: %s" % rows)
 
-        self.lemma_freqs = lemma_freqs
+        logging.info("Rows cnt: %s" % rows)
+        skipped_nouns = 0 
+        for n in self.nouns:
+            self.lemma_freqs[n] = {}
+            if n not in f:
+                skipped_nouns += 1
+                continue
+            for s in f[n]:
+                self.lemma_freqs[n][s] = - math.log(float(f[n][s]) / self.total_cnt, 2)
+        logging.info("Skipped nouns cnt: %s" % skipped_nouns)
 
     def get_lemmas_for_nouns(self, nouns): 
         lemma_set = []
@@ -114,15 +144,49 @@ class TotalFreq:
             lemma_set += self.lemma_freqs[n].keys()
 
         return set(lemma_set)
-                
+            
+    def fill_lemma_nexts(self):
+        cur = stats.get_cursor(self.bigram_db)
+        cur.execute("""
+            select noun1_md5, source2_md5
+            from lemma_word_pairs 
+            where cnt > 1 
+            and (noun1_md5 in (%s)
+            or noun2_md5 in (%s))
+        """ % (self.get_nouns_joined(), self.get_nouns_joined()))   
+
+        f = {}
+        tuple_cnt = 0
+        row_cnt = 0
+        while True:
+            res = cur.fetchone()
+            if res is None:
+                break
+            n1, s2 = map(int, res)
+            if n1 not in f:
+                f[n1] = {}
+            if s2 not in f[n1]:
+                f[n1][s2] = 0
+                tuple_cnt += 1
+            row_cnt += 1
+
+            if row_cnt % 1000000 == 0:
+                logging.info("tuple cnt: %s; row_cnt: %s" % (tuple_cnt, row_cnt))
+    
+        logging.info("tuple cnt: %s; row_cnt: %s" % (tuple_cnt, row_cnt))   
+        for n in f:
+            f[n] = f[n].keys()
+
+        self.lemma_nexts = f
     
 class BagFreq:
 
-    def __init__(self, cur, bag, total_freq):
+    def __init__(self, words_db, bigram_db, bag, total_freq):
         logging.info("start BagFreq")
         self.bag = bag
         self.total_freq = total_freq 
-        self.cur = cur
+        self.words_db = words_db
+        self.bigram_db = bigram_db
         self.word_freqs = {}
         self.pair_freqs = {}
         self.lemma_pair_freqs = {}
@@ -131,6 +195,7 @@ class BagFreq:
         self.init_pair_freqs()
         #self.init_lemma_freqs()
         self.init_lemma_nexts()
+        self.init_nouns_lemmas()
         self.init_lemma_pair_freqs()
 
         logging.info("done BagFreq")
@@ -139,19 +204,21 @@ class BagFreq:
         s = ",".join(map(str, self.bag)) 
         return s
 
+    @util.time_logger
     def init_word_freqs(self):
         logging.info("start")
         logging.info("Nouns len: %s" % len(self.bag))
-        self.cur.execute("""
+        cur = stats.get_cursor(self.words_db)
+        cur.execute("""
             select noun_md5, count(*) 
-            from tweets_words
+            from tweets_words_simple
             where noun_md5 in (%s)
             group by noun_md5
         """ % (self.get_bag_joined()))
 
         word_freqs = {}
         while True:
-            row = self.cur.fetchone()
+            row = cur.fetchone()
             if row is None:
                 break
 
@@ -163,10 +230,12 @@ class BagFreq:
 
         #print self.word_freqs
 
+    @util.time_logger
     def init_pair_freqs(self):
-        self.cur.execute("""
+        cur = stats.get_cursor(self.bigram_db)
+        cur.execute("""
             select noun1_md5, noun2_md5, sum(cnt)
-            from lwp.lemma_word_pairs
+            from lemma_word_pairs
             where noun1_md5 in (%s) 
             and noun2_md5 in (%s)
             and cnt > 1 
@@ -175,7 +244,7 @@ class BagFreq:
 
         pair_freqs = {}
         while True:
-            row = self.cur.fetchone()
+            row = cur.fetchone()
             if row is None:
                 break
 
@@ -187,65 +256,59 @@ class BagFreq:
     
         self.pair_freqs = pair_freqs
             
-        #print self.pair_freqs 
-
-        #logging.info("stop")
-
     def get_lemma_set(self):
         return self.total_freq.get_lemmas_for_nouns(self.bag)       
 
+    @util.time_logger
     def init_lemma_nexts(self):
-        #logging.info("start")
-        self.cur.execute("""
-            select noun1_md5, source2_md5
-            from lwp.lemma_word_pairs
-            where cnt > 1 
-            and noun1_md5 in (%s)
-            group by noun1_md5, source2_md5
-        """ % (self.get_bag_joined()))
-        
         lemma_nexts = {}
-        for row in self.cur.fetchall():
-            n, l = row
-            if n not in lemma_nexts:
+       
+        for n in self.bag:
+            if n in self.total_freq.lemma_nexts:
+                lemma_nexts[n] = self.total_freq.lemma_nexts[n]
+            else:
                 lemma_nexts[n] = []
-            lemma_nexts[n].append(l)
-
+        
         self.lemma_nexts = lemma_nexts
 
-        #logging.info("done nexts")
-
-        self.cur.execute("""
-            select noun_md5, source_md5, count(*) as cnt
-            from tweets_words
-            where noun_md5 in (%s)
-            group by noun_md5, source_md5
-            order by cnt desc
-        """ % (self.get_bag_joined()))
-
+    @util.time_logger
+    def init_nouns_lemmas(self):
+        #self.cur.execute("""
+        #    select noun_md5, source_md5, count(*) as cnt
+        #    from tweets_words_simple
+        #    where noun_md5 in (%s)
+        #    group by noun_md5, source_md5
+        #    order by cnt desc
+        #""" % (self.get_bag_joined()))
+        logging.info("Bag len: %s" % len(self.bag))
+        logging.info("Total freqs len: %s" % len(self.total_freq.lemma_freqs))
         noun_lemmas = {}
-        for row in self.cur.fetchall():
-            n, s, cnt = row
-            if n not in noun_lemmas:
-                noun_lemmas[n] = []
-            noun_lemmas[n].append(s)
+        for n in self.bag:
+            sources = []
+            for s in self.total_freq.lemma_freqs[n]:
+                cnt = self.total_freq.lemma_freqs[n][s]
+                sources.append((s, cnt))
+            noun_lemmas[n] = []
+            for s in sorted(sources, key=lambda x: x[1], reverse=True):
+                noun_lemmas[n].append(s[0])
+
         self.noun_lemmas = noun_lemmas
         logging.info("noun_lemmas len %s" % len(noun_lemmas.keys()))
-        
-        #logging.info("stop")
 
+    @util.time_logger
     def init_lemma_pair_freqs(self):
         #logging.info("start")
-        self.cur.execute("""
+        cur = stats.get_cursor(self.bigram_db)
+        cur.execute("""
             select noun1_md5, noun2_md5, source1_md5, source2_md5, cnt
-            from lwp.lemma_word_pairs l
+            from lemma_word_pairs l
             where cnt > 1
             and noun1_md5 in (%s)
             and noun2_md5 in (%s)
         """ % (self.get_bag_joined(), self.get_bag_joined()))
 
         lemma_pair_freqs = {}
-        for row in self.cur.fetchall():
+        for row in cur.fetchall():
             n1, n2, l1, l2, cnt = row
             lemma_freq = - math.log(float(cnt) / self.total_freq.total_cnt, 2)
             
@@ -258,6 +321,7 @@ class BagFreq:
         chain_lemmas = map(lambda x: None, range(0, len(chain)))
         chain_lemmas[0] = list(set(self.noun_lemmas[chain[0]]) )
         for i in range(0, len(chain)-1):
+            #logging.info("lemma nexts: %s" % self.lemma_nexts[chain[i]])
             suggested = set(self.lemma_nexts[chain[i]])
             available = set(self.noun_lemmas[chain[i+1]])
             chain_lemmas[i + 1] = list(suggested & available)
@@ -444,15 +508,20 @@ def align(bag, nouns):
 
     return chains
 
-def get_aligned_cluster(cur, cur_lemma, cluster, trendy_clusters_limit=20):
+def get_cluster_nouns(clusters):
+    cl_nouns = []
+    for c in clusters:
+        for m in c["members"]:
+            cl_nouns.append(int(m["id"]))
+
+    return cl_nouns
+
+def get_aligned_cluster(cur, words_db, bigram_db, cluster, trendy_clusters_limit=20):
     valid_clusters = cluster
     trendy_clusters = sorted(valid_clusters, key=lambda x: get_best3_trend(x), reverse=True)
 
-    cl_nouns = []
-    for c in trendy_clusters:
-        for m in c["members"]:
-            cl_nouns.append(m["id"])
-    total_freq = TotalFreq(cur_lemma, cl_nouns)
+    cl_nouns = get_cluster_nouns(trendy_clusters) 
+    total_freq = TotalFreq(words_db, bigram_db, cl_nouns)
 
     new_clusters = []
     empty_chains_count = 0
@@ -463,7 +532,7 @@ def get_aligned_cluster(cur, cur_lemma, cluster, trendy_clusters_limit=20):
             trends[m["id"]] = m["trend"]
         nouns = stats.get_nouns(cur, used_nouns)
         
-        bag = BagFreq(cur_lemma, used_nouns, total_freq)
+        bag = BagFreq(words_db, bigram_db, used_nouns, total_freq)
     
         chains = []
 
@@ -499,34 +568,36 @@ def get_aligned_cluster(cur, cur_lemma, cluster, trendy_clusters_limit=20):
     return sample
 
 def main():
-    parser = util.get_dates_range_parser()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--clusters")
     args = parser.parse_args()
 
+    cur = stats.get_main_cursor(DB_DIR)
+    words_db = DB_DIR + "/tweets_lemma.db"
+    bigram_db = DB_DIR + "/tweets_bigram.db"
+
+    cur_display = stats.get_cursor(DB_DIR + "/tweets_display.db")
+
+    stats.create_given_tables(cur_display, ["clusters"])
+
+    cl = json.load(open(args.clusters,'r'))
+
+    signal.signal(signal.SIGALRM, handler)
+    signal.alarm(3000)
+    cl = get_aligned_cluster(cur, words_db, bigram_db , cl)
+    signal.alarm(0)
+    
     today = (datetime.utcnow()).strftime("%Y%m%d%H%M%S")
     update_time = (datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
 
-    ind = Indexer(DB_DIR)
+    final_cl = {"clusters": cl, "update_time": update_time}
+    cl_json = json.dumps(final_cl)
+    cur_display.execute("""
+        replace into clusters (cluster_date, cluster)
+        values (?, ?)
+    """, (today, cl_json))
 
-    cur = stats.get_main_cursor(DB_DIR)
-    cur_display = stats.get_cursor(DB_DIR + "/tweets_display.db")
-    cur_date = ind.get_db_for_date(args.start)
-
-    clusters, cluster_date = cur_display.execute("""
-        select cluster,cluster_date from clusters order by cluster_date desc limit 1
-    """).fetchone()
-    clusters = json.loads(clusters)
-
-    sample = get_aligned_cluster(cur, clusters["clusters"]) 
-
-    print json.dumps(sample, indent=4, ensure_ascii=False)
-
-    #cur_display.execute("""
-    #    replace into clusters (cluster, cluster_date)
-    #    values (?, ?) 
-    #""", (json.dumps({"clusters": sample}), cluster_date))
-    #print json.dumps(sample, ensure_ascii=False)
-
-    logging.info("Done")
 
 if __name__ == '__main__':
     main()
