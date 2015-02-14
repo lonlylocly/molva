@@ -5,12 +5,15 @@ from datetime import date, timedelta
 from time import time
 import os
 
+import util
+
 logging.config.fileConfig("logging.conf")
 
 SCRIPTDIR="/home/lonlylocly/woape"
 RUNDIR="/home/lonlylocly/run"
 SIMMER_JAR="Simmer-1.0-SNAPSHOT-jar-with-dependencies.jar"
 
+@util.time_logger
 def main():
     logging.info("start")
     os.chdir(RUNDIR)
@@ -33,8 +36,9 @@ def main():
     run("%s/trend.py  1>> trend.log 2>&1 " % SCRIPTDIR) 
     #run("%s/exclusion.py  1>> exclusion.log 2>&1 " % SCRIPTDIR) 
 
-    run("python -m cProfile %s/prepare-aligner.py >> prepare-aligner.log 2>&1" % SCRIPTDIR) 
     run("python -m cProfile %s/build-clusters.py   -i 10 1>> clusters.log 2>&1 " % SCRIPTDIR) 
+    run("python -m cProfile %s/prepare-aligner.py --clusters clusters_raw.json >> prepare-aligner.log 2>&1" % SCRIPTDIR) 
+    run("python -m cProfile %s/aligner.py --clusters clusters_raw.json 1>> aligner.log 2>&1 " % SCRIPTDIR) 
     run("%s/lookup.py --dir /home/lonlylocly/streaming/ 1>> lookup.log 2>&1 " % (SCRIPTDIR)) 
 
     logging.info("done")
