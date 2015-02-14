@@ -33,6 +33,20 @@
     size=1M
 }
 
+/home/lonlylocly/run/aligner.log {
+    missingok
+    rotate 7
+    daily
+    size=1M
+}
+
+/home/lonlylocly/run/prepare-aligner.log {
+    missingok
+    rotate 7
+    daily
+    size=1M
+}
+
 /home/lonlylocly/run/trend.log {
     missingok
     rotate 7
@@ -47,3 +61,9 @@
     size=1M
 }
 
+/home/lonlylocly/run/parsefacts.log {
+    missingok
+    rotate 7
+    daily
+    size=1M
+}
