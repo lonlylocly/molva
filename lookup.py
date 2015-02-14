@@ -188,7 +188,7 @@ def get_relevant_tweets(cur1, cur2, cluster):
         "relevance_distribution": tw_cnt, 
         "words": map(lambda x: x.word_md5, words), 
         "tweets_cnt": len(tweets.keys()),
-        "members_md5": str(cluster["unaligned"]["members_md5"])
+        "members_md5": str(cluster["members_md5"])
     }
 
 def main():
