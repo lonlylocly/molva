@@ -5,7 +5,6 @@ import os
 import logging, logging.config
 import json
 from datetime import datetime
-import signal
 
 import stats
 from Indexer import Indexer
@@ -25,9 +24,6 @@ except Exception as e:
 
 DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
-def handler(signum, frame):
-    logging.error('Signal handler called with signal %s' % signum)
-    raise Exception("Failed")
 
 def get_sims(cur):
     res = cur.execute("select post1_md5, post2_md5, sim from noun_similarity")
@@ -82,7 +78,7 @@ def get_clusters(args, sim_dict, nouns, noun_trend, post_cnt):
             try:
                 m["post_cnt"] = post_cnt[m["id"]]
             except Exception as e:
-                logging.info("Mess with noun_md5 %s" % m["id"])
+                logging.info("Mess with noun_md5 %s (%s)" % (m["id"], type(m["id"])))
                 logging.error(e)
             trend = noun_trend[m["id"]] if m["id"] in noun_trend else 0
             m["trend"] = "%.3f" % trend 
@@ -93,28 +89,16 @@ def get_clusters(args, sim_dict, nouns, noun_trend, post_cnt):
 def main():
     logging.info("start")
     parser = util.get_dates_range_parser()
-    #parser.add_argument("-k")
     parser.add_argument("-i")
     args = parser.parse_args()
-
-    today = (datetime.utcnow()).strftime("%Y%m%d%H%M%S")
-    update_time = (datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
 
     ind = Indexer(DB_DIR)
 
     cur = stats.get_main_cursor(DB_DIR)
-    cur_lemma = stats.get_cursor(DB_DIR + "/tweets_lemma.db")
-    lemma_word_pairs = DB_DIR + "/tweets_bigram.db"
-    cur_lemma.execute('attach "%s" as lwp' % lemma_word_pairs)
-    cur_display = stats.get_cursor(DB_DIR + "/tweets_display.db")
-    #cur.execute("drop table if exists clusters")
-
-    stats.create_given_tables(cur_display, ["clusters"])
-
-    #cnt = cur.execute("select count(*) from noun_similarity").fetchone()[0]
+    words_db = DB_DIR + "/tweets_lemma.db"
+    bigram_db = DB_DIR + "/tweets_bigram.db"
 
     used_nouns = get_used_nouns(cur)        
-    ##logging.info("used nouns %s" % used_nouns)
 
     nouns = stats.get_nouns(cur, used_nouns)
     noun_trend = stats.get_noun_trend(cur)
@@ -127,18 +111,6 @@ def main():
     cl = get_clusters(args, sim_dict, nouns, noun_trend, post_cnt)
 
     json.dump(cl, open("./clusters_raw.json","w"), indent=2)
-
-    signal.signal(signal.SIGALRM, handler)
-    signal.alarm(1500)
-    cl = aligner.get_aligned_cluster(cur, cur_lemma, cl)
-    signal.alarm(0)
-    
-    cl = {"clusters": cl, "update_time": update_time}
-    cl_json = json.dumps(cl)
-    cur_display.execute("""
-        replace into clusters (cluster_date, cluster)
-        values (?, ?)
-    """, (today, cl_json))
 
     logging.info("Done")
 

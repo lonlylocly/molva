@@ -4,11 +4,13 @@ import sys
 import os
 import logging, logging.config
 import json
+import argparse
 
 import stats
 from Indexer import Indexer
 from util import digest
 import util
+import aligner
 
 logging.config.fileConfig("logging.conf")
 
@@ -22,47 +24,59 @@ except Exception as e:
 
 DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
-def write_tweets_words(cur):
+@util.time_logger
+def _write_tweets_words(cur, db, nouns):
+    cur.execute("""
+        insert or ignore into tweets_words_simple
+        select noun_md5, source_md5 from %s.tweets_words
+        where noun_md5 in (%s)
+    """ % (db, ",".join(map(str,nouns))))
+
+@util.time_logger
+def _create_index(cur):
+    cur.execute("""
+        create index if not exists
+        nouns_idx on tweets_words_simple (noun_md5)
+    """)
+
+@util.time_logger
+def write_tweets_words(cur, nouns):
     logging.info("get united tweets_words")
-    cur.execute("""
-        insert or ignore into tweets_words
-        select * from day_ago.tweets_words
-    """)
-    cur.execute("""
-        insert or ignore into tweets_words
-        select * from today.tweets_words
-    """)
+
+    _write_tweets_words(cur, 'day_ago', nouns)
+    _write_tweets_words(cur, 'today', nouns)
+    _create_index(cur)
+    
     logging.info("done")
 
 def delete_if_exists(f):
     if os.path.exists(f):
         os.remove(f)
 
+
 def main():
     logging.info("start")
-    parser = util.get_dates_range_parser()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--clusters")
+
     args = parser.parse_args()
 
     ind = Indexer(DB_DIR)
-    cur = stats.get_cursor(DB_DIR + "/tweets_lemma.db")
+    db_file = DB_DIR + "/tweets_lemma.db"
+    delete_if_exists(db_file)
+    cur = stats.get_cursor(db_file)
 
     day_ago, today = sorted(ind.dates_dbs.keys())[-2:]
-
-    cur1 = ind.get_db_for_date(today)
-    cur2 = ind.get_db_for_date(day_ago)
-
-    lwp_db_file_final = DB_DIR + "/tweets_lemma_word_pairs.db"
-
-    for table in ["tweets_words_simple"]:
-        cur.execute("drop table if exists %s" % table)
-
-    for c in [cur, cur1, cur2]:
-        stats.create_given_tables(c, ["tweets_words_simple"])
 
     cur.execute("attach '%s' as day_ago" % ind.dates_dbs[day_ago]) 
     cur.execute("attach '%s' as today" % ind.dates_dbs[today]) 
 
-    write_tweets_words(cur)
+    stats.create_given_tables(cur, ["tweets_words_simple"])
+
+    cl = json.load(open(args.clusters,'r'))
+    
+    write_tweets_words(cur, aligner.get_cluster_nouns(cl))
 
 if __name__ == '__main__':
     main()
