@@ -32,7 +32,6 @@ def main():
     cur.execute("delete from tomita_progress")
     cur.execute("delete from tweets_nouns")
     cur.execute("delete from tweets_words")
-    cur.execute("delete from lemma_word_pairs")
     #cur.execute("delete from word_pairs")
 
     #cur.execute("commit")
