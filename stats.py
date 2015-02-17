@@ -180,7 +180,7 @@ CREATE_TABLES = {
             username text,
             in_reply_to_username text,
             in_reply_to_id integer,
-            created_at text,
+            created_at integer,
             PRIMARY KEY (id)
         )
     """,
@@ -233,7 +233,7 @@ CREATE_TABLES = {
             p_md5 integer,
             r_id integer,
             r_md5 integer,
-            created_at text,
+            created_at integer,
             PRIMARY KEY (p_id, p_md5, r_id, r_md5)
         )
     """,
