@@ -73,6 +73,8 @@ def main():
     cur.execute("attach '%s' as today" % ind.dates_dbs[today]) 
 
     stats.create_given_tables(cur, ["tweets_words_simple"])
+    stats.create_given_tables(cur, {"today.tweets_words": "tweets_words", 
+        "day_ago.tweets_words": "tweets_words"})
 
     cl = json.load(open(args.clusters,'r'))
     

@@ -104,6 +104,8 @@ def get_related_tweets(cur, words):
             word_md5s.add(str(w.lemma_md5))
     word_md5s = list(word_md5s)
 
+    stats.create_given_tables(cur, ["tweets", "tweets_nouns"])
+    
     tweets = {}
 
     cur.execute("""
@@ -112,6 +114,7 @@ def get_related_tweets(cur, words):
         inner join tweets t
         on n.id = t.id
         where noun_md5 in (%s)
+        limit 10000
     """ % ",".join(word_md5s) )
 
     r = cur.fetchall()

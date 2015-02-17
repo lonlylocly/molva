@@ -125,7 +125,7 @@ class Indexer:
     def add_new_tweets_for_tomita(self, date):
         self.log.info("Index day %s" %date)
         cur = self.get_db_for_filename(self.dates_dbs[date])
-        stats.create_given_tables(cur, ["tomita_progress"])
+        stats.create_given_tables(cur, ["tomita_progress", "tweets"])
     
         cur.execute("""
             INSERT OR IGNORE INTO tomita_progress (id)
