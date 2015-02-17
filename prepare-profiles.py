@@ -12,13 +12,13 @@ import util
 
 logging.config.fileConfig("logging.conf")
 
-POST_MIN_FREQ = 10
-
 settings = {} 
 try:
     settings = json.load(open('global-settings.json', 'r'))
 except Exception as e:
     logging.warn(e)
+
+POST_MIN_FREQ = settings["post_min_freq"] if "post_min_freq" in settings else 10
 
 DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
