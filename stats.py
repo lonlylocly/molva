@@ -256,6 +256,14 @@ CREATE_TABLES = {
             PRIMARY KEY(id, noun_md5, source_md5)
         )
     """,
+    "word_time_cnt": """
+        CREATE TABLE IF NOT EXISTS word_time_cnt(
+            word_md5 integer,
+            tenminute integer,
+            cnt integer,
+            PRIMARY KEY(word_md5, tenminute)
+        )
+    """,
     "tweets_words_simple": """
         CREATE TABLE IF NOT EXISTS tweets_words_simple(
             noun_md5 integer,

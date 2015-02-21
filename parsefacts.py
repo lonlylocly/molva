@@ -4,6 +4,7 @@ import hashlib
 import time
 import sys,codecs
 import os
+import os.path
 import logging, logging.config
 import json
 import traceback
@@ -69,6 +70,11 @@ def save_tweet_nouns(cur, vals):
     f = lambda : _save_tweet_nouns(cur, vals)
     try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
 
+@util.time_logger
+def save_word_time_cnt(cur, cur_words, vals):
+    f = lambda : _save_word_time_cnt(cur, cur_words, vals)
+    try_several_times(f, 3, finilizer=lambda : cur_words.execute("rollback"))
+
 def _save_tweet_nouns(cur, vals):
     cur.execute("begin transaction")
 
@@ -79,6 +85,45 @@ def _save_tweet_nouns(cur, vals):
 
     cur.execute("commit")   
 
+def _save_word_time_cnt(cur, cur_words, vals):
+    cur_words.execute("begin transaction")
+
+    tweet_ids = set()
+    for v in vals:
+        tweet_ids.add(v[0])
+
+    tweet_times = {}
+    cur.execute("""
+        select id, created_at 
+        from tweets
+        where id in (%s)
+    """ % ",".join(map(str, tweet_ids)))
+    
+    while True:
+        res = cur.fetchone()
+        if res is None:
+            break
+        t_id, created_at = res
+        t_id = int(t_id)
+        tenminute = int(str(created_at)[:13]) # обрезаем до десятков минут
+        tweet_times[t_id] = tenminute
+
+    for v in vals:
+        cur_words.execute("""
+            insert or ignore into word_time_cnt
+            (word_md5, tenminute, cnt) 
+            values (%s, %s, 0)
+        """ % (v[1], tweet_times[int(v[0])])) 
+
+        cur_words.execute("""
+            update word_time_cnt
+            set cnt = cnt + 1
+            where 
+            word_md5 = %s 
+            and tenminute = %s
+        """ % (v[1], tweet_times[int(v[0])]))
+
+    cur_words.execute("commit")
 
 def _sort_part(lemma_word_pairs):
     l = sorted(lemma_word_pairs, key=lambda x: (x[0], x[1]))
@@ -211,8 +256,10 @@ def parse_facts_file(tweet_index, facts, date):
     cur = ind.get_db_for_date(date) 
     cur_main = stats.get_main_cursor(DB_DIR)
     cur_bigram = stats.get_cursor(DB_DIR + "/tweets_bigram.db")
+    cur_words = stats.get_cursor("%s/words_%s.db" % (DB_DIR, date))
 
     stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words", "lemma_word_pairs"])
+    stats.create_given_tables(cur_words, ["word_time_cnt"])
     stats.create_given_tables(cur_bigram, ["lemma_word_pairs"])
     stats.create_given_tables(cur, {"sources": "nouns"})
     stats.create_given_tables(cur_main, ["nouns"])
@@ -232,6 +279,7 @@ def parse_facts_file(tweet_index, facts, date):
     nouns_total = set()
     sources_total = set()
     noun_sources = []
+    tweets_nouns = []
     lemma_word_pairs = []
 
     for event, elem in tree:
@@ -249,6 +297,7 @@ def parse_facts_file(tweet_index, facts, date):
                     sources_total.add(np.with_prep())
 
                     noun_sources.append((post_id, util.digest(np.noun_lemma), util.digest(np.with_prep())))
+                    # tweets_nouns.append((post_id, util.digest(np.noun_lemma)))
                 except Exception as e:
                     traceback.print_exc()
                     logging.error(e)
@@ -258,6 +307,7 @@ def parse_facts_file(tweet_index, facts, date):
             if len(noun_sources) > 10000:
                 logging.info("seen %s docid" % (cur_doc))
                 save_tweet_nouns(cur, noun_sources)
+                save_word_time_cnt(cur, cur_words, noun_sources)
                 noun_sources = []
 
             if len(lemma_word_pairs) >= CHUNK_SIZE :
@@ -267,6 +317,7 @@ def parse_facts_file(tweet_index, facts, date):
             elem.clear()
 
     save_tweet_nouns(cur, noun_sources)
+    save_word_time_cnt(cur, cur_words, noun_sources)
     save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = KEEP_RATIO) 
 
     save_nouns(cur, nouns_total)
@@ -276,6 +327,12 @@ def parse_facts_file(tweet_index, facts, date):
 
     return
 
+def rename_file_with_prefix(f, prefix):
+    f_name = os.path.basename(f)
+    f_dir = os.path.dirname(f)
+    f_new = f_dir + "/" + prefix + f_name 
+    logging.info("Rename file: '%s' to '%s'" % (f, f_new))
+    os.rename(f, f_new)
 
 def main():
     logging.info("Start parsing extracted nouns")
@@ -287,12 +344,17 @@ def main():
         for t in files_for_dates[date]:
             tweet_index, facts = t 
 
-            f = lambda : parse_facts_file(tweet_index, facts, date)
-            try_several_times(f, 3)
+            try:
+                parse_facts_file(tweet_index, facts, date)
+                logging.info("Remove index: %s; facts: %s" % (tweet_index, facts))
+                os.remove(tweet_index)
+                os.remove(facts)
 
-            logging.info("Remove index: %s; facts: %s" % (tweet_index, facts))
-            os.remove(tweet_index)
-            os.remove(facts)
+            except Exception as e:
+                traceback.print_exc()
+                logging.error(e)
+                rename_file_with_prefix(tweet_index, "__trash__")
+                rename_file_with_prefix(facts, "__trash__")
     
     logging.info("Done")
 
