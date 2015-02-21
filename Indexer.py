@@ -8,6 +8,8 @@ import logging, logging.config
 
 import stats
 
+INDEX_CHUNK_SIZE = 50000
+
 class IndexChunk:
     def __init__(self, date, chunk_id=None, index_file=None, done_file=None, facts_file=None):
         self.date = date
@@ -76,7 +78,7 @@ class Indexer:
         for f in os.listdir(self.index_dir):
             full_path = os.path.join(self.index_dir, f)
             if os.path.isfile(full_path):
-                match = re.search("(\d{8})_(\d+)\.index\.txt", f)
+                match = re.search("^(\d{8})_(\d+)\.index\.txt", f)
                 if match:
                     date, chunk_id = (match.group(1), match.group(2))
                     if date not in files:
@@ -89,7 +91,7 @@ class Indexer:
         for f in os.listdir(self.nouns_dir):
             full_path = os.path.join(self.nouns_dir, f)
             if os.path.isfile(full_path):
-                match = re.search("(\d{8})_(\d+)\.facts\.xml", f)
+                match = re.search("^(\d{8})_(\d+)\.facts\.xml", f)
                 if match:
                     date, chunk_id = (match.group(1), match.group(2))
                     if date not in files:
@@ -172,8 +174,8 @@ class Indexer:
             on t.id = p.id
             where not p.id_done 
             order by p.id
-            limit 100000
-        """)
+            limit %s 
+        """ % INDEX_CHUNK_SIZE)
 
         
         t = tweets.fetchone()
