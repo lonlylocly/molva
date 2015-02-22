@@ -52,6 +52,8 @@ def try_several_times(f, times, finilizer=None):
             logging.error(e)
             if finilizer is not None:
                 finilizer()
+            logging.info("Sleep 5s")
+            time.sleep(5)
 
     raise FailedSeveralTimesException("")
 
@@ -105,7 +107,7 @@ def _save_word_time_cnt(cur, cur_words, vals):
             break
         t_id, created_at = res
         t_id = int(t_id)
-        tenminute = int(str(created_at)[:13]) # обрезаем до десятков минут
+        tenminute = int(str(created_at)[:11]) # обрезаем до десятков минут
         tweet_times[t_id] = tenminute
 
     for v in vals:
