@@ -33,8 +33,7 @@ def main():
     run("java -Xmx700m -jar %s/%s profiles.json sims.csv > simmer.log 2>&1 " % (SCRIPTDIR, SIMMER_JAR))
     run("%s/post-profiles.py -i sims.csv  > post-profiles.log 2>&1" % SCRIPTDIR) 
 
-    run("%s/trend.py  1>> trend.log 2>&1 " % SCRIPTDIR) 
-    #run("%s/exclusion.py  1>> exclusion.log 2>&1 " % SCRIPTDIR) 
+    run("%s/trend_new.py  1>> trend.log 2>&1 " % SCRIPTDIR) 
 
     run("python -m cProfile %s/build-clusters.py   -i 10 1>> clusters.log 2>&1 " % SCRIPTDIR) 
     run("python -m cProfile %s/prepare-aligner.py --clusters clusters_raw.json >> prepare-aligner.log 2>&1" % SCRIPTDIR) 
