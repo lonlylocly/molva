@@ -56,16 +56,6 @@ def build_chains_nouns_all(cur, db, time_bound):
     """ % {"db": db, "time": time_bound})
 
 @util.time_logger
-def build_tweets_nouns_cur(cur, db, time_bound):
-    logging.info("tweets_nouns_cur for db: %s" % db)
-    cur.execute("""
-        insert into tweets_nouns_cur
-        select n.id, n.noun_md5 from %(db)s.tweets_nouns n
-        inner join %(db)s.tweets t
-        on n.id = t.id
-        where t.created_at > '%(time)s'
-    """ % {"db": db, "time": time_bound})
-
 @util.time_logger
 def _build_chains_nouns_init(cur, time_min, time_max):
     cur.execute("""
@@ -75,29 +65,10 @@ def _build_chains_nouns_init(cur, time_min, time_max):
     """ % {"min_time": time_min, "max_time": time_max})
 
 @util.time_logger
-def _build_post_cnt(cur, suff, time_min, time_max):
-    logging.info("post_cnt%s" % (suff))
-    cmd = """
-        insert or ignore into post_cnt%(suff)s 
-        select p_md5,  count(*) 
-        from (
-            select p_id, p_md5 
-            from chains_nouns_all
-            where created_at > '%(min_time)s' and created_at <= '%(max_time)s' 
-            group by p_md5, p_id
-        ) group by p_md5
-    """ % {"suff": suff, "min_time": time_min, "max_time": time_max}
-    logging.info(cmd)
-    cur.execute(cmd)
-
-@util.time_logger
 def build_chains_nouns(cur, time_ranges):
     logging.info("chains_nouns; time (%s, %s)" % (time_ranges[0]["min"], time_ranges[0]["max"]))
     _build_chains_nouns_init(cur, time_ranges[0]["min"], time_ranges[0]["max"])
 
-    for i in range(0, len(time_ranges)):
-        suff = time_ranges[i]["suff"]
-        _build_post_cnt(cur, suff, time_ranges[i]["min"], time_ranges[i]["max"])
 
 @util.time_logger
 def build_post_reply_cnt(cur):
@@ -132,30 +103,17 @@ def count_currents(cur, utc_now):
         time_ranges[i]["max"] = to_mysql_timestamp(utc_now - timedelta(hours=3 * i))
         time_ranges[i]["suff"] = "_n_" + str(i) if i != 0 else ""
 
-    cur_tables = ["chains_nouns", "post_cnt", "post_reply_cnt"]
+    cur_tables = ["chains_nouns", "post_reply_cnt"]
     for t in cur_tables:
         logging.info("drop %s" % t)
         cur.execute("drop table if exists %s" % t)
     stats.create_given_tables(cur, cur_tables)
     stats.create_given_tables(cur, ["chains_nouns_all"])
 
-    cur_tables2 = {
-        "tweets_nouns_cur": "tweets_nouns", 
-        "post_cnt_n_1": "post_cnt",
-        "post_cnt_n_2": "post_cnt",
-        "post_cnt_n_3": "post_cnt",
-    }
-    for t in cur_tables2:
-        logging.info("drop %s" % t)
-        cur.execute("drop table if exists %s" % t)
-    stats.create_given_tables(cur, cur_tables2)
-
     _delete_from_chains_nouns(cur,  time_ranges[-1]["min"])
 
     for db in ("today", "ystd"):
         build_chains_nouns_all(cur, db, time_ranges[-1]["min"])
-
-        build_tweets_nouns_cur(cur, db, utc_ystd_m)
 
     build_chains_nouns(cur, time_ranges)
 
