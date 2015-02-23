@@ -10,13 +10,14 @@ import re
 import logging
 from subprocess import check_output
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import KMeanCluster
 import stats
 from Indexer import Indexer
+import util
 
-#logging.config.fileConfig("logging.conf")
+logging.config.fileConfig("logging.conf")
 
 settings = json.load(open('global-settings.json', 'r'))
 
@@ -120,11 +121,90 @@ class RelevantHandler(tornado.web.RequestHandler):
 
         self.write(r)
 
+class TrendHandler(tornado.web.RequestHandler):
+
+    @util.time_logger
+    def get_word_time_cnt(self, word_md5, time1, time2):
+        logging.info("Get word time cnt: %s, %s, %s" % (word_md5, time1, time2))
+        utc_now = datetime.utcnow()
+        res = []
+        default_left_time_bound = (utc_now - timedelta(3)).strftime("%Y%m%d%H%M%S")[:11]
+        time = ""
+        if time1 is not None:
+            time += " and tenminute >= " + time1
+        else:
+            time += " and tenminute >= " + default_left_time_bound
+        if time2 is not None:
+            time += " and tenminute < " + time2
+
+        where = "word_md5 = %s" % word_md5
+        if word_md5 == util.digest('0'):
+            where = "1"
+
+        for day in [3, 2, 1, 0]:
+            date = (utc_now - timedelta(day)).strftime("%Y%m%d")
+            cur = stats.get_cursor("%s/words_%s.db" % (settings["db_dir"], date))
+            stats.create_given_tables(cur, ["word_time_cnt"])
+            cur.execute("""
+                select word_md5, substr(tenminute, 1, 10) as hour, sum(cnt) 
+                from word_time_cnt
+                where %(where)s 
+                %(time)s
+                group by hour
+            """ % {"where": where, "time": time})
+            res += cur.fetchall()
+        return res
+
+    def parse_times(self, time1, time2):
+        try:
+            if time1 is not None:
+                time1 = "{:0<11d}".format(int(time1))
+            if time2 is not None:
+                time2 = "{:0<11d}".format(int(time2))
+            if time1 is not None and time2 is not None and time1 > time2:
+                time1, time2 = time2, time1
+        except Exception as e:
+            logging.error(e)
+            time1 = None
+            time2 = None
+
+        return (time1, time2)
+
+    def get(self):
+        try:
+            word = self.get_argument("word", default=None)
+            time1 = self.get_argument("time1", default=None)
+            time2 = self.get_argument("time2", default=None)
+            logging.info("Request: %s, %s, %s" % (word, time1, time2))
+
+            if word is None:
+                return
+            
+            time1, time2 = self.parse_times(time1, time2)
+
+            word_md5 = util.digest(word.strip())       
+            logging.info("Get time series for '%s' (%s)" % (word, word_md5))
+           
+            res = self.get_word_time_cnt(word_md5, time1, time2)
+
+            res = sorted(res, key=lambda x: x[1])
+            res = map(lambda x: {"hour": x[1], "count": x[2]}, res)
+            #mov_av = [0]
+            #for i in range(1, len(res) -1):
+            #    ma = float(res[i-1]["count"] + res[i]["count"] + res[i+1]["count"]) / 3
+            #    mov_av.append(ma)
+            #mov_av.append(0)
+
+            self.write(json.dumps({"word": word_md5, "dataSeries": res}))
+        except Exception as e:
+            logging.error(e)
+            raise e
    
 if __name__ == '__main__':
     application = tornado.web.Application([
         (r"/api/cluster", ClusterHandler),
-        (r"/api/relevant", RelevantHandler)
+        (r"/api/relevant", RelevantHandler),
+        (r"/api/trend", TrendHandler)
     ])
     application.listen(8000)
     tornado.ioloop.IOLoop.instance().start()
