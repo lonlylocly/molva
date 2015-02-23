@@ -49,11 +49,6 @@ def write_tweets_words(cur, nouns):
     
     logging.info("done")
 
-def delete_if_exists(f):
-    if os.path.exists(f):
-        os.remove(f)
-
-
 def main():
     logging.info("start")
     parser = argparse.ArgumentParser()
@@ -64,7 +59,7 @@ def main():
 
     ind = Indexer(DB_DIR)
     db_file = DB_DIR + "/tweets_lemma.db"
-    delete_if_exists(db_file)
+    util.delete_if_exists(db_file)
     cur = stats.get_cursor(db_file)
 
     day_ago, today = sorted(ind.dates_dbs.keys())[-2:]
