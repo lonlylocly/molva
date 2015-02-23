@@ -67,3 +67,10 @@
     daily
     size=1M
 }
+
+/home/lonlylocly/run/pre-tomita.log {
+    missingok
+    rotate 7
+    daily
+    size=1M
+}
