@@ -7,7 +7,7 @@ import json
 import codecs
 import argparse
 import re
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 import stats
 import util
@@ -30,14 +30,23 @@ class Word:
 
 class Tweet:
 
-    def __init__(self, text, tw_id, created_at):
+    def __init__(self, text, tw_id, created_at, username="", tweet_id=""):
         self.text = text
         self.words = []
         self.tw_id = tw_id
         self.created_at = created_at
+        self.username = username
+        self.tweet_id = tweet_id
 
     def to_json(self):
-        j = {"text": self.text, "words": self.words, "created_at": self.created_at}
+        j = {
+            "text": self.text, 
+            "words": self.words, 
+            "created_at": self.created_at, 
+            "username": self.username,
+            "created_at_str": datetime.strptime(str(self.created_at) ,"%Y%m%d%H%M%S").strftime("%Y-%m-%d %H:%M:%S"),
+            "tweet_id": str(self.tweet_id)
+        }
             
         return j
 
@@ -109,7 +118,7 @@ def get_related_tweets(cur, words):
     tweets = {}
 
     cur.execute("""
-        select n.id, n.noun_md5, t.tw_text, t.created_at
+        select n.id, n.noun_md5, t.id, t.tw_text, t.created_at, t.username
         from tweets_nouns n
         inner join tweets t
         on n.id = t.id
@@ -120,13 +129,26 @@ def get_related_tweets(cur, words):
     r = cur.fetchall()
 
     for l in r:
-        tw_id, noun_md5, tw_text, created_at = l
+        tw_id, noun_md5, tw_id, tw_text, created_at, username = l
         if tw_id not in tweets:
-            tweets[tw_id] = Tweet(tw_text, tw_id, created_at)
+            tweets[tw_id] = Tweet(tw_text, tw_id, created_at, username, tw_id)
 
         tweets[tw_id].words.append(noun_md5)
     
     return tweets 
+
+def filter_silly_spam(tw):
+    tw_text = {}
+    for tw_id in tw:
+        tw_text[util.digest(tw[tw_id].text)] = tw_id
+
+    tw2 = {}
+
+    for tw_md5 in tw_text:
+        tw_id = tw_text[tw_md5]
+        tw2[tw_id] = tw[tw_id]
+
+    return tw2
 
 def lookup_two_days(cur1, cur2, words):
 
@@ -136,7 +158,9 @@ def lookup_two_days(cur1, cur2, words):
     for tw_id in tw1:
         tw2[tw_id] = tw1[tw_id]
 
-    return tw2
+    tw3 = filter_silly_spam(tw2) 
+
+    return tw3
     
 def main2():
     parser = argparse.ArgumentParser()
