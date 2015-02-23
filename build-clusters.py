@@ -95,6 +95,7 @@ def main():
     ind = Indexer(DB_DIR)
 
     cur = stats.get_main_cursor(DB_DIR)
+    cur_word_cnt = stats.get_cursor(DB_DIR + "/word_cnt.db")
     words_db = DB_DIR + "/tweets_lemma.db"
     bigram_db = DB_DIR + "/tweets_bigram.db"
 
@@ -103,7 +104,7 @@ def main():
     nouns = stats.get_nouns(cur, used_nouns)
     noun_trend = stats.get_noun_trend(cur)
     logging.info("nouns len %s" % len(nouns))
-    post_cnt = stats.get_noun_cnt(cur)
+    post_cnt = stats.get_noun_cnt(cur_word_cnt)
     
     logging.info("get sim_dict")
     sim_dict = get_sims(cur) 

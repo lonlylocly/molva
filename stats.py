@@ -5,8 +5,8 @@ import time
 import math
 import logging, logging.config
 import xml.etree.ElementTree as ET
-from subprocess import check_output
 import json
+from datetime import datetime, timedelta, date
 
 from profile import NounProfile, ProfileCompare
 import util
@@ -123,22 +123,6 @@ def get_post_tweets(cur, post_noun):
     """ % (post_noun)).fetchall()
 
     return res
-
-def get_post_tweets_cnt(cur):
-    res = cur.execute("""
-        select noun_md5, count(*)
-        from tweets_nouns tn
-        inner join tweet_chains tc
-        on tn.id = tc.post_id
-        group by noun_md5
-    """)
-
-    post_tweets_cnt = {}
-    for post_cnt in res:
-        post, cnt = post_cnt
-        post_tweets_cnt[post] = cnt
-
-    return post_tweets_cnt
 
 def get_noun_cnt(cur):
     stats = cur.execute("""
@@ -564,4 +548,35 @@ def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, 
    
     return profiles_dict
 
-              
+@util.time_logger
+def get_word_cnt(db_dir, utc_now=datetime.utcnow()):
+    day_ago = (utc_now - timedelta(1)).strftime("%Y%m%d%H%M%S")
+    day_ago_tenminute = day_ago[:11]
+    logging.info("Time left bound: %s" % day_ago_tenminute)
+    word_cnt = {}
+    for day in [1, 0]:
+        date = (utc_now - timedelta(day)).strftime("%Y%m%d")
+        cur = get_cursor("%s/words_%s.db" % (db_dir, date))
+        create_given_tables(cur, ["word_time_cnt"])
+        cur.execute("""
+                select word_md5, sum(cnt) 
+                from word_time_cnt
+                where tenminute > %s
+                group by word_md5
+        """ % day_ago_tenminute)
+
+        row_cnt = 0    
+        while True:
+            res = cur.fetchone()
+            if res is None:
+                break
+            word_md5, cnt = res
+            if word_md5 not in word_cnt:
+                word_cnt[word_md5] = 0 
+            word_cnt[word_md5] += cnt
+            
+            row_cnt += 1
+            if row_cnt % 100000 == 0:
+                logging.info('Seen %s rows' % row_cnt)
+
+    return word_cnt             

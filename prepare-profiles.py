@@ -28,51 +28,6 @@ BLOCKED_NOUNS = ",".join(map( lambda x: str(digest(x)), BLOCKED_NOUNS_LIST.split
 
 NOUNS_LIMIT = 2000
 
-
-def save_sims(cur, sims):
-    cur.execute("begin transaction")
-
-    cur.executemany("replace into noun_sim_new values (?, ?, ?)", sims)
-
-    cur.execute("commit")
-
-def fill_sims(cur, profiles_dict, nouns, tweets_nouns):
-    logging.info("Start filling sims iteration")
-    posts = profiles_dict.keys()
-
-    cnt = 0
-    long_cnt = 1
-    sims = []
-    for i in xrange(0, len(posts)):
-        post1 = posts[i]
-        for j in xrange(0, len(posts)):
-            post2 = posts[j]
-            if post1 <= post2:
-                continue
-            p_compare = profiles_dict[post1].compare_with(profiles_dict[post2])
-            sims.append((post1, post2, p_compare.sim))
-
-            cnt += 1
-
-            if len(sims) > 10000:
-                save_sims(cur, sims)
-                sims = []
-            if cnt > long_cnt * 10000:
-                long_cnt += 1
-                logging.info("Another 10k seen")
-     
-    save_sims(cur, sims)
-
-def update_sims(cur):
-    cur.execute("begin transaction")
-
-    cur.execute("drop table if exists noun_sim_old")
-    cur.execute("alter table noun_similarity rename to noun_sim_old")
-    cur.execute("alter table noun_sim_new rename to noun_similarity")
-    cur.execute("drop table noun_sim_old")
-
-    cur.execute("commit")
-
 def main():
     logging.info("start")
     parser = util.get_dates_range_parser()
@@ -81,8 +36,7 @@ def main():
     parser.add_argument("-o", "--out-file")
     args = parser.parse_args()
 
-    ind = Indexer(DB_DIR)
-    cur = stats.get_main_cursor(DB_DIR)
+    cur = stats.get_cursor(DB_DIR + "/word_cnt.db")
             
     profiles_dict = stats.setup_noun_profiles(cur, {}, {}, 
         post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = NOUNS_LIMIT, profiles_table = args.profiles_table 
