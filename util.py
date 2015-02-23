@@ -6,6 +6,8 @@ import argparse
 import traceback
 import logging
 import time
+import os
+import os.path
 
 from Exceptions import WoapeException
 
@@ -68,3 +70,8 @@ def time_logger(func):
         return res
 
     return inner
+
+def delete_if_exists(f):
+    if os.path.exists(f):
+        os.remove(f)
+
