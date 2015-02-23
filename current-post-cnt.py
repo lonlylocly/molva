@@ -56,7 +56,6 @@ def build_chains_nouns_all(cur, db, time_bound):
     """ % {"db": db, "time": time_bound})
 
 @util.time_logger
-@util.time_logger
 def _build_chains_nouns_init(cur, time_min, time_max):
     cur.execute("""
         insert into chains_nouns
@@ -65,10 +64,25 @@ def _build_chains_nouns_init(cur, time_min, time_max):
     """ % {"min_time": time_min, "max_time": time_max})
 
 @util.time_logger
+def _build_post_cnt(cur, suff, time_min, time_max):
+    logging.info("post_cnt%s" % (suff))
+    cmd = """
+        insert or ignore into post_cnt%(suff)s 
+        select p_md5,  count(*) 
+        from (
+            select p_id, p_md5 
+            from chains_nouns_all
+            where created_at > '%(min_time)s' and created_at <= '%(max_time)s' 
+            group by p_md5, p_id
+        ) group by p_md5
+    """ % {"suff": suff, "min_time": time_min, "max_time": time_max}
+    logging.info(cmd)
+    cur.execute(cmd)
+
+@util.time_logger
 def build_chains_nouns(cur, time_ranges):
     logging.info("chains_nouns; time (%s, %s)" % (time_ranges[0]["min"], time_ranges[0]["max"]))
     _build_chains_nouns_init(cur, time_ranges[0]["min"], time_ranges[0]["max"])
-
 
 @util.time_logger
 def build_post_reply_cnt(cur):
@@ -90,6 +104,10 @@ def _print_counts(cur, t):
     cnt = cur.execute("select count(*) from %s" % t).fetchone()[0]
     logging.info("count(*) from %s = %s" % (t, cnt))
 
+def attach_db(cur, db_file, db_name):
+    query = "attach '%s' as %s" % (db_file, db_name)
+    logging.info(query)
+    cur.execute(query)
 
 @util.time_logger
 def count_currents(cur, utc_now):
@@ -103,14 +121,7 @@ def count_currents(cur, utc_now):
         time_ranges[i]["max"] = to_mysql_timestamp(utc_now - timedelta(hours=3 * i))
         time_ranges[i]["suff"] = "_n_" + str(i) if i != 0 else ""
 
-    cur_tables = ["chains_nouns", "post_reply_cnt"]
-    for t in cur_tables:
-        logging.info("drop %s" % t)
-        cur.execute("drop table if exists %s" % t)
-    stats.create_given_tables(cur, cur_tables)
     stats.create_given_tables(cur, ["chains_nouns_all"])
-
-    _delete_from_chains_nouns(cur,  time_ranges[-1]["min"])
 
     for db in ("today", "ystd"):
         build_chains_nouns_all(cur, db, time_ranges[-1]["min"])
@@ -119,28 +130,44 @@ def count_currents(cur, utc_now):
 
     build_post_reply_cnt(cur)
     
-    for t in cur_tables + cur_tables2.keys():
+    for t in ["post_cnt", "post_reply_cnt", "chains_nouns_all"]:
         _print_counts(cur, t) 
+
+@util.time_logger
+def save_word_cnt(cur, word_cnt_tuples):
+    cur.execute("begin transaction")
+    cur.executemany("insert into post_cnt values (?, ?)", word_cnt_tuples)    
+    cur.execute("commit")
+
+@util.time_logger
+def build_post_cnt(db_dir):
+    utc_now = datetime.utcnow()
+    word_cnt = stats.get_word_cnt(db_dir)
+    word_cnt_tuples = map(lambda x: (x, word_cnt[x]), word_cnt.keys())
+
+    f_tmp = db_dir + "/word_cnt.db.tmp" 
+    f = db_dir + "/word_cnt.db" 
+
+    util.delete_if_exists(f_tmp)
+
+    cur = stats.get_cursor(f_tmp)
+    stats.create_given_tables(cur, ["chains_nouns", "post_cnt", "post_reply_cnt"])
+
+    save_word_cnt(cur, word_cnt_tuples)
+
+    yesterday = (utc_now - timedelta(1)).strftime("%Y%m%d")          
+    today = (utc_now).strftime("%Y%m%d")    
+    attach_db(cur, "%s/tweets_%s.db" % (db_dir, today), 'today')
+    attach_db(cur, "%s/tweets_%s.db" % (db_dir, yesterday), 'ystd')
+
+    count_currents(cur, utc_now)
+
+    os.rename(f_tmp, f)
 
 def main():
 
-    utc_now = datetime.utcnow()
-    yesterday = (utc_now - timedelta(1)).strftime("%Y%m%d")          
-    today = (utc_now).strftime("%Y%m%d")
+    build_post_cnt(DB_DIR)
 
-    ind = Indexer(DB_DIR)
-    cur = stats.get_main_cursor(DB_DIR)
-
-    today_file = ind.dates_dbs[today]
-    ystd_file = ind.dates_dbs[yesterday]
-
-    logging.info("Attach today: %s" % today_file)
-    cur.execute("attach '%s' as today" % today_file)
-
-    logging.info("Attach ystd: %s" % ystd_file)
-    cur.execute("attach '%s' as ystd" % ystd_file)
-
-    count_currents(cur, utc_now)
 
 
 if __name__ == '__main__':

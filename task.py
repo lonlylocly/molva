@@ -23,7 +23,9 @@ def main():
         logging.info("Iteration for date: " + d)
         run("%s/pre-tomita.py -s %s -e %s 1>> pre-tomita.log 2>&1 " % (SCRIPTDIR, d, d))
         run("%s/run-tomita.py 1>> run-tomita.log 2>run-tomita.err " % SCRIPTDIR)
-        run("python -m cProfile %s/parsefacts.py 1>> parsefacts.log 2>&1 " % SCRIPTDIR) 
+        run("python -m cProfile %(SCRIPTDIR)s/parsefacts.py 1>> parsefacts.log 2>&1 " % {
+            "SCRIPTDIR": SCRIPTDIR
+        }) 
         run("%s/post-tomita.py -s %s -e %s 1>> post-tomita.log 2>&1 " % (SCRIPTDIR, d, d))
         logging.info("done")
 
