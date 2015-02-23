@@ -62,7 +62,10 @@ def main():
             fetcher = Fetcher(DB_DIR, headers)
             res = lookup_statuses(cur, fetcher)
             if not res:
+                logging.info("Sleep 5s")
+                time.sleep(5)
                 break
+                
     
 if __name__ == "__main__":
     main()
