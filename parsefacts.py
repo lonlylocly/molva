@@ -52,11 +52,10 @@ def try_several_times(f, times, finilizer=None):
             logging.error(e)
             if finilizer is not None:
                 finilizer()
-            logging.info("Sleep 5s")
-            time.sleep(5)
 
     raise FailedSeveralTimesException("")
 
+@util.time_logger
 def save_nouns(cur, nouns, table="nouns"):
     f = lambda : _save_nouns(cur, nouns, table)
     try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
@@ -68,6 +67,7 @@ def _save_nouns(cur, nouns, table="nouns"):
     
     cur.execute("commit")
 
+@util.time_logger
 def save_tweet_nouns(cur, vals):
     f = lambda : _save_tweet_nouns(cur, vals)
     try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
