@@ -116,6 +116,7 @@ class RelevantHandler(tornado.web.RequestHandler):
         date = self.parse_date(self.get_argument("date", default=None))
         
         logging.info("Date %s (UTC)" % date)
+        logging.info(str(self.cookies))
 
         r = self.get_relevant(date)
 
@@ -200,11 +201,41 @@ class TrendHandler(tornado.web.RequestHandler):
             logging.error(e)
             raise e
    
+class QualityMarkHandler(tornado.web.RequestHandler):
+
+    def post(self):
+        req_data = None
+        try:
+            req_data = json.loads(self.request.body)
+
+            if req_data is not None:
+                cur = stats.get_cursor(settings["db_dir"] + "/quality_marks.db") 
+                stats.create_given_tables(cur, ["quality_marks"])
+                username = ""
+                if "username" in req_data and req_data["username"] is not None:
+                    username = req_data["username"]
+                update_time = ""
+                if "update_time" in req_data and req_data["update_time"] is not None:
+                    update_time = req_data["update_time"]
+                    update_time = int(re.sub('[-\s:]','', update_time))
+                cur.execute("""
+                    insert into quality_marks 
+                    (update_time, username, marks) 
+                    values (?, ?, ?)
+                """, (update_time, username, json.dumps(req_data["marks"])))
+
+        except Exception as e:
+            logging.error(e)
+            raise(e)
+
+        self.write("")
+
 if __name__ == '__main__':
     application = tornado.web.Application([
         (r"/api/cluster", ClusterHandler),
         (r"/api/relevant", RelevantHandler),
-        (r"/api/trend", TrendHandler)
+        (r"/api/trend", TrendHandler),
+        (r"/api/mark_topic", QualityMarkHandler)
     ])
     application.listen(8000)
     tornado.ioloop.IOLoop.instance().start()

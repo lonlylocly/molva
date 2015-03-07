@@ -322,6 +322,13 @@ CREATE_TABLES = {
             source2_md5 integer,
             cnt integer default 0
         )
+    """,
+    "quality_marks": """
+        CREATE TABLE IF NOT EXISTS quality_marks (
+            update_time integer,
+            username text,
+            marks text
+        )
     """ 
 }
 
