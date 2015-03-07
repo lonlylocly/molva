@@ -1,3 +1,5 @@
+var signedInUserEmail = null;
+
 Handlebars.registerHelper('urlEscape', function(smth) {
   return encodeURIComponent(smth);
 });
@@ -338,3 +340,55 @@ function loadClusters() {
     });
 }
 
+function signinCallback(authResult) {
+  if (authResult['status']['signed_in']) {
+    // Update the app to reflect a signed in user
+    // Hide the sign-in button now that the user is authorized, for example:
+    document.getElementById('signinButton').setAttribute('style', 'display: none');
+    $('.quality-assess').each(function() {
+      $(this).show();
+    })
+    gapi.client.load('plus', 'v1', function() {
+      var request = gapi.client.plus.people.get({
+        'userId': 'me'
+      });
+      request.execute(function(resp) {
+        console.log(resp);
+        signedInUserEmail = resp.emails[0]["value"]; 
+        console.log(signedInUserEmail);
+      });
+    });
+  } else {
+    // Update the app to reflect a signed out user
+    // Possible error values:
+    //   "user_signed_out" - User is signed-out
+    //   "access_denied" - User denied access to your app
+    //   "immediate_failed" - Could not automatically log in the user
+    console.log('Sign-in state: ' + authResult['error']);
+  }
+}
+
+function sendQualityAssessment() {
+    var forms = $('form.quality-assess');
+    var marks = [];
+    for(var i=0; i<forms.length; i++) {
+        var vals = $(forms[i]).serializeArray();
+        var mark = {};
+        for(var j=0; j<vals.length; j++) {
+            mark[vals[j]["name"]] = vals[j]["value"];
+        }
+        marks.push(mark);
+    }
+    var postData = {"update_time": $("#current-timestamp").text(), 
+        "marks": marks,
+        "username": signedInUserEmail
+    };
+    $.post("/api/mark_topic", JSON.stringify(postData))
+    .done(function() {
+        $('#marks-send-status').html("Отправлено");
+    })
+    .fail(function() {
+        $('#marks-send-status').html("Ошибка при отправке");
+        console.log("failed to POST to /api/mark_topic");
+    });
+}

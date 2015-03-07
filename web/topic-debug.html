@@ -12,49 +12,34 @@
 <!--border: 2px solid rgb(218,218,218);-->
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/js/handlebars-v1.3.0.js"></script>
+<script src="https://apis.google.com/js/client:platform.js" async defer></script>
 
 <script id="relevant-template" type="text/x-handlebars-template">
-{{#each tweets}}
-    <p>{{this.text}}</p>
-{{/each}}
-</script>
-
-<script id="cluster-template" type="text/x-handlebars-template">
-<div class="row" style="padding-bottom: 10 px; margin-bottom: 20px;">
-    <div class="col-md-8">
-        <span>{{i18n.updated}} <span id="current-timestamp">{{update_time}}</span>.</span>
-    </div>
-</div>
 <ul class="list-group">
+{{#each tweets}}
     <li class="list-group-item">
-
-    <div class="row">
-        <div class="col-md-2 lead">
-            <span class="{{this.trend_class}}" title="Прирост активности по теме">{{this.avg_trend}}</span>
+    <div style="padding: 10 px">
+        <div>
+            <a href="https://twitter.com/{{this.username}}">@{{this.username}}</a>
         </div>
-        <div class="col-md-10">
-            <p class="lead">
-            {{#each members}}
-                <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'>{{this.text}}</a> 
-            {{/each}}
-            </p>
+        <div>
+            <p style="white-space: pre-wrap;">{{this.text}}</p>
         </div>
-    </div>
-    <div class="row">
-        <div class="col-md-2 lead">{{i18n.lookup_topic}}</div>
-        <div class="col-md-10">
-              <a class="dropdown-toggle btn btn-sm btn-default" href="http://google.com/search?q={{this.query_string}}"  target="_blank" 
-                title='Уточнить тему "{{this.query_string}}" поиском в Google'>Google</a>
-              <a class="dropdown-toggle btn btn-sm btn-default"  href="http://yandex.ru/yandsearch?text={{this.query_string}}"  target="_blank" 
-                title='Уточнить тему "{{this.query_string}}" поиском в Яндексе'><span style="color: red">Я</span>ндекс</a>
-              <a class="dropdown-toggle btn btn-sm btn-default"  href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" target="_blank" 
-                title='Уточнить тему "{{this.query_string}}" поиском по Яндекс.Новостям'><span style="color: red">Я</span>ндекс.Новости</a>
-              <a class="dropdown-toggle btn btn-sm btn-default"  href="https://twitter.com/search?q={{this.query_string}}"  target="_blank" 
-                title='Уточнить тему "{{this.query_string}}" поиском в Twitter'>Twitter</a>
+        <div>
+            <a href="https://twitter.com/{{this.username}}/status/{{this.tweet_id}}"><small>{{this.created_at_str}}</small></a>
         </div>
     </div>
     </li>
-</ul>
+{{/each}}
+</div>
+</script>
+
+<script id="cluster-template" type="text/x-handlebars-template">
+<h3><img src="https://g.twimg.com/Twitter_logo_blue.png" class="twitter-logo-relevant"/> Сообщения Twitter по теме: 
+            {{#each members}}
+                <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'>{{this.text}}</a> 
+            {{/each}}
+</h3>
 </script>
 
 <script id="shares-template" type="text/x-handlebars-template">
@@ -85,7 +70,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="http://molva.spb.ru">molva.spb.ru <sub class="beta-mark">&beta;eta</sub></a>
+          <a class="navbar-brand" href="http://molva.spb.ru/debug">molva.spb.ru <sub class="beta-mark">&beta;eta</sub></a>
         </div>
         <div class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
@@ -107,6 +92,17 @@
 
         <div id="shares-holder">
         </div>
+
+    <span id="signinButton">
+      <span
+        class="g-signin"
+        data-callback="signinCallback"
+        data-clientid="1053467607144-77mhoifglcc1giv8mdngsmp3gaoogiva.apps.googleusercontent.com"
+        data-cookiepolicy="single_host_origin"
+        data-scope="https://www.googleapis.com/auth/plus.profile.emails.read">
+      </span>
+    </span>
+
 
       <footer  style="padding-bottom: 30px;">
             <p>&copy; <a href="http://twitter.com/lonlylocly" id="contact">Николай Васильев</a>
