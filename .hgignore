@@ -13,3 +13,4 @@ java/Simmer/target*
 
 profiles/*
 results/*
+benchmark/*
