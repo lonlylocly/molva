@@ -37,7 +37,7 @@ def lookup_statuses(cur, fetcher):
         return False
 
     f = lambda : fetcher.lookup_statuses_iteration(cur, map(lambda x: x[0], ids))
-    try_several_times(f, 3, [])
+    try_several_times(f, 3)
    
     return True
 

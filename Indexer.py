@@ -7,6 +7,7 @@ import codecs
 import logging, logging.config
 
 import stats
+import util
 
 INDEX_CHUNK_SIZE = 50000
 
@@ -113,7 +114,7 @@ class Indexer:
         return merged_files
 
     def prepare_tweet_index_for_date(self, date, max_save_iter=30):
-        self.add_new_tweets_for_tomita(date) 
+        util.try_several_times(lambda : self.add_new_tweets_for_tomita(date), 3)
         for i in range(0, max_save_iter):
             cnt = self.save_tweets_index(date)
             if cnt == 0:
@@ -168,7 +169,7 @@ class Indexer:
         tweets_file = None
         
         tweets = cur.execute("""
-            select p.id, t.tw_text 
+            select p.id, t.tw_text, t.created_at 
             from tomita_progress p
             inner join tweets t
             on t.id = p.id
@@ -186,9 +187,9 @@ class Indexer:
         cnt = 0
         while t is not None:
             cnt += 1
-            tweet_id, tw_text = t
+            tweet_id, tw_text, created_at = t
             last_tweet_id = tweet_id
-            index_file.write("%d\n" % tweet_id)
+            index_file.write("%d\t%d\n" % (tweet_id, created_at))
             tw_text = tw_text.replace('\n', ' ').replace("'", "\\'")
             # filter out usernames
             tw_text = re.sub("(^@|\s@)[^\s]+", "", tw_text)
