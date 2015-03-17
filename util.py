@@ -40,21 +40,21 @@ def get_dates_range_parser():
 
     return parser
 
-def try_several_times(f, times, error_return=[]):
+def try_several_times(f, times, finilizer=None):
     tries = 0
     while tries < times:
         try:
             tries += 1
+            logging.info("Starting try #%s" % tries)
             res = f()
             return res
-        except WoapeException as e:
-            logging.info("Stop trying, WoapeException: %s" % ( e))
-            break
         except Exception as e:
             traceback.print_exc()
             logging.error(e)
+            if finilizer is not None:
+                finilizer()
 
-    return error_return
+    raise FailedSeveralTimesException("")
 
 def time_logger(func):
     def inner(*args, **kwargs):
