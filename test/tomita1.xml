@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fdo_objects>
+  <document url="" di="1" bi="-1" date="2015-03-24">
+    <facts>
+      <SimpleFact FactID="0" LeadID="0" FieldsInfo="n0;" pos="1" len="5" sn="0" fw="0" lw="1">
+        <Noun val="SOME1"/>
+        <IsHashTag val="1"/>
+      </SimpleFact>
+    </facts>
+    <Leads>
+      <Lead text="&lt;l&gt;&lt;h t=&quot;ya&quot; di=&quot;1&quot; u=&quot;&quot;&gt;&lt;d&gt;2015-03-24 02:03&lt;/d&gt;&lt;s&gt;stdin&lt;/s&gt;&lt;/h&gt;&lt;b&gt;&lt;s&gt;# &lt;N n0=&quot;&quot; lemma=&quot;some1&quot;&gt;some1&lt;/N&gt;&lt;/s&gt;&lt;/b&gt;&lt;/l&gt;" id="0"/>
+    </Leads>
+  </document>
+  <document url="" di="2" bi="-1" date="2015-03-24">
+    <facts>
+      <SimpleFact FactID="0" LeadID="0" FieldsInfo="n0;" pos="0" len="6" sn="0" fw="0" lw="0">
+        <Noun val="СОЛНЦЕ"/>
+        <IsHashTag val="0"/>
+      </SimpleFact>
+    </facts>
+    <Leads>
+      <Lead text="&lt;l&gt;&lt;h t=&quot;ya&quot; di=&quot;2&quot; u=&quot;&quot;&gt;&lt;d&gt;2015-03-24 02:03&lt;/d&gt;&lt;s&gt;stdin&lt;/s&gt;&lt;/h&gt;&lt;b&gt;&lt;s&gt;&lt;N n0=&quot;&quot; lemma=&quot;солнце&quot;&gt;солнце&lt;/N&gt;&lt;/s&gt;&lt;/b&gt;&lt;/l&gt;" id="0"/>
+    </Leads>
+  </document>
+  <document url="" di="3" bi="-1" date="2015-03-24">
+    <facts>
+      <SimpleFact FactID="0" LeadID="0" FieldsInfo="n0;" pos="1" len="6" sn="0" fw="0" lw="1">
+        <Noun val="СОЛНЦЕ"/>
+        <IsHashTag val="1"/>
+      </SimpleFact>
+    </facts>
+    <Leads>
+      <Lead text="&lt;l&gt;&lt;h t=&quot;ya&quot; di=&quot;3&quot; u=&quot;&quot;&gt;&lt;d&gt;2015-03-24 02:03&lt;/d&gt;&lt;s&gt;stdin&lt;/s&gt;&lt;/h&gt;&lt;b&gt;&lt;s&gt;# &lt;N n0=&quot;&quot; lemma=&quot;солнце&quot;&gt;солнце&lt;/N&gt;&lt;/s&gt;&lt;/b&gt;&lt;/l&gt;" id="0"/>
+    </Leads>
+  </document>
+  <document url="" di="4" bi="-1" date="2015-03-24">
+    <facts>
+      <SimpleFact FactID="0" LeadID="0" FieldsInfo="n0;" pos="4" len="6" sn="0" fw="1" lw="2">
+        <Noun val="СОЛНЦЕ"/>
+        <IsHashTag val="1"/>
+      </SimpleFact>
+    </facts>
+    <Leads>
+      <Lead text="&lt;l&gt;&lt;h t=&quot;ya&quot; di=&quot;4&quot; u=&quot;&quot;&gt;&lt;d&gt;2015-03-24 02:03&lt;/d&gt;&lt;s&gt;stdin&lt;/s&gt;&lt;/h&gt;&lt;b&gt;&lt;s&gt;по # &lt;N n0=&quot;&quot; lemma=&quot;солнце&quot;&gt;солнцу&lt;/N&gt;&lt;/s&gt;&lt;/b&gt;&lt;/l&gt;" id="0"/>
+    </Leads>
+  </document>
+  <document url="" di="5" bi="-1" date="2015-03-24">
+    <facts>
+      <SimpleFact FactID="0" LeadID="0" FieldsInfo="n0;n1;" pos="0" len="9" sn="0" fw="0" lw="1">
+        <Noun val="СОЛНЦЕ"/>
+        <Prep val="ПО"/>
+        <IsHashTag val="0"/>
+      </SimpleFact>
+    </facts>
+    <Leads>
+      <Lead text="&lt;l&gt;&lt;h t=&quot;ya&quot; di=&quot;5&quot; u=&quot;&quot;&gt;&lt;d&gt;2015-03-24 02:03&lt;/d&gt;&lt;s&gt;stdin&lt;/s&gt;&lt;/h&gt;&lt;b&gt;&lt;s&gt;&lt;P n1=&quot;&quot; lemma=&quot;по&quot;&gt;по&lt;/P&gt; &lt;N n0=&quot;&quot; lemma=&quot;солнце&quot;&gt;солнцу&lt;/N&gt;&lt;/s&gt;&lt;/b&gt;&lt;/l&gt;" id="0"/>
+    </Leads>
+  </document>
+</fdo_objects>
