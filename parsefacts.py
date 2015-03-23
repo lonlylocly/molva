@@ -203,10 +203,18 @@ class SimpleFact:
         self.noun_id = None
         self.prep_id = None
         self.lead_id = None
+        self.is_hash_tag = False
 
     def __str__(self):
-        s = u"%(prep)s %(noun)s [%(noun_lemma)s %(noun_id)s] [%(prep_lemma)s %(prep_id)s]" %  ({"noun": self.noun, "noun_id": self.noun_id, "noun_lemma": self.noun_lemma,
-            "prep": self.prep if self.prep is not None else '', "prep_id": self.prep_id, "prep_lemma": self.prep_lemma})
+        s = json.dumps({
+            "noun": self.noun, 
+            "noun_id": self.noun_id, 
+            "noun_lemma": self.noun_lemma,
+            "prep": self.prep, 
+            "prep_id": self.prep_id, 
+            "prep_lemma": self.prep_lemma,
+            "is_hash_tag": self.is_hash_tag
+        }, ensure_ascii=False)
 
         return s
 
@@ -219,6 +227,7 @@ def get_nouns_preps(elem):
         fields_info = raw_fact.get('FieldsInfo').split(';')
         noun = raw_fact.find("./Noun").get('val').lower()
         prep = raw_fact.find("./Prep")
+        is_hash_tag = raw_fact.find("./IsHashTag")
 
         fact = SimpleFact()
         fact.noun_lemma = noun
@@ -229,6 +238,10 @@ def get_nouns_preps(elem):
             fact.prep_lemma = prep.get('val').lower()
             fact.prep_id = fields_info[1]
         
+        if is_hash_tag is not None:
+            fact.is_hash_tag = str(is_hash_tag.get('val')) == '1'
+
+
         facts.append(fact)
 
     for lead in elem.findall(".//Lead"):
@@ -242,6 +255,9 @@ def get_nouns_preps(elem):
                     continue
                 if f.get(fact.noun_id) is not None:
                     fact.noun = f.text.replace('"','')
+                    if fact.is_hash_tag:
+                        fact.noun = '#' + fact.noun
+
         for f in text.findall('.//P'):
             for fact in facts:
                 if fact.lead_id != lead_id:
@@ -250,7 +266,7 @@ def get_nouns_preps(elem):
                     fact.prep = f.text.replace('"','')
 
     return facts
-        
+    
 
 def parse_facts_file(tweet_index, facts, date):
     ind = Indexer(DB_DIR)
