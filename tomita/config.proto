@@ -14,6 +14,7 @@ TTextMinerConfig {
   ]
   Facts = [
     { Name = "SimpleFact" }
+    { Name = "HashTag" }
     //{ Name = "AdjNounFact" }
     //{ Name = "VerbNounFact" }
     //{ Name = "SimpleWord" }
