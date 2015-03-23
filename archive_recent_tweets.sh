@@ -16,14 +16,13 @@ if [ -e "$old_db" ] ; then
     rm "$old_db" 
 fi
 
-if [ -e "$old_words" ] ; then
-    rm "$old_words" 
-fi
+for t in "bigram_" "word_mates_" "word_time_cnt" ; do
+    table="$t$date4"
+    mysql molva -e "drop table if exists $table"
+done
+
 
 if [ -e "$new_db" ] ; then
     gzip "$new_db"
 fi
 
-if [ -e "$new_words" ] ; then
-    gzip "$new_words" 
-fi
