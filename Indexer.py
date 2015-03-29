@@ -113,7 +113,7 @@ class Indexer:
 
         return merged_files
 
-    def prepare_tweet_index_for_date(self, date, max_save_iter=30):
+    def prepare_tweet_index_for_date(self, date, max_save_iter=60):
         util.try_several_times(lambda : self.add_new_tweets_for_tomita(date), 3)
         for i in range(0, max_save_iter):
             cnt = self.save_tweets_index(date)
@@ -203,11 +203,12 @@ class Indexer:
         self.log.info("Dumped %s ids" % cnt)
 
         if last_tweet_id is not None:
-            cur.execute("""
+            f = lambda : cur.execute("""
                 update tomita_progress
                 set id_done = 1
                 where id <= ?
             """, (last_tweet_id, ))
+            util.try_several_times(f, 3)
 
         return cnt
  
