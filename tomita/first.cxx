@@ -1,5 +1,20 @@
 #encoding "utf-8"    // сообщаем парсеру о том, в какой кодировке написана грамматика
 
+// parse hashtags
+HashTag -> AnyWord<wff=/(_|[A-Za-zА-Яа-я0-9])+/>;
+
+S -> '#' interp (SimpleFact.IsHashTag=true) HashTag interp (SimpleFact.Noun);
+
+//WordSepPart -> SimConjAnd | LBracket | RBracket | Hyphen | Comma | Colon;
+//
+//WordSep -> Word | Word WordSepPart;
+//
+//GeneralName -> WordSep Word<h-reg1,~h-reg2> interp (HashTag.HashTag);
+//
+//S -> GeneralName ;
+//
+//S -> GeneralName GeneralName;
+
 // не разрешаем омонимы (разные части речи)
 
 Part -> Noun<no_hom> | Word<gram="persn"> | Word<gram="famn"> | Word<gram="geo">; 
