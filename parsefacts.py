@@ -8,6 +8,7 @@ import os.path
 import logging, logging.config
 import json
 import traceback
+import argparse
 
 import xml.etree.cElementTree as ElementTree
 
@@ -21,6 +22,7 @@ sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 CHUNK_SIZE = 10000
 KEEP_RATIO = 100
+BAG_SIZE = 5
 
 settings = {} 
 try:
@@ -73,6 +75,21 @@ def save_tweet_nouns(cur, vals):
     try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
 
 @util.time_logger
+def save_word_time_cnt2(mcur, word_cnt, word_time_cnt_table):
+    vals = []
+    for i in word_cnt:
+        vals.append("(%s, %s, 1)" % i)
+    query = """
+        INSERT INTO %s 
+        (word_md5, tenminute, cnt)
+        VALUES %s 
+        ON DUPLICATE KEY UPDATE
+        cnt = cnt + VALUES(cnt)
+    """ % (word_time_cnt_table, ",".join(vals))
+    #logging.debug(query[:1000])
+    mcur.execute(query)
+
+@util.time_logger
 def save_word_time_cnt(cur, cur_words, vals):
     f = lambda : _save_word_time_cnt(cur, cur_words, vals)
     try_several_times(f, 3, finilizer=lambda : cur_words.execute("rollback"))
@@ -86,6 +103,11 @@ def _save_tweet_nouns(cur, vals):
         cur.execute("insert or ignore into tweets_words (id, noun_md5, source_md5) values (?, ?, ?)", v) 
 
     cur.execute("commit")   
+
+def cut_to_tenminute(event_time):
+    tenminute = int(str(event_time)[:11])
+
+    return tenminute
 
 def _save_word_time_cnt(cur, cur_words, vals):
     cur_words.execute("begin transaction")
@@ -107,7 +129,7 @@ def _save_word_time_cnt(cur, cur_words, vals):
             break
         t_id, created_at = res
         t_id = int(t_id)
-        tenminute = int(str(created_at)[:11]) # обрезаем до десятков минут
+        tenminute = cut_to_tenminute(created_at) # обрезаем до десятков минут
         tweet_times[t_id] = tenminute
 
     for v in vals:
@@ -126,6 +148,57 @@ def _save_word_time_cnt(cur, cur_words, vals):
         """ % (v[1], tweet_times[int(v[0])]))
 
     cur_words.execute("commit")
+
+@util.time_logger
+def save_word_mates2(mcur, pairs, table):
+    vals = []
+    for i in pairs:
+        word1, word2, created_at = i
+        tenminute = cut_to_tenminute(created_at) 
+        if word1 > word2:
+            word1, word2 = word2, word1
+        vals.append("(%s, %s, %s, 1)" % (word1, word2, tenminute))
+
+    query = """
+        INSERT INTO %s
+        (word1, word2, tenminute, cnt)
+        VALUES %s
+        ON DUPLICATE KEY UPDATE
+        cnt = cnt + VALUES(cnt)
+    """ % (table, ",".join(vals))
+    logging.debug(query[:100])
+    mcur.execute(query)
+
+@util.time_logger
+def save_word_mates(cur, pairs):
+    f = lambda : _save_word_mates(cur, pairs)
+    try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
+
+def _save_word_mates(cur, pairs):
+    cur.execute("begin transaction")
+    
+    for i in range(0, len(pairs)):        
+        p = pairs[i]
+        word1, word2, created_at = p
+        tenminute = cut_to_tenminute(created_at) 
+        if word1 > word2:
+            word1, word2 = word2, word1
+
+        cur.execute("""
+            insert or ignore into word_mates
+            (word1, word2, tenminute, cnt)
+            values (%s, %s, %s, 0)
+        """ % (word1, word2, tenminute))
+
+        cur.execute("""
+            update word_mates
+            set cnt = cnt + 1
+            where 
+            word1 = %s and word2 = %s and tenminute = %s
+        """ % (word1, word2, tenminute))
+
+    cur.execute("commit")
+
 
 def _sort_part(lemma_word_pairs):
     l = sorted(lemma_word_pairs, key=lambda x: (x[0], x[1]))
@@ -172,26 +245,56 @@ def _save_lemma_word_pairs(cur, lemma_word_pairs, db_type="", keep_ratio=1):
 
 @util.time_logger
 def save_lemma_word_pairs(cur, lemma_word_pairs, db_type="", keep_ratio=1):
-    f = lambda : _save_lemma_word_pairs(cur, lemma_word_pairs, db_type, keep_ratio)
-    try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
+    logging.info("Skip ...")
+    #f = lambda : _save_lemma_word_pairs(cur, lemma_word_pairs, db_type, keep_ratio)
+    #try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
 
-def make_lemma_word_pairs(words, lemmas):
+@util.time_logger
+def save_bigram_day(mcur, bigram_pairs, table):
+    logging.info("Bigrams len: %s" % (len(bigram_pairs)))
+    vals = []
+    for i in bigram_pairs:
+        vals.append("(%s, %s, %s, %s, %s, 1)" % i)
+    if len(vals) == 0:
+        return
+    query = """
+        INSERT INTO %s
+        (word1, word2, source1, source2, tenminute, cnt)
+        VALUES %s
+        ON DUPLICATE KEY UPDATE
+        cnt = cnt + VALUES(cnt)
+    """ % ( table, ",".join(vals))
+    logging.debug(query[:200])
+
+    mcur.execute(query)
+
+
+def make_lemma_word_pairs(words, lemmas, tenminute):
     word_pairs = make_word_pairs(words)
     lemma_pairs = make_word_pairs(lemmas)
     lemma_word_pairs = []
     for i in range(0, len(word_pairs)):
-        lemma_word_pairs.append((word_pairs[i][0], word_pairs[i][1], lemma_pairs[i][0], lemma_pairs[i][1]))
+        lemma_word_pairs.append((word_pairs[i][0], word_pairs[i][1], lemma_pairs[i][0], lemma_pairs[i][1], tenminute))
 
     return lemma_word_pairs    
 
-def make_word_pairs(lemmas):
-    lemma_pairs = []
-    if len(lemmas) <2:
-        return lemma_pairs
-    for i in range(0,len(lemmas)-1):
-        lemma_pairs.append((lemmas[i], lemmas[i+1]))
+def make_word_pairs(words, bag_size=2):
+    pairs = []
+    if len(words) < 2:
+        return pairs
+    for n in range(2, bag_size + 1):
+        for i in range(0,len(words) - n - 1):
+            word1 = words[i]
+            word2 = words[i + n -1]
+            pairs.append((word1, word2))
 
-    return lemma_pairs
+    return pairs
+
+def make_word_pairs_with_time(words, create_time, bag_size):
+    pairs = make_word_pairs(words, bag_size)
+    with_time = map(lambda x: (x[0], x[1], create_time), pairs)
+
+    return with_time
 
 class SimpleFact:
 
@@ -266,8 +369,8 @@ def get_nouns_preps(elem):
                     fact.prep = f.text.replace('"','')
 
     return facts
-    
-
+        
+@util.time_logger
 def parse_facts_file(tweet_index, facts, date):
     ind = Indexer(DB_DIR)
 
@@ -276,8 +379,17 @@ def parse_facts_file(tweet_index, facts, date):
     cur_bigram = stats.get_cursor(DB_DIR + "/tweets_bigram.db")
     cur_words = stats.get_cursor("%s/words_%s.db" % (DB_DIR, date))
 
+    mcur = stats.get_mysql_cursor(settings)
+    word_time_cnt_table = "word_time_cnt_%s" % date
+    word_mates_table = "word_mates_%s" % date
+    bigram_table = "bigram_%s" % date
+    stats.create_mysql_tables(mcur, {
+        word_time_cnt_table: "word_time_cnt",
+        word_mates_table: "word_mates",
+        bigram_table: "bigram_day"
+    })
+
     stats.create_given_tables(cur, ["nouns", "tweets_nouns", "tweets_words", "lemma_word_pairs"])
-    stats.create_given_tables(cur_words, ["word_time_cnt"])
     stats.create_given_tables(cur_bigram, ["lemma_word_pairs"])
     stats.create_given_tables(cur, {"sources": "nouns"})
     stats.create_given_tables(cur_main, ["nouns"])
@@ -285,7 +397,12 @@ def parse_facts_file(tweet_index, facts, date):
 
     logging.info("Parse index: %s; facts: %s" % (tweet_index, facts))
 
-    ids = open(tweet_index, 'r').read().split("\n")
+    ids = []
+    for l in open(tweet_index, 'r').read().split("\n"):
+        if l is None or l == '':
+            break
+        tw_id, created_at = l.split("\t")
+        ids.append((tw_id, created_at)) 
 
     logging.info("Got tweet %s ids" % (len(ids)))
 
@@ -299,11 +416,13 @@ def parse_facts_file(tweet_index, facts, date):
     noun_sources = []
     tweets_nouns = []
     lemma_word_pairs = []
+    word_mates = []
+    word_cnt = []
 
     for event, elem in tree:
         if event == 'end' and elem.tag == 'document':
             cur_doc = int(elem.attrib['di'])
-            post_id = ids[cur_doc -1]
+            post_id, create_time = ids[cur_doc -1]
             nouns_preps = get_nouns_preps(elem)
             lemmas = []
             nouns = []
@@ -315,28 +434,40 @@ def parse_facts_file(tweet_index, facts, date):
                     sources_total.add(np.with_prep())
 
                     noun_sources.append((post_id, util.digest(np.noun_lemma), util.digest(np.with_prep())))
+                    word_cnt.append((util.digest(np.noun_lemma), cut_to_tenminute(create_time)))
                     # tweets_nouns.append((post_id, util.digest(np.noun_lemma)))
                 except Exception as e:
                     traceback.print_exc()
                     logging.error(e)
 
-            lemma_word_pairs += make_lemma_word_pairs(nouns, lemmas)
+            lemma_word_pairs += make_lemma_word_pairs(nouns, lemmas, cut_to_tenminute(create_time))
+            word_mates += make_word_pairs_with_time(nouns, create_time, bag_size=BAG_SIZE)
 
             if len(noun_sources) > 10000:
                 logging.info("seen %s docid" % (cur_doc))
                 save_tweet_nouns(cur, noun_sources)
-                save_word_time_cnt(cur, cur_words, noun_sources)
+                save_word_time_cnt2(mcur, word_cnt, word_time_cnt_table)
                 noun_sources = []
+                word_cnt = []
 
             if len(lemma_word_pairs) >= CHUNK_SIZE :
-                save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = KEEP_RATIO) 
+                #save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = KEEP_RATIO) 
+                save_bigram_day(mcur, lemma_word_pairs, bigram_table)
                 lemma_word_pairs = []
+
+            if len(word_mates) >= CHUNK_SIZE:
+                logging.info("save %s word_mates" % len(word_mates))
+                save_word_mates2(mcur, word_mates, word_mates_table)
+                word_mates = []
                
             elem.clear()
 
     save_tweet_nouns(cur, noun_sources)
-    save_word_time_cnt(cur, cur_words, noun_sources)
+    #save_word_time_cnt(cur, cur_words, noun_sources)
+    save_word_time_cnt2(mcur, word_cnt, word_time_cnt_table)
     save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = KEEP_RATIO) 
+    save_bigram_day(mcur, lemma_word_pairs, bigram_table)
+    #save_word_mates2(mcur, word_mates, word_mates_table)
 
     save_nouns(cur, nouns_total)
     save_nouns(cur, sources_total, table="sources")
@@ -353,6 +484,11 @@ def rename_file_with_prefix(f, prefix):
     os.rename(f, f_new)
 
 def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--one-file", action="store_true")
+    args = parser.parse_args()
+
     logging.info("Start parsing extracted nouns")
 
     ind = Indexer(DB_DIR)
@@ -367,6 +503,8 @@ def main():
                 logging.info("Remove index: %s; facts: %s" % (tweet_index, facts))
                 os.remove(tweet_index)
                 os.remove(facts)
+                if args.one_file:
+                    break
 
             except Exception as e:
                 traceback.print_exc()

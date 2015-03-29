@@ -71,21 +71,22 @@ def main():
     word_cnt = {}
     for day in [3, 2, 1, 0]:
         date = (utc_now - timedelta(day)).strftime("%Y%m%d")
-        cur = stats.get_cursor("%s/words_%s.db" % (args.db_dir, date))
-        stats.create_given_tables(cur, ["word_time_cnt"])
-        cur.execute("""
+        word_time_cnt_table = "word_time_cnt_%s" % date
+        mcur = stats.get_mysql_cursor(settings)
+        stats.create_mysql_tables(mcur, {word_time_cnt_table: "word_time_cnt"})
+        mcur.execute("""
                 select word_md5, substr(tenminute, 1, 10) as hour, sum(cnt) 
-                from word_time_cnt
+                from %s
                 where tenminute > %s
                 group by word_md5, hour
-        """ % date_3day_tenminute)
+        """ % (word_time_cnt_table, date_3day_tenminute))
     
         row_cnt = 0    
         while True:
-            res = cur.fetchone()
+            res = mcur.fetchone()
             if res is None:
                 break
-            word_md5, hour, cnt = res
+            word_md5, hour, cnt = map(int,res)
             if hour not in hour_word_cnt:
                 hour_word_cnt[hour] = {}
             hour_word_cnt[hour][word_md5] = cnt
@@ -116,8 +117,7 @@ def main():
             "delta": app_ser[-1] - app_ser[0]
         })
     
-    word_series = sorted(word_series, key=lambda x: x["slope"], reverse=True)[:1000] 
-
+    word_series = sorted(word_series, key=lambda x: x["slope"], reverse=True)[:2000] 
 
     for cur in [cur_main, cur_display]:
         stats.create_given_tables(cur, {"noun_trend_new": "noun_trend"})

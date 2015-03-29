@@ -33,7 +33,7 @@ def attach_db(cur, db_file, db_name):
     cur.execute(query)
 
 @util.time_logger
-def count_currents2(cur, mcur, utc_now, word_cnt_tuples):
+def count_currents2(cur, mcur, utc_now, words):
     yesterday = (utc_now - timedelta(1)).strftime("%Y%m%d")          
     today = (utc_now).strftime("%Y%m%d")    
 
@@ -52,10 +52,6 @@ def count_currents2(cur, mcur, utc_now, word_cnt_tuples):
         table_tmp: "word_mates_sum"
     })
 
-    most_freq_words = []
-    for i in sorted(word_cnt_tuples, key=lambda x: x[1], reverse=True)[:2000]:
-        most_freq_words.append(str(i[0]))
-
     for t in [table1, table2]:
         query = """
             INSERT INTO word_mates_tmp 
@@ -67,7 +63,7 @@ def count_currents2(cur, mcur, utc_now, word_cnt_tuples):
                 GROUP BY word1, word2
             ON DUPLICATE KEY UPDATE
             cnt = cnt + VALUES(cnt) 
-        """ % (t, ",".join(most_freq_words), utc_ystd_tenminute)
+        """ % (t, ",".join(words), utc_ystd_tenminute)
         logging.debug(query)
         mcur.execute(query)
 
@@ -130,6 +126,24 @@ def save_word_cnt(cur, word_cnt_tuples):
     cur.execute("commit")
 
 @util.time_logger
+def get_trending_words(db_dir, word_cnt_tuples):
+    cur = stats.get_cursor(db_dir + "/tweets_display.db")
+
+    stats.create_given_tables(cur, ["noun_trend"])
+    cur.execute("""
+        select noun_md5, trend 
+        from noun_trend
+        order by trend desc
+        limit 2000
+    """)
+    words = map(lambda x: str(x[0]), cur.fetchall())
+
+    #for i in sorted(word_cnt_tuples, key=lambda x: x[1], reverse=True)[:2000-len(words)]:
+    #    words.append(str(i[0]))
+
+    return words
+
+@util.time_logger
 def build_post_cnt(db_dir):
     utc_now = datetime.utcnow()
     word_cnt = stats.get_word_cnt(db_dir)
@@ -144,9 +158,10 @@ def build_post_cnt(db_dir):
     stats.create_given_tables(cur, ["chains_nouns", "post_cnt", "post_reply_cnt"])
 
     save_word_cnt(cur, word_cnt_tuples)
+    words = get_trending_words(db_dir, word_cnt_tuples)
 
     mcur = stats.get_mysql_cursor(settings)
-    count_currents2(cur, mcur, utc_now, word_cnt_tuples)
+    count_currents2(cur, mcur, utc_now, words)
 
     os.rename(f_tmp, f)
 

@@ -142,18 +142,24 @@ class TrendHandler(tornado.web.RequestHandler):
         if word_md5 == util.digest('0'):
             where = "1"
 
+        mcur = stats.get_mysql_cursor(settings)
         for day in [3, 2, 1, 0]:
             date = (utc_now - timedelta(day)).strftime("%Y%m%d")
-            cur = stats.get_cursor("%s/words_%s.db" % (settings["db_dir"], date))
-            stats.create_given_tables(cur, ["word_time_cnt"])
-            cur.execute("""
-                select word_md5, substr(tenminute, 1, 10) as hour, sum(cnt) 
-                from word_time_cnt
-                where %(where)s 
+            stats.create_mysql_tables(mcur, {"word_time_cnt_"+date: "word_time_cnt"})
+            mcur.execute("""
+                SELECT word_md5, substr(tenminute, 1, 10) as hour, sum(cnt) 
+                FROM word_time_cnt_%(date)s
+                WHERE %(where)s 
                 %(time)s
-                group by hour
-            """ % {"where": where, "time": time})
-            res += cur.fetchall()
+                GROUP BY hour
+            """ % {"where": where, "time": time, "date": date})
+            while True:
+                r = mcur.fetchone()
+                if r is None:
+                    break
+                word, hour, cnt = r
+                res.append((str(word), str(hour), int(cnt)))
+        logging.info("word time cnt: %s" % len(res))
         return res
 
     def parse_times(self, time1, time2):

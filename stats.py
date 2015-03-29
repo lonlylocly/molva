@@ -7,6 +7,8 @@ import logging, logging.config
 import xml.etree.ElementTree as ET
 import json
 from datetime import datetime, timedelta, date
+import MySQLdb
+import MySQLdb.cursors
 
 from profile import NounProfile, ProfileCompare
 import util
@@ -19,6 +21,15 @@ def get_cursor(db):
     cur = con.cursor()
 
     return cur 
+
+def get_mysql_cursor(settings,streaming=False):
+    
+    db = MySQLdb.connect(host="localhost", user=settings["mysql_user"], passwd=settings["mysql_password"], db=settings["mysql_db"],
+        cursorclass = MySQLdb.cursors.SSCursor)
+
+    cur = db.cursor()
+
+    return cur
 
 def get_main_cursor(db_dir):
     return get_cursor(db_dir + "/tweets.db")
@@ -245,7 +256,7 @@ CREATE_TABLES = {
             word_md5 integer,
             tenminute integer,
             cnt integer,
-            PRIMARY KEY(word_md5, tenminute)
+            PRIMARY KEY(tenminute, word_md5)
         )
     """,
     "tweets_words_simple": """
@@ -329,21 +340,86 @@ CREATE_TABLES = {
             username text,
             marks text
         )
-    """ 
+    """,
+    "word_mates": """
+        CREATE TABLE IF NOT EXISTS word_mates (
+            word1 integer,
+            word2 integer,
+            tenminute integer,
+            cnt integer,            
+            PRIMARY KEY(tenminute, word1, word2)
+        )   
+    """,
+    "word_mates_sum": """
+        CREATE TABLE IF NOT EXISTS word_mates_sum (
+            word1 integer,
+            word2 integer, 
+            cnt integer
+        )
+    """
+
+}
+
+MYSQL_CREATE_TABLES = {
+    "word_time_cnt": """
+        CREATE TABLE IF NOT EXISTS word_time_cnt (
+            word_md5 int unsigned not null,
+            tenminute bigint unsigned not null,
+            cnt int unsigned not null,
+            PRIMARY KEY(tenminute, word_md5)   
+        ) ENGINE=MYISAM DEFAULT CHARSET=utf8
+    """,
+    "word_mates": """
+        CREATE TABLE IF NOT EXISTS word_mates (
+            word1 int unsigned not null,
+            word2 int unsigned not null,
+            tenminute bigint unsigned not null,
+            cnt int unsigned not null,            
+            PRIMARY KEY(tenminute, word1, word2)
+        )  ENGINE=MYISAM DEFAULT CHARSET=utf8  
+    """,
+    "word_mates_sum": """
+        CREATE TABLE IF NOT EXISTS word_mates_sum (
+            word1 int unsigned not null,
+            word2 int unsigned not null,
+            cnt int unsigned not null,            
+            PRIMARY KEY(word1, word2)
+        )  ENGINE=MYISAM DEFAULT CHARSET=utf8  
+    """,
+    "bigram_day": """
+        CREATE TABLE IF NOT EXISTS bigram_day (
+            word1 int unsigned not null,
+            word2 int unsigned not null,
+            source1 int unsigned not null,
+            source2 int unsigned not null,
+            tenminute bigint unsigned not null,
+            cnt int unsigned not null,
+            PRIMARY KEY(tenminute, word1, word2, source1, source2)
+        ) ENGINE=MYISAM DEFAULT CHARSET=utf8  
+    """
+
 }
 
 def cr(cur):
     create_given_tables(cur, ["tweets", "users"]) 
 
+def create_mysql_tables(cur, tables):
+    _create_given_tables(cur, tables, MYSQL_CREATE_TABLES)
+
 def create_given_tables(cur, tables):
+    _create_given_tables(cur, tables, CREATE_TABLES)
+
+def _create_given_tables(cur, tables, templates):
     if isinstance(tables, list):
         for t in tables:
-            cur.execute(CREATE_TABLES[t])
+            cur.execute(templates[t])
     if isinstance(tables, dict):
         for name in tables:
             like = tables[name]
             logging.info("create table %s like %s" %(name, like))
-            cur.execute(CREATE_TABLES[like].replace(like, name, 1))
+            query = templates[like].replace(like, name, 1)
+            #logging.debug(query)
+            cur.execute(query)
 
 def create_tables(cur):
     create_given_tables(cur, ["post_reply_cnt", "post_cnt", "tweet_chains", "chains_nouns", "tweets", "users"]) 
@@ -560,21 +636,23 @@ def get_word_cnt(db_dir, utc_now=datetime.utcnow()):
     day_ago = (utc_now - timedelta(1)).strftime("%Y%m%d%H%M%S")
     day_ago_tenminute = day_ago[:11]
     logging.info("Time left bound: %s" % day_ago_tenminute)
+    settings = json.load(open('global-settings.json', 'r'))
     word_cnt = {}
     for day in [1, 0]:
         date = (utc_now - timedelta(day)).strftime("%Y%m%d")
-        cur = get_cursor("%s/words_%s.db" % (db_dir, date))
-        create_given_tables(cur, ["word_time_cnt"])
-        cur.execute("""
+        word_time_cnt_table = "word_time_cnt_%s" % date
+        mcur = get_mysql_cursor(settings)
+        create_mysql_tables(mcur, {word_time_cnt_table: "word_time_cnt"})
+        mcur.execute("""
                 select word_md5, sum(cnt) 
-                from word_time_cnt
+                from %s 
                 where tenminute > %s
                 group by word_md5
-        """ % day_ago_tenminute)
+        """ % (word_time_cnt_table, day_ago_tenminute))
 
         row_cnt = 0    
         while True:
-            res = cur.fetchone()
+            res = mcur.fetchone()
             if res is None:
                 break
             word_md5, cnt = res
