@@ -31,7 +31,7 @@ def main():
 
     run("python -m cProfile %s/word_mates.py >> word_mates.log 2>&1 " % SCRIPTDIR)
 
-    run("%s/prepare-profiles.py -o profiles.json  > prepare-profiles.log 2>&1" % SCRIPTDIR) 
+    run("%s/prepare-profiles.py -o profiles.json  >> prepare-profiles.log 2>&1" % SCRIPTDIR) 
     run("java -Xmx700m -jar %s/%s profiles.json sims.csv > simmer.log 2>&1 " % (SCRIPTDIR, SIMMER_JAR))
     run("%s/post-profiles.py -i sims.csv  > post-profiles.log 2>&1" % SCRIPTDIR) 
 

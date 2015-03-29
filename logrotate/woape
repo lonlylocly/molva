@@ -74,3 +74,10 @@
     daily
     size=1M
 }
+
+/home/lonlylocly/run/prepare-profiles.log {
+    missingok
+    rotate 7
+    daily
+    size=1M
+}

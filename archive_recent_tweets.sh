@@ -16,8 +16,8 @@ if [ -e "$old_db" ] ; then
     rm "$old_db" 
 fi
 
-for t in "bigram_" "word_mates_" "word_time_cnt" ; do
-    table="$t$date4"
+for t in "bigram_" "word_mates_" "word_time_cnt_" ; do
+    table="$t$date_4"
     mysql molva -e "drop table if exists $table"
 done
 

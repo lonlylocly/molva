@@ -24,7 +24,7 @@ def get_cursor(db):
 
 def get_mysql_cursor(settings,streaming=False):
     
-    db = MySQLdb.connect(host="localhost", user=settings["mysql_user"], passwd=settings["mysql_password"], db=settings["mysql_db"],
+    db = MySQLdb.connect(host="localhost", user=settings["mysql_user"], passwd=settings["mysql_password"], db="molva",
         cursorclass = MySQLdb.cursors.SSCursor)
 
     cur = db.cursor()
@@ -478,7 +478,6 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
     cur.execute(cmd)
 
     profiles_dict = {}
-
     while True:
         s = cur.fetchone()
         if s is None:
@@ -487,6 +486,7 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
         if post not in profiles_dict:
             profiles_dict[post] = NounProfile(post, post_cnt=post_cnt) 
         profiles_dict[post].replys[reply] = cnt
+    
 
     logging.info("done")
 
@@ -567,7 +567,7 @@ def tfidf(profiles_dict, total_docs):
 @util.time_logger
 def weight_profiles_with_entropy(cur, profiles_dict, nouns):
     logging.info("start")
-    post_cnt = get_noun_cnt(cur) 
+    #post_cnt = get_noun_cnt(cur) 
     replys = [] 
     for p in profiles_dict:
         profiles_dict[p].apply_log()
@@ -609,15 +609,29 @@ def noun_profiles_tfidf(cur, post_min_freq, blocked_nouns, nouns_limit, total_do
    
     return profiles_dict
 
+def _add_total_to_profiles(profiles_dict, trash_words):
+    trash_words_md5 = map(util.digest, trash_words)
+    total_md5 = util.digest('__total__') 
+    total = NounProfile(total_md5, post_cnt=0)
+    for p in profiles_dict:
+        if p not in trash_words_md5:
+            continue
+        profile = profiles_dict[p]
+        for reply in profile.replys:
+            if reply not in total.replys:
+                total.replys[reply] = 0
+            total.replys[reply] += profile.replys[reply]
+        total.post_cnt += profile.post_cnt
+    profiles_dict[total_md5] = total
 
-def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt"):
+def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt", trash_words=None):
     profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table)
 
     #set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
     logging.info("Profiles len: %s" % len(profiles_dict))
     if False or len(profiles_dict) > nouns_limit:
         short_profiles_dict = {}
-        
+       
         for k in sorted(profiles_dict.keys(), key=lambda x: profiles_dict[x].post_cnt, reverse=True)[:nouns_limit]:
             short_profiles_dict[k] = profiles_dict[k]
 
@@ -628,6 +642,9 @@ def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, 
     set_noun_profiles_total(cur, profiles_dict, post_min_freq, blocked_nouns)
 
     weight_profiles_with_entropy(cur, profiles_dict, nouns) 
+
+    if trash_words is not None:
+        _add_total_to_profiles(profiles_dict, trash_words)
    
     return profiles_dict
 

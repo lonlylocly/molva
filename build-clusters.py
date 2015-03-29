@@ -59,6 +59,8 @@ def get_used_nouns(cur):
 
     return map(lambda x: x[0], res)    
 
+ 
+
 @util.time_logger
 def get_clusters(args, sim_dict, nouns, noun_trend, post_cnt):
     best_ratio = 10 
@@ -82,8 +84,8 @@ def get_clusters(args, sim_dict, nouns, noun_trend, post_cnt):
                 logging.error(e)
             trend = noun_trend[m["id"]] if m["id"] in noun_trend else 0
             m["trend"] = "%.3f" % trend 
-
-    return cl
+   
+    return util.filter_trash_words_cluster(cl)
 
  
 def main():
@@ -101,10 +103,15 @@ def main():
 
     used_nouns = get_used_nouns(cur)        
 
+    total_md5 = util.digest("__total__")
+
     nouns = stats.get_nouns(cur, used_nouns)
     noun_trend = stats.get_noun_trend(cur)
+    nouns[total_md5] = "__total__"
+    noun_trend["__total__"] = 0.0  
     logging.info("nouns len %s" % len(nouns))
     post_cnt = stats.get_noun_cnt(cur_word_cnt)
+    post_cnt[total_md5] = 0
     
     logging.info("get sim_dict")
     sim_dict = get_sims(cur) 
