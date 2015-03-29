@@ -457,6 +457,9 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
             limit 8000
         )
     """ % blocked_nouns)
+    (valid_replys_cnt) = cur.execute("select count(*) from tmp.valid_replys").fetchone()
+    logging.info("valid_replys cnt: %s" % valid_replys_cnt)
+    logging.info("post_min_freq: %s" % post_min_freq)
 
     cmd = """
         select p.post_md5, p.reply_md5, p.reply_cnt, p2.post_cnt
@@ -476,17 +479,19 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
     #logging.debug(cmd)
 
     cur.execute(cmd)
-
+    rows_seen = 0
     profiles_dict = {}
     while True:
         s = cur.fetchone()
         if s is None:
             break
+        rows_seen += 1
         post, reply, cnt, post_cnt  = s 
         if post not in profiles_dict:
             profiles_dict[post] = NounProfile(post, post_cnt=post_cnt) 
         profiles_dict[post].replys[reply] = cnt
     
+    logging.info("rows seen: %s" % rows_seen)
 
     logging.info("done")
 
@@ -624,11 +629,28 @@ def _add_total_to_profiles(profiles_dict, trash_words):
         total.post_cnt += profile.post_cnt
     profiles_dict[total_md5] = total
 
-def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt", trash_words=None):
+def _filter_swear_words(profiles_dict, swear_words):
+    swear_words_md5 = map(util.digest, swear_words)
+    filtered = {}
+    filtered_cnt = 0
+    for p in profiles_dict:
+        if p not in swear_words_md5:
+            filtered[p] = profiles_dict[p]
+        else:
+            filtered_cnt +=1
+    logging.info("Filtered swear words: %s" % filtered_cnt)
+
+    return filtered
+
+def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt", trash_words=None,
+    swear_words=None):
     profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table)
 
     #set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
     logging.info("Profiles len: %s" % len(profiles_dict))
+    if swear_words is not None:
+        profiles_dict = _filter_swear_words(profiles_dict, swear_words)
+
     if False or len(profiles_dict) > nouns_limit:
         short_profiles_dict = {}
        
