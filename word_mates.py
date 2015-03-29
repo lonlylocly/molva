@@ -64,6 +64,18 @@ def count_currents2(cur, mcur, utc_now, words):
             ON DUPLICATE KEY UPDATE
             cnt = cnt + VALUES(cnt) 
         """ % (t, ",".join(words), utc_ystd_tenminute)
+        #query = """
+        #    INSERT INTO word_mates_tmp 
+        #    (word1, word2, cnt)
+        #        SELECT word1, word2, sum(cnt) 
+        #        FROM %s 
+        #        WHERE tenminute > %s
+        #        GROUP BY word1, word2
+        #    ON DUPLICATE KEY UPDATE
+        #    cnt = cnt + VALUES(cnt) 
+        #""" % (t, utc_ystd_tenminute)
+
+
         logging.debug(query)
         mcur.execute(query)
 
@@ -75,10 +87,17 @@ def count_currents2(cur, mcur, utc_now, words):
         r = mcur.fetchone()        
         if r is None:
             break
+        w1, w2, cnt = r
         cur.execute("""
             insert into post_reply_cnt (post_md5, reply_md5, reply_cnt)
             values (%s, %s, %s)
         """ % r)
+        if w1 != w2:
+            cur.execute("""
+                insert into post_reply_cnt (post_md5, reply_md5, reply_cnt)
+                values (%s, %s, %s)
+            """ % (w2, w1, cnt))
+           
     cur.execute("commit")
     
     for t in ["post_cnt", "post_reply_cnt"]:
@@ -129,17 +148,18 @@ def save_word_cnt(cur, word_cnt_tuples):
 def get_trending_words(db_dir, word_cnt_tuples):
     cur = stats.get_cursor(db_dir + "/tweets_display.db")
 
-    stats.create_given_tables(cur, ["noun_trend"])
-    cur.execute("""
-        select noun_md5, trend 
-        from noun_trend
-        order by trend desc
-        limit 2000
-    """)
-    words = map(lambda x: str(x[0]), cur.fetchall())
+    #stats.create_given_tables(cur, ["noun_trend"])
+    #cur.execute("""
+    #    select noun_md5, trend 
+    #    from noun_trend
+    #    order by trend desc
+    #    limit 2000
+    #""")
+    #words = map(lambda x: str(x[0]), cur.fetchall())
+    words = []
 
-    #for i in sorted(word_cnt_tuples, key=lambda x: x[1], reverse=True)[:2000-len(words)]:
-    #    words.append(str(i[0]))
+    for i in sorted(word_cnt_tuples, key=lambda x: x[1], reverse=True)[:2000-len(words)]:
+        words.append(str(i[0]))
 
     return words
 
