@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 import json
 from datetime import datetime as d
+import logging
+import argparse
 
 import stats
+
+logging.config.fileConfig("logging.conf")
 
 settings = {} 
 try:
@@ -36,7 +40,10 @@ class MarkSet:
 
         self.metric_sum = {}
 
-    def put_mark(self, mark):
+    def put_mark(self, mark, filter_spam=False):
+        if filter_spam and "spam" in mark.metrics and mark.metrics["spam"] == "1":
+            logging.info("Skip mark - it is spam")
+            return
         self.marks.append(mark)
 
         for name in mark.metrics:
@@ -109,7 +116,7 @@ class Marks:
 
         
 
-def get_marks(cur):
+def get_marks(cur, filter_spam):
     cur.execute("""
         select  update_time, username, marks
         from quality_marks
@@ -131,7 +138,7 @@ def get_marks(cur):
                 if k == "topic_md5":
                     continue
                 mark.put_metric(k, m[k]) 
-            markset.put_mark(mark)
+            markset.put_mark(mark, filter_spam)
 
         marks_all.put_markset(markset)
 
@@ -139,9 +146,15 @@ def get_marks(cur):
         
 
 def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--filter-spam", action="store_true")
+
+    args = parser.parse_args()
+
     cur = stats.get_cursor(settings["db_dir"] + "/quality_marks.db")
     
-    m = get_marks(cur)
+    m = get_marks(cur, args.filter_spam)
     print m
 
     return
