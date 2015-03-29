@@ -8,6 +8,7 @@ import logging
 import time
 import os
 import os.path
+from datetime import datetime, timedelta, date
 
 from Exceptions import WoapeException
 
@@ -75,3 +76,16 @@ def delete_if_exists(f):
     if os.path.exists(f):
         os.remove(f)
 
+def get_recent_days(utc_now = datetime.utcnow(), days=2):
+    dates = []
+    for i in range(0,days):
+        d = (utc_now - timedelta(i)).strftime("%Y%m%d")          
+        dates.append(d)
+
+    return dates
+
+def get_yesterday_tenminute(utc_now = datetime.utcnow(), days=1):
+    utc_ystd = (utc_now - timedelta(days)).strftime("%Y%m%d%H%M%S")
+    utc_ystd_tenminute = utc_ystd[:11]
+
+    return utc_ystd_tenminute

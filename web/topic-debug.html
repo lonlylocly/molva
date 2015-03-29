@@ -37,7 +37,8 @@
 <script id="cluster-template" type="text/x-handlebars-template">
 <h3><img src="https://g.twimg.com/Twitter_logo_blue.png" class="twitter-logo-relevant"/> Сообщения Twitter по теме: 
             {{#each members}}
-                <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'>{{this.text}}</a> 
+                <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'
+                >{{this.text}} <sub>{{this.trend}}</sub></a> 
             {{/each}}
 </h3>
 </script>

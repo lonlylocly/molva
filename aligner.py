@@ -89,17 +89,31 @@ class TotalFreq:
 
     @util.time_logger
     def init_total_cnt(self):
-        cur = stats.get_cursor(self.bigram_db)
-        cur.execute("""
-            select sum(cnt), count(*)
-            from lemma_word_pairs l
-            where cnt > 1 
-            and (noun1_md5 in (%s)
-            or noun2_md5 in (%s))
-        """ % (self.get_nouns_joined(), self.get_nouns_joined()))
+        utc_ystd_tenminute = util.get_yesterday_tenminute() 
+        today, yesterday = util.get_recent_days()
+        mcur = stats.get_mysql_cursor(settings)
+        stats.create_mysql_tables(mcur, {
+            "word_time_cnt_" + today: "word_time_cnt",
+            "word_time_cnt_" + yesterday: "word_time_cnt"
+        })
+        query = """
+            SELECT sum(sum_cnt), sum(tot_cnt) 
+            FROM (
+                SELECT sum(cnt) AS sum_cnt, count(*) AS tot_cnt
+                FROM  word_time_cnt_%s
+                WHERE word_md5 IN (%s) AND tenminute > %s
+                UNION
+                SELECT sum(cnt) AS sum_cnt, count(*) AS tot_cnt
+                FROM  word_time_cnt_%s
+                WHERE word_md5 IN (%s) AND tenminute > %s
+            ) q1
+        """% (today, self.get_nouns_joined(), utc_ystd_tenminute,
+              yesterday, self.get_nouns_joined(), utc_ystd_tenminute )
+        logging.debug(query)
+        mcur.execute(query) 
 
-        sum_, cnt = cur.fetchone()
-        self.total_cnt = sum_
+        sum_, cnt = mcur.fetchone()
+        self.total_cnt = int(sum_)
 
     @util.time_logger
     def init_lemma_freqs(self):
@@ -146,20 +160,34 @@ class TotalFreq:
         return set(lemma_set)
             
     def fill_lemma_nexts(self):
-        cur = stats.get_cursor(self.bigram_db)
-        cur.execute("""
-            select noun1_md5, source2_md5
-            from lemma_word_pairs 
-            where cnt > 1 
-            and (noun1_md5 in (%s)
-            or noun2_md5 in (%s))
-        """ % (self.get_nouns_joined(), self.get_nouns_joined()))   
+        utc_ystd_tenminute = util.get_yesterday_tenminute() 
+        today, yesterday = util.get_recent_days()
+        mcur = stats.get_mysql_cursor(settings)
+        stats.create_mysql_tables(mcur, {
+            "bigram_" + today: "bigram_day",
+            "bigram_" + yesterday: "bigram_day"
+        })
+        query = """
+            SELECT word1, source2
+            FROM bigram_%s
+            WHERE (word1 in (%s) OR word2 in (%s))
+            AND tenminute > %s
+            UNION
+            SELECT word1, source2
+            FROM bigram_%s
+            WHERE (word1 in (%s) OR word2 in (%s))
+            AND tenminute > %s
+        """ % (today, self.get_nouns_joined(), self.get_nouns_joined(), utc_ystd_tenminute,
+            yesterday, self.get_nouns_joined(), self.get_nouns_joined(), utc_ystd_tenminute)
+
+        logging.debug(query)
+        mcur.execute(query)
 
         f = {}
         tuple_cnt = 0
         row_cnt = 0
         while True:
-            res = cur.fetchone()
+            res = mcur.fetchone()
             if res is None:
                 break
             n1, s2 = map(int, res)
@@ -178,7 +206,13 @@ class TotalFreq:
             f[n] = f[n].keys()
 
         self.lemma_nexts = f
-    
+
+def any_none(tup):
+    for i in tup:
+        if i is None:
+            return True
+    return False
+ 
 class BagFreq:
 
     def __init__(self, words_db, bigram_db, bag, total_freq):
@@ -232,23 +266,47 @@ class BagFreq:
 
     @util.time_logger
     def init_pair_freqs(self):
-        cur = stats.get_cursor(self.bigram_db)
-        cur.execute("""
-            select noun1_md5, noun2_md5, sum(cnt)
-            from lemma_word_pairs
-            where noun1_md5 in (%s) 
-            and noun2_md5 in (%s)
-            and cnt > 1 
-            group by noun1_md5, noun2_md5
-        """ % (self.get_bag_joined(), self.get_bag_joined()))
+        utc_ystd_tenminute = util.get_yesterday_tenminute() 
+        today, yesterday = util.get_recent_days()
+        mcur = stats.get_mysql_cursor(settings)
+        stats.create_mysql_tables(mcur, {
+            "bigram_" + today: "bigram_day",
+            "bigram_" + yesterday: "bigram_day"
+        })
+
+        query = """
+            SELECT word1, word2, sum(sum_cnt) 
+            FROM (
+                SELECT word1, word2, sum(cnt) as sum_cnt
+                FROM bigram_%s
+                WHERE 
+                    tenminute > %s 
+                AND 
+                    (word1 in (%s) OR word2 in (%s))
+                GROUP BY word1, word2
+                UNION
+                SELECT word1, word2, sum(cnt)
+                FROM bigram_%s
+                WHERE 
+                    tenminute > %s 
+                AND 
+                    (word1 in (%s) OR word2 in (%s))        
+                GROUP BY word1, word2
+            ) q1
+            GROUP BY word1, word2
+        """ % (today, utc_ystd_tenminute, self.get_bag_joined(), self.get_bag_joined(),
+            yesterday, utc_ystd_tenminute, self.get_bag_joined(), self.get_bag_joined())
+
+        #logging.info(query)
+        mcur.execute(query)
 
         pair_freqs = {}
         while True:
-            row = cur.fetchone()
+            row = mcur.fetchone()
             if row is None:
                 break
 
-            n1, n2, cnt = row
+            n1, n2, cnt = map(int,row)
             if n1 not in pair_freqs:
                 pair_freqs[int(n1)] = {}
 
@@ -298,18 +356,45 @@ class BagFreq:
     @util.time_logger
     def init_lemma_pair_freqs(self):
         #logging.info("start")
-        cur = stats.get_cursor(self.bigram_db)
-        cur.execute("""
-            select noun1_md5, noun2_md5, source1_md5, source2_md5, cnt
-            from lemma_word_pairs l
-            where cnt > 1
-            and noun1_md5 in (%s)
-            and noun2_md5 in (%s)
-        """ % (self.get_bag_joined(), self.get_bag_joined()))
+        utc_ystd_tenminute = util.get_yesterday_tenminute() 
+        today, yesterday = util.get_recent_days()
+        mcur = stats.get_mysql_cursor(settings)
+        stats.create_mysql_tables(mcur, {
+            "bigram_" + today: "bigram_day",
+            "bigram_" + yesterday: "bigram_day"
+        })
+        query = """
+            SELECT word1, word2, source1, source2, sum(sum_cnt) 
+            FROM (
+                SELECT word1, word2, source1, source2, sum(cnt) as sum_cnt
+                FROM bigram_%s
+                WHERE 
+                    tenminute > %s 
+                AND 
+                    (word1 in (%s) OR word2 in (%s))
+                UNION
+                SELECT word1, word2, source1, source2, sum(cnt) as sum_cnt
+                FROM bigram_%s
+                WHERE 
+                    tenminute > %s 
+                AND 
+                    (word1 in (%s) OR word2 in (%s))        
+            ) q1
+            GROUP BY word1, word2, source1, source2
+        """ % (today, utc_ystd_tenminute, self.get_bag_joined(), self.get_bag_joined(),
+            yesterday, utc_ystd_tenminute, self.get_bag_joined(), self.get_bag_joined())
+
+        logging.debug(query)
+        mcur.execute(query)
 
         lemma_pair_freqs = {}
-        for row in cur.fetchall():
-            n1, n2, l1, l2, cnt = row
+        while True:
+            row = mcur.fetchone()
+            if row is None:
+                break
+            if any_none(row):
+                continue
+            n1, n2, l1, l2, cnt = map(int, row)
             lemma_freq = - math.log(float(cnt) / self.total_freq.total_cnt, 2)
             
             lemma_pair_freqs[(n1, n2, l1, l2)] = lemma_freq
@@ -333,6 +418,9 @@ class BagFreq:
             if n2 in self.pair_freqs[n1]:
                 return self.pair_freqs[n1][n2]
         return MAX_COEF
+
+    def __str__(self):
+        return str({"pair_freqs": self.pair_freqs})
 
 def get_bag_best_pair(neighbours, bag):
     best = MAX_COEF
@@ -434,6 +522,7 @@ def choose_lemmas(chain, bag):
 
     return lemmas
 
+@util.time_logger
 def align(bag, nouns):
     logging.info("Input chain: " + u" ".join(map(lambda x: nouns[x], bag.bag)))
     if len(bag.bag) == 1:
@@ -516,6 +605,7 @@ def get_cluster_nouns(clusters):
 
     return cl_nouns
 
+@util.time_logger
 def get_aligned_cluster(cur, words_db, bigram_db, cluster, trendy_clusters_limit=20):
     valid_clusters = cluster
     trendy_clusters = sorted(valid_clusters, key=lambda x: get_best3_trend(x), reverse=True)
@@ -567,6 +657,7 @@ def get_aligned_cluster(cur, words_db, bigram_db, cluster, trendy_clusters_limit
 
     return sample
 
+@util.time_logger
 def main():
     parser = argparse.ArgumentParser()
 
