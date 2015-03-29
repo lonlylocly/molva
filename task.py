@@ -29,9 +29,9 @@ def main():
         run("%s/post-tomita.py -s %s -e %s 1>> post-tomita.log 2>&1 " % (SCRIPTDIR, d, d))
         logging.info("done")
 
-    run("python -m cProfile %s/current-post-cnt.py >> current-post-cnt.log 2>&1 " % SCRIPTDIR)
+    run("python -m cProfile %s/word_mates.py >> word_mates.log 2>&1 " % SCRIPTDIR)
 
-    run("%s/prepare-profiles.py -o profiles.json  > prepare-profiles.log 2>&1" % SCRIPTDIR) 
+    run("%s/prepare-profiles.py -o profiles.json  >> prepare-profiles.log 2>&1" % SCRIPTDIR) 
     run("java -Xmx700m -jar %s/%s profiles.json sims.csv > simmer.log 2>&1 " % (SCRIPTDIR, SIMMER_JAR))
     run("%s/post-profiles.py -i sims.csv  > post-profiles.log 2>&1" % SCRIPTDIR) 
 
