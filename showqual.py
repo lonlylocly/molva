@@ -15,6 +15,13 @@ try:
 except Exception as e:
     logging.warn(e)
 
+minmax = {
+    'title_correctness': {'min': 0, 'max': 3},
+    'topic_relevance': {'min': 0, 'max': 3},
+    'tweets_relatedness': {'min': 0, 'max': 3}
+}
+
+
 class Mark:
     def __init__(self, topic=None, metrics=None):
         self.topic = topic
@@ -98,18 +105,25 @@ class Marks:
     def __str__(self):
         names = self.get_metric_names()
         s = "%20s %30s " % ("update_time", "username")
-        for n in names:
+        for n in names + ['total']:
             s += "%20s " % n
+        
         s += "\n"
         for k in sorted(self.marks):
             s += "%20s %30s " % k
             m = self.marks[k]
             av = m.get_metric_average()
+            total_mark = 0
+            metric_cnt = 0
             for n in names:
                 val = ""
                 if n in av:
                     val = av[n]
-                s += "%20s" % val
+                    if n in minmax:
+                        total_mark += float(val) / minmax[n]["max"]
+                        metric_cnt += 1
+                s += "%20s " % val
+            s += "%20.2f" % (total_mark / metric_cnt * 100) 
             s += "\n"
 
         return s
