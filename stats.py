@@ -7,6 +7,8 @@ import logging, logging.config
 import xml.etree.ElementTree as ET
 import json
 from datetime import datetime, timedelta, date
+import MySQLdb
+import MySQLdb.cursors
 
 from profile import NounProfile, ProfileCompare
 import util
@@ -19,6 +21,15 @@ def get_cursor(db):
     cur = con.cursor()
 
     return cur 
+
+def get_mysql_cursor(settings,streaming=False):
+    
+    db = MySQLdb.connect(host="localhost", user=settings["mysql_user"], passwd=settings["mysql_password"], db="molva",
+        cursorclass = MySQLdb.cursors.SSCursor)
+
+    cur = db.cursor()
+
+    return cur
 
 def get_main_cursor(db_dir):
     return get_cursor(db_dir + "/tweets.db")
@@ -245,7 +256,7 @@ CREATE_TABLES = {
             word_md5 integer,
             tenminute integer,
             cnt integer,
-            PRIMARY KEY(word_md5, tenminute)
+            PRIMARY KEY(tenminute, word_md5)
         )
     """,
     "tweets_words_simple": """
@@ -329,21 +340,86 @@ CREATE_TABLES = {
             username text,
             marks text
         )
-    """ 
+    """,
+    "word_mates": """
+        CREATE TABLE IF NOT EXISTS word_mates (
+            word1 integer,
+            word2 integer,
+            tenminute integer,
+            cnt integer,            
+            PRIMARY KEY(tenminute, word1, word2)
+        )   
+    """,
+    "word_mates_sum": """
+        CREATE TABLE IF NOT EXISTS word_mates_sum (
+            word1 integer,
+            word2 integer, 
+            cnt integer
+        )
+    """
+
+}
+
+MYSQL_CREATE_TABLES = {
+    "word_time_cnt": """
+        CREATE TABLE IF NOT EXISTS word_time_cnt (
+            word_md5 int unsigned not null,
+            tenminute bigint unsigned not null,
+            cnt int unsigned not null,
+            PRIMARY KEY(tenminute, word_md5)   
+        ) ENGINE=MYISAM DEFAULT CHARSET=utf8
+    """,
+    "word_mates": """
+        CREATE TABLE IF NOT EXISTS word_mates (
+            word1 int unsigned not null,
+            word2 int unsigned not null,
+            tenminute bigint unsigned not null,
+            cnt int unsigned not null,            
+            PRIMARY KEY(tenminute, word1, word2)
+        )  ENGINE=MYISAM DEFAULT CHARSET=utf8  
+    """,
+    "word_mates_sum": """
+        CREATE TABLE IF NOT EXISTS word_mates_sum (
+            word1 int unsigned not null,
+            word2 int unsigned not null,
+            cnt int unsigned not null,            
+            PRIMARY KEY(word1, word2)
+        )  ENGINE=MYISAM DEFAULT CHARSET=utf8  
+    """,
+    "bigram_day": """
+        CREATE TABLE IF NOT EXISTS bigram_day (
+            word1 int unsigned not null,
+            word2 int unsigned not null,
+            source1 int unsigned not null,
+            source2 int unsigned not null,
+            tenminute bigint unsigned not null,
+            cnt int unsigned not null,
+            PRIMARY KEY(tenminute, word1, word2, source1, source2)
+        ) ENGINE=MYISAM DEFAULT CHARSET=utf8  
+    """
+
 }
 
 def cr(cur):
     create_given_tables(cur, ["tweets", "users"]) 
 
+def create_mysql_tables(cur, tables):
+    _create_given_tables(cur, tables, MYSQL_CREATE_TABLES)
+
 def create_given_tables(cur, tables):
+    _create_given_tables(cur, tables, CREATE_TABLES)
+
+def _create_given_tables(cur, tables, templates):
     if isinstance(tables, list):
         for t in tables:
-            cur.execute(CREATE_TABLES[t])
+            cur.execute(templates[t])
     if isinstance(tables, dict):
         for name in tables:
             like = tables[name]
             logging.info("create table %s like %s" %(name, like))
-            cur.execute(CREATE_TABLES[like].replace(like, name, 1))
+            query = templates[like].replace(like, name, 1)
+            #logging.debug(query)
+            cur.execute(query)
 
 def create_tables(cur):
     create_given_tables(cur, ["post_reply_cnt", "post_cnt", "tweet_chains", "chains_nouns", "tweets", "users"]) 
@@ -402,7 +478,6 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
     cur.execute(cmd)
 
     profiles_dict = {}
-
     while True:
         s = cur.fetchone()
         if s is None:
@@ -411,6 +486,7 @@ def get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table = "post_
         if post not in profiles_dict:
             profiles_dict[post] = NounProfile(post, post_cnt=post_cnt) 
         profiles_dict[post].replys[reply] = cnt
+    
 
     logging.info("done")
 
@@ -491,7 +567,7 @@ def tfidf(profiles_dict, total_docs):
 @util.time_logger
 def weight_profiles_with_entropy(cur, profiles_dict, nouns):
     logging.info("start")
-    post_cnt = get_noun_cnt(cur) 
+    #post_cnt = get_noun_cnt(cur) 
     replys = [] 
     for p in profiles_dict:
         profiles_dict[p].apply_log()
@@ -533,15 +609,29 @@ def noun_profiles_tfidf(cur, post_min_freq, blocked_nouns, nouns_limit, total_do
    
     return profiles_dict
 
+def _add_total_to_profiles(profiles_dict, trash_words):
+    trash_words_md5 = map(util.digest, trash_words)
+    total_md5 = util.digest('__total__') 
+    total = NounProfile(total_md5, post_cnt=0)
+    for p in profiles_dict:
+        if p not in trash_words_md5:
+            continue
+        profile = profiles_dict[p]
+        for reply in profile.replys:
+            if reply not in total.replys:
+                total.replys[reply] = 0
+            total.replys[reply] += profile.replys[reply]
+        total.post_cnt += profile.post_cnt
+    profiles_dict[total_md5] = total
 
-def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt"):
+def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt", trash_words=None):
     profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table)
 
     #set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
     logging.info("Profiles len: %s" % len(profiles_dict))
     if False or len(profiles_dict) > nouns_limit:
         short_profiles_dict = {}
-        
+       
         for k in sorted(profiles_dict.keys(), key=lambda x: profiles_dict[x].post_cnt, reverse=True)[:nouns_limit]:
             short_profiles_dict[k] = profiles_dict[k]
 
@@ -552,6 +642,9 @@ def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, 
     set_noun_profiles_total(cur, profiles_dict, post_min_freq, blocked_nouns)
 
     weight_profiles_with_entropy(cur, profiles_dict, nouns) 
+
+    if trash_words is not None:
+        _add_total_to_profiles(profiles_dict, trash_words)
    
     return profiles_dict
 
@@ -560,21 +653,23 @@ def get_word_cnt(db_dir, utc_now=datetime.utcnow()):
     day_ago = (utc_now - timedelta(1)).strftime("%Y%m%d%H%M%S")
     day_ago_tenminute = day_ago[:11]
     logging.info("Time left bound: %s" % day_ago_tenminute)
+    settings = json.load(open('global-settings.json', 'r'))
     word_cnt = {}
     for day in [1, 0]:
         date = (utc_now - timedelta(day)).strftime("%Y%m%d")
-        cur = get_cursor("%s/words_%s.db" % (db_dir, date))
-        create_given_tables(cur, ["word_time_cnt"])
-        cur.execute("""
+        word_time_cnt_table = "word_time_cnt_%s" % date
+        mcur = get_mysql_cursor(settings)
+        create_mysql_tables(mcur, {word_time_cnt_table: "word_time_cnt"})
+        mcur.execute("""
                 select word_md5, sum(cnt) 
-                from word_time_cnt
+                from %s 
                 where tenminute > %s
                 group by word_md5
-        """ % day_ago_tenminute)
+        """ % (word_time_cnt_table, day_ago_tenminute))
 
         row_cnt = 0    
         while True:
-            res = cur.fetchone()
+            res = mcur.fetchone()
             if res is None:
                 break
             word_md5, cnt = res
