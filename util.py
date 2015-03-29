@@ -101,6 +101,8 @@ def filter_trash_words_cluster(clusters):
                 break
         if not filter_cluster:
             filtered_cl.append(c)
+        else:
+            logging.info("Filtered cluster containing __total__ with %s elements" % len(c))
 
     return filtered_cl
 
