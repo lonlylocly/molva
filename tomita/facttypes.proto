@@ -5,7 +5,7 @@ message SimpleFact : NFactType.TFact
 {
     required string Noun = 1;
     optional string Prep = 2;
-    optional bool IsHashTag = 3;
+    optional bool IsHashTag = 3 [default = false];
 }
 
 message HashTag : NFactType.TFact 

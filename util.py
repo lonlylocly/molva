@@ -89,3 +89,18 @@ def get_yesterday_tenminute(utc_now = datetime.utcnow(), days=1):
     utc_ystd_tenminute = utc_ystd[:11]
 
     return utc_ystd_tenminute
+
+def filter_trash_words_cluster(clusters):
+    filtered_cl = []
+    total_md5 = digest("__total__")
+    for c in clusters:
+        filter_cluster = False
+        for m in c["members"]:
+            if m["id"] == total_md5:
+                filter_cluster = True
+                break
+        if not filter_cluster:
+            filtered_cl.append(c)
+
+    return filtered_cl
+
