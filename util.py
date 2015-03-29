@@ -8,6 +8,7 @@ import logging
 import time
 import os
 import os.path
+from datetime import datetime, timedelta, date
 
 from Exceptions import WoapeException
 
@@ -74,4 +75,32 @@ def time_logger(func):
 def delete_if_exists(f):
     if os.path.exists(f):
         os.remove(f)
+
+def get_recent_days(utc_now = datetime.utcnow(), days=2):
+    dates = []
+    for i in range(0,days):
+        d = (utc_now - timedelta(i)).strftime("%Y%m%d")          
+        dates.append(d)
+
+    return dates
+
+def get_yesterday_tenminute(utc_now = datetime.utcnow(), days=1):
+    utc_ystd = (utc_now - timedelta(days)).strftime("%Y%m%d%H%M%S")
+    utc_ystd_tenminute = utc_ystd[:11]
+
+    return utc_ystd_tenminute
+
+def filter_trash_words_cluster(clusters):
+    filtered_cl = []
+    total_md5 = digest("__total__")
+    for c in clusters:
+        filter_cluster = False
+        for m in c["members"]:
+            if m["id"] == total_md5:
+                filter_cluster = True
+                break
+        if not filter_cluster:
+            filtered_cl.append(c)
+
+    return filtered_cl
 
