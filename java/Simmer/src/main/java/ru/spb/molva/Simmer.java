@@ -9,6 +9,9 @@ import org.apache.commons.math3.linear.RealVector;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.Reader;
 
 /**
  * Created by lonlylocly on 08.06.14.
@@ -21,10 +24,10 @@ public class Simmer {
 
         FileUtils.writeStringToFile(outputFile, "");
 
-        String content = FileUtils.readFileToString(inputFile);
+        Reader reader = new BufferedReader(new FileReader(inputFile));
 
         final Gson gson = new Gson();
-        Map<Long, Map<Long, Double>> dict = gson.fromJson(content, new TypeToken<Map<Long, Map<Long, Double>>>() {
+        Map<Long, Map<Long, Double>> dict = gson.fromJson(reader, new TypeToken<Map<Long, Map<Long, Double>>>() {
         }.getType());
 
         System.out.println("init ready");
