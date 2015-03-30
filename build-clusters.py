@@ -9,7 +9,7 @@ from datetime import datetime
 import stats
 from Indexer import Indexer
 import util
-import KMeanCluster
+import molva.KMeanCluster as KMeanCluster
 import aligner
 
 logging.config.fileConfig("logging.conf")
@@ -46,6 +46,7 @@ def get_sims(cur):
 
     return sim_dict
 
+@util.time_logger
 def get_used_nouns(cur):
     res = cur.execute("""
         select post1_md5
@@ -63,12 +64,13 @@ def get_used_nouns(cur):
 
 @util.time_logger
 def get_clusters(args, sim_dict, nouns, noun_trend, post_cnt):
+    trash_words_md5 = map(util.digest, settings["trash_words"])
     best_ratio = 10 
     cl = []
     for k in [900, 1000, 1100]:
         for i in range(0, int(args.i)): 
             logging.info("get %s clusters, iteration %s" % (k, i))
-            resp = KMeanCluster.get_clusters(sim_dict, int(k), nouns)
+            resp = KMeanCluster.get_clusters(sim_dict, int(k), nouns, trash_words=trash_words_md5)
             ratio = resp["intra_dist"] / resp["extra_dist"]
             if (ratio) < best_ratio:
                 best_ratio = ratio

@@ -34,9 +34,11 @@ def get_mysql_cursor(settings,streaming=False):
 def get_main_cursor(db_dir):
     return get_cursor(db_dir + "/tweets.db")
 
+@util.time_logger
 def get_sources(cur, nouns_only=None):
     return get_nounlikes(cur, nouns_only, "sources")
 
+@util.time_logger
 def get_nouns(cur, nouns_only=None):
     return get_nounlikes(cur, nouns_only, "nouns")
 
