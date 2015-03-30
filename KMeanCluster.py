@@ -176,7 +176,8 @@ def get_clusters(sim_dict, clusters_num, nouns):
             'members': map(lambda x: {'id': x, 'text': nouns[int(x)]}, cl[c]), 
             'members_len': len(cl[c]),
             'members_md5': str(get_cluster_md5(cl[c])),
-            'avg_dist': "%.2f" % dists[c]
+            'avg_dist': "%.2f" % dists[c],
+            'centroid': str(c)
         }
         avg_dist += dists[c]
         cl2.append(struct)
