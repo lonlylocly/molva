@@ -88,3 +88,10 @@
     daily
     size=1M
 }
+
+/home/lonlylocly/run/simmer.log {
+    missingok
+    rotate 7
+    daily
+    size=1M
+}
