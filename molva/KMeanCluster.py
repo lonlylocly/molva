@@ -73,9 +73,22 @@ class KMeansClusteriser:
 
         return new_clusters 
 
+    def _get_cluster_sims(self, post, current_centroids):
+        post_sims = self.sim_dict[post]
+        return map( lambda x: (x, post_sims[x]), current_centroids)
+
+    def _get_best_cluster(self, cluster_sims):
+        best_pair = cluster_sims[0]
+        for i in xrange(1, len(cluster_sims)):
+            cur = cluster_sims[i]
+            if cur[1] < best_pair[1]:
+                best_pair = cur
+
+        return best_pair[0]
+    
     def get_best_cluster(self, post, current_centroids):
-        cluster_sims = map( lambda x: (x, self.sim_dict[post][x]), current_centroids)
-        best_cluster = sorted(cluster_sims, key= lambda x: x[1])[0][0]
+        cluster_sims = self._get_cluster_sims(post, current_centroids)
+        best_cluster = self._get_best_cluster(cluster_sims) 
 
         return best_cluster
 
