@@ -75,9 +75,7 @@ public class Simmer {
         saveSims(outputFile, sims);
 
         System.out.println(String.format("Total %s seen", cnt));
-        System.out.println(String.format("Common keys mean length: %.2f; stddev: %.2f; skewness: %.2f",
-            stat.getMean(), stat.getStandardDeviation(), stat.getSkewness())
-        );
+        logStats("Common keys length", stat);
 
     }
 
@@ -126,13 +124,20 @@ public class Simmer {
         FileUtils.writeStringToFile(outputFile, builder.toString(), true);
     }
 
+    public static void logStats(String description, DescriptiveStatistics stat) {
+        System.out.println(String.format("%s: mean: %.2f; std dev: %.2f; skewness: %.2f"+
+            " median: %.2f; min: %.2f; max: %.2f",
+            description, stat.getMean(), stat.getStandardDeviation(), stat.getSkewness(), stat.getPercentile(50),
+            stat.getMin(), stat.getMax())
+        );
+
+    }
+
     public static void logVectorSizes(Map<Long, Map<Long, Double>> dict) {
         DescriptiveStatistics stat = new DescriptiveStatistics();
         for(Map<Long,Double> m : dict.values()) {
             stat.addValue(m.values().size());
         }
-        System.out.println(String.format("Mean profile length: %.2f; std dev: %.2f; skewness: %.2f", 
-            stat.getMean(), stat.getStandardDeviation(), stat.getSkewness())
-        );
+        logStats("Vector size", stat);
     }
 }
