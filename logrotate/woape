@@ -81,3 +81,10 @@
     daily
     size=1M
 }
+
+/home/lonlylocly/run/word_mates.log {
+    missingok
+    rotate 7
+    daily
+    size=1M
+}
