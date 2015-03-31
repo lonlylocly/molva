@@ -77,6 +77,7 @@ def get_clusters(args, sim_dict, nouns, noun_trend, post_cnt):
                 cl = resp["clusters"]
    
     logging.info("Best ratio: %s" % best_ratio) 
+    logging.info("Best clusters size: %s" % len(cl)) 
     for c in cl:
         for m in c["members"]:
             try:
