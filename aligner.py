@@ -8,6 +8,7 @@ from datetime import datetime
 import math
 import signal
 import argparse
+import traceback
 
 import stats
 from Indexer import Indexer
@@ -633,23 +634,27 @@ def get_aligned_cluster(cur, words_db, bigram_db, cluster, trendy_clusters_limit
         if len(chains) == 0:
             empty_chains_count += 1
         for c in chains:
-            logging.info("Got %s chain elements" % len(c))
-            nouns_title = u" ".join(map(lambda x: nouns[x], c))
-            lemmas = choose_lemmas(c, bag)
-            lemmas_title = u" ".join(map(lambda x: sources[x], lemmas)) 
-            members = []
-            for i in range(0,len(c)):
-                text = sources[lemmas[i]] if len(lemmas) > 0 else nouns[c[i]]
-                members.append({"id": c[i], "text": text, "stem_text": nouns[c[i]], "trend": trends[c[i]]})
+            try:
+                logging.info("Got %s chain elements" % len(c))
+                nouns_title = u" ".join(map(lambda x: nouns[x], c))
+                lemmas = choose_lemmas(c, bag)
+                lemmas_title = u" ".join(map(lambda x: sources[x], lemmas)) 
+                members = []
+                for i in range(0,len(c)):
+                    text = sources[lemmas[i]] if len(lemmas) > 0 else nouns[c[i]]
+                    members.append({"id": c[i], "text": text, "stem_text": nouns[c[i]], "trend": trends[c[i]]})
 
-            member_ids = ",".join(map(lambda x: str(x["id"]), members))
-            new_clusters.append({
-                "members": members, 
-                "gen_title": lemmas_title if len(lemmas)>0 else nouns_title,
-                "members_len": len(members),
-                "members_md5": str(util.digest_large(member_ids)),
-                "unaligned": cluster
-            })
+                member_ids = ",".join(map(lambda x: str(x["id"]), members))
+                new_clusters.append({
+                    "members": members, 
+                    "gen_title": lemmas_title if len(lemmas)>0 else nouns_title,
+                    "members_len": len(members),
+                    "members_md5": str(util.digest_large(member_ids)),
+                    "unaligned": cluster
+                })
+            except Exception as e:
+                traceback.print_exc()
+                logging.error(e)
 
     sample = sorted(new_clusters, key=lambda x: get_best3_trend(x), reverse=True)
 
