@@ -126,9 +126,9 @@ public class Simmer {
 
     public static void logStats(String description, DescriptiveStatistics stat) {
         System.out.println(String.format("%s: mean: %.2f; std dev: %.2f; skewness: %.2f"+
-            " median: %.2f; min: %.2f; max: %.2f",
+            " median: %.2f; min: %.2f; max: %.2f; sum: %d",
             description, stat.getMean(), stat.getStandardDeviation(), stat.getSkewness(), stat.getPercentile(50),
-            stat.getMin(), stat.getMax())
+            stat.getMin(), stat.getMax(), (long) stat.getSum())
         );
 
     }
