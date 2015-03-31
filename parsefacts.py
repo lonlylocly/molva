@@ -79,6 +79,8 @@ def save_word_time_cnt2(mcur, word_cnt, word_time_cnt_table):
     vals = []
     for i in word_cnt:
         vals.append("(%s, %s, 1)" % i)
+    if len(vals) == 0:
+        return
     query = """
         INSERT INTO %s 
         (word_md5, tenminute, cnt)
@@ -159,6 +161,8 @@ def save_word_mates2(mcur, pairs, table):
             word1, word2 = word2, word1
         vals.append("(%s, %s, %s, 1)" % (word1, word2, tenminute))
 
+    if len(vals) == 0:
+        return
     query = """
         INSERT INTO %s
         (word1, word2, tenminute, cnt)
