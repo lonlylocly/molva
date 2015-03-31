@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +31,8 @@ public class Simmer {
         Map<Long, Map<Long, Double>> dict = gson.fromJson(reader, new TypeToken<Map<Long, Map<Long, Double>>>() {
         }.getType());
 
+        logVectorSizes(dict);
+
         System.out.println("init ready");
         System.out.println("Total keys: " + dict.size());
 
@@ -40,6 +43,7 @@ public class Simmer {
 
         int cnt = 0;
         int longCnt = 0;
+        DescriptiveStatistics stat = new DescriptiveStatistics();
 
         for(int i = 0; i < posts.size(); i++) {
             for(int j= 0; j < posts.size(); j++) {
@@ -50,6 +54,7 @@ public class Simmer {
                 }
 
                 List<Long> commonKeys = getCommonKeys(dict, p1, p2);
+                stat.addValue(commonKeys.size());
 
                 final RealVector x1 = getRealVector(dict.get(p1), commonKeys);
                 final RealVector x2 = getRealVector(dict.get(p2), commonKeys);
@@ -70,7 +75,9 @@ public class Simmer {
         saveSims(outputFile, sims);
 
         System.out.println(String.format("Total %s seen", cnt));
-
+        System.out.println(String.format("Common keys mean length: %.2f; stddev: %.2f; skewness: %.2f",
+            stat.getMean(), stat.getStandardDeviation(), stat.getSkewness())
+        );
 
     }
 
@@ -117,5 +124,15 @@ public class Simmer {
         sims.clear();
 
         FileUtils.writeStringToFile(outputFile, builder.toString(), true);
+    }
+
+    public static void logVectorSizes(Map<Long, Map<Long, Double>> dict) {
+        DescriptiveStatistics stat = new DescriptiveStatistics();
+        for(Map<Long,Double> m : dict.values()) {
+            stat.addValue(m.values().size());
+        }
+        System.out.println(String.format("Mean profile length: %.2f; std dev: %.2f; skewness: %.2f", 
+            stat.getMean(), stat.getStandardDeviation(), stat.getSkewness())
+        );
     }
 }
