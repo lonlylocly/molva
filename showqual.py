@@ -102,33 +102,42 @@ class Marks:
 
         return names
 
-    def __str__(self):
+    def get_stat_matrix(self):
         names = self.get_metric_names()
-        s = "%20s %30s " % ("update_time", "username")
-        for n in names + ['total']:
-            s += "%20s " % n
-        
-        s += "\n"
+        stat = [["update_time", "username"] + names + ['total']]
         for k in sorted(self.marks):
-            s += "%20s %30s " % k
             m = self.marks[k]
             av = m.get_metric_average()
             total_mark = 0
             metric_cnt = 0
+            stat_row = list(k)
             for n in names:
                 val = ""
                 if n in av:
-                    val = av[n]
+                    val = "%.2f" % float(av[n])
                     if n in minmax:
                         total_mark += float(val) / minmax[n]["max"]
                         metric_cnt += 1
-                s += "%20s " % val
-            s += "%20.2f" % (total_mark / metric_cnt * 100) 
-            s += "\n"
+                stat_row.append(val)
+            stat_row.append("%.2f" % (total_mark / metric_cnt * 100))
+            stat.append(stat_row)
+        return stat
 
-        return s
+    def get_col_sizes(self, stat):
+        sizes = map(lambda x: 0, range(0,len(stat[0])))
+        for i in range(0, len(stat)):
+            for j in range(0, len(stat[i])):
+                if len(stat[i][j]) > sizes[j]:
+                    sizes[j] = len(stat[i][j])
+        return sizes
 
-        
+    def __str__(self):
+        stat = self.get_stat_matrix()
+        sizes = self.get_col_sizes(stat)
+        sizes_patt = map(lambda x: "%%%ds" % (x+2), sizes)
+        patt = " ".join(sizes_patt)
+        return "\n".join(map(lambda x: patt % tuple(x),stat))
+                
 
 def get_marks(cur, filter_spam):
     cur.execute("""
