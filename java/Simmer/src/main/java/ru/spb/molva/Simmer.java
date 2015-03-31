@@ -13,6 +13,9 @@ import java.util.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.Reader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 
 /**
  * Created by lonlylocly on 08.06.14.
@@ -23,9 +26,8 @@ public class Simmer {
         File inputFile = new File(args[0]);
         File outputFile = new File(args[1]);
 
-        FileUtils.writeStringToFile(outputFile, "");
-
         Reader reader = new BufferedReader(new FileReader(inputFile));
+        PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(outputFile)));
 
         final Gson gson = new Gson();
         Map<Long, Map<Long, Double>> dict = gson.fromJson(reader, new TypeToken<Map<Long, Map<Long, Double>>>() {
@@ -67,15 +69,16 @@ public class Simmer {
                 System.out.println(String.format("Total %s seen", cnt));
                 longCnt += 1;
 
-                saveSims(outputFile, sims);
+                saveSims(writer, sims);
 
             }
         }
 
-        saveSims(outputFile, sims);
+        saveSims(writer, sims);
 
         System.out.println(String.format("Total %s seen", cnt));
         logStats("Common keys length", stat);
+        writer.close();
 
     }
 
@@ -113,15 +116,12 @@ public class Simmer {
     }
 
 
-    private static void saveSims(File outputFile, List<SimEntry> sims) throws IOException {
-        StringBuilder builder = new StringBuilder();
+    private static void saveSims(PrintWriter writer, List<SimEntry> sims) throws IOException {
         for (SimEntry sim : sims) {
-            builder.append(sim.toCsv()).append("\n");
+            writer.println(sim.toCsv());
         }
 
         sims.clear();
-
-        FileUtils.writeStringToFile(outputFile, builder.toString(), true);
     }
 
     public static void logStats(String description, DescriptiveStatistics stat) {
