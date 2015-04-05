@@ -33,6 +33,29 @@ def attach_db(cur, db_file, db_name):
     cur.execute(query)
 
 @util.time_logger
+def write_post_reply_cnt(cur, mcur):
+    mcur.execute("select word1, word2, cnt from word_mates_tmp")
+
+    logging.info("Filling post_reply_cnt")
+    cur.execute("begin transaction")
+    while True:
+        r = mcur.fetchone()        
+        if r is None:
+            break
+        w1, w2, cnt = r
+        cur.execute("""
+            insert into post_reply_cnt (post_md5, reply_md5, reply_cnt)
+            values (%s, %s, %s)
+        """ % r)
+        if w1 != w2:
+            cur.execute("""
+                insert into post_reply_cnt (post_md5, reply_md5, reply_cnt)
+                values (%s, %s, %s)
+            """ % (w2, w1, cnt))
+           
+    cur.execute("commit")
+
+@util.time_logger
 def count_currents2(cur, mcur, utc_now, words):
     yesterday = (utc_now - timedelta(1)).strftime("%Y%m%d")          
     today = (utc_now).strftime("%Y%m%d")    
@@ -79,61 +102,7 @@ def count_currents2(cur, mcur, utc_now, words):
         logging.debug(query)
         mcur.execute(query)
 
-    mcur.execute("select word1, word2, cnt from word_mates_tmp")
-
-    logging.info("Filling post_reply_cnt")
-    cur.execute("begin transaction")
-    while True:
-        r = mcur.fetchone()        
-        if r is None:
-            break
-        w1, w2, cnt = r
-        cur.execute("""
-            insert into post_reply_cnt (post_md5, reply_md5, reply_cnt)
-            values (%s, %s, %s)
-        """ % r)
-        if w1 != w2:
-            cur.execute("""
-                insert into post_reply_cnt (post_md5, reply_md5, reply_cnt)
-                values (%s, %s, %s)
-            """ % (w2, w1, cnt))
-           
-    cur.execute("commit")
-    
-    for t in ["post_cnt", "post_reply_cnt"]:
-        _print_counts(cur, t) 
-
-@util.time_logger
-def count_currents(cur, utc_now):
-    utc_ystd = (utc_now - timedelta(1)).strftime("%Y%m%d%H%M%S")
-    utc_ystd_tenminute = utc_ystd[:11]
-
-    cur.execute("drop table if exists word_mates_sum_raw")
-    stats.create_given_tables(cur, {
-        "word_mates_sum_raw": "word_mates_sum"
-    })
-
-    for db in ("today", "ystd"):
-        cur.execute("""
-            insert into word_mates_sum_raw
-            select word1, word2, sum(cnt) 
-            from %s.word_mates 
-            where word1 in (
-                select post_md5 
-                from post_cnt
-                order by post_cnt desc 
-                limit 2000
-            ) 
-            and tenminute > %s
-            group by word1, word2
-        """ % (db, utc_ystd_tenminute))
-
-    cur.execute("""
-        insert into post_reply_cnt (post_md5, reply_md5, reply_cnt)
-        select word1, word2, sum(cnt)
-        from word_mates_sum_raw
-        group by word1, word2
-    """)
+    write_post_reply_cnt(cur, mcur)
     
     for t in ["post_cnt", "post_reply_cnt"]:
         _print_counts(cur, t) 
