@@ -208,7 +208,8 @@ def get_clusters(sim_dict, clusters_num, nouns, trash_words=None):
             'members_len': len(cl[c]),
             'members_md5': str(kmeans.get_cluster_md5(cl[c])),
             'avg_dist': "%.2f" % dists[c],
-            'centroid': str(c)
+            'centroid_md5': str(c),
+            'centroid_text': nouns[int(c)]
         }
         avg_dist += dists[c]
         cl2.append(struct)
