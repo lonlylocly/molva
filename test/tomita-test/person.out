@@ -1,0 +1,237 @@
+В Spiegel объяснили появление Меркель с нацистами на обложке журнала 
+	SimpleFact
+	{
+		Noun = объяснить
+	}
+	SimpleFact
+	{
+		Noun = появление
+	}
+	SimpleFact
+	{
+		Noun = нацист
+		Prep = с
+	}
+	SimpleFact
+	{
+		Noun = обложка
+		Prep = на
+	}
+	SimpleFact
+	{
+		Noun = журнал
+	}
+RT @ krabsnago : Шеф-редактор Spiegel объяснил появление на обложке окруженной нацистами 
+	SimpleFact
+	{
+		Noun = Шеф-редактор
+	}
+	SimpleFact
+	{
+		Noun = объяснить
+	}
+	SimpleFact
+	{
+		Noun = появление
+	}
+	SimpleFact
+	{
+		Noun = обложка
+		Prep = на
+	}
+	SimpleFact
+	{
+		Noun = окруженный
+	}
+	SimpleFact
+	{
+		Noun = нацист
+	}
+Канцлер Германии Ангела Меркель , президент Франции Франсуа Олланд и премьер-министр 
+	SimpleFact
+	{
+		Noun = канцлер
+	}
+	SimpleFact
+	{
+		Noun = Германия
+	}
+	SimpleFact
+	{
+		Noun = Ангел
+	}
+	SimpleFact
+	{
+		Noun = президент
+	}
+	SimpleFact
+	{
+		Noun = Франция
+	}
+	SimpleFact
+	{
+		Noun = Франсуа
+	}
+	SimpleFact
+	{
+		Noun = премьер-министр
+	}
+Немецкие СМИ : пилоты авиакомпании Germanwings отказываются выполнять рейсы на самолетах A320 
+	SimpleFact
+	{
+		Noun = немецкий
+	}
+	SimpleFact
+	{
+		Noun = СМИ
+	}
+	SimpleFact
+	{
+		Noun = пилот
+	}
+	SimpleFact
+	{
+		Noun = авиакомпания
+	}
+	SimpleFact
+	{
+		Noun = отказываться
+	}
+	SimpleFact
+	{
+		Noun = рейс
+	}
+	SimpleFact
+	{
+		Noun = самолет
+		Prep = на
+	}
+Вратарь сборной России Игорь Акинфеев , в которого попали файером в начале встречи 
+	SimpleFact
+	{
+		Noun = вратарь
+	}
+	SimpleFact
+	{
+		Noun = сборный
+	}
+	SimpleFact
+	{
+		Noun = Россия
+	}
+	SimpleFact
+	{
+		Noun = Игорь
+	}
+	SimpleFact
+	{
+		Noun = который
+	}
+	SimpleFact
+	{
+		Noun = файер
+	}
+	SimpleFact
+	{
+		Noun = начало
+		Prep = в
+	}
+	SimpleFact
+	{
+		Noun = встреча
+	}
+RT @ suharig2015 : Форум социальных работников в Ярославле , организованный партией "Единая Россия" , стартует сегодня , 27 марта ! http : / / t.co / I … 
+	SimpleFact
+	{
+		Noun = Форум
+	}
+	SimpleFact
+	{
+		Noun = социальный
+	}
+	SimpleFact
+	{
+		Noun = работник
+	}
+	SimpleFact
+	{
+		Noun = Ярославль
+		Prep = в
+	}
+	SimpleFact
+	{
+		Noun = партия
+	}
+	SimpleFact
+	{
+		Noun = Единый
+	}
+	SimpleFact
+	{
+		Noun = Россия
+	}
+	SimpleFact
+	{
+		Noun = стартовать
+	}
+	SimpleFact
+	{
+		Noun = март
+	}
+В Курске сильный ветер сдул со взлетной полосы самолет с пассажирами : В аэропорту Курска сильным порывом 
+	SimpleFact
+	{
+		Noun = Курск
+		Prep = в
+	}
+	SimpleFact
+	{
+		Noun = сильный
+	}
+	SimpleFact
+	{
+		Noun = ветер
+	}
+	SimpleFact
+	{
+		Noun = сдуть
+	}
+	SimpleFact
+	{
+		Noun = взлетный
+	}
+	SimpleFact
+	{
+		Noun = полоса
+	}
+	SimpleFact
+	{
+		Noun = самолет
+	}
+	SimpleFact
+	{
+		Noun = пассажир
+		Prep = с
+	}
+	SimpleFact
+	{
+		Noun = аэропорт
+		Prep = В
+	}
+	SimpleFact
+	{
+		Noun = Курск
+	}
+	SimpleFact
+	{
+		Noun = сильный
+	}
+	SimpleFact
+	{
+		Noun = порыв
+	}
+Канцлер 
+	SimpleFact
+	{
+		Noun = канцлер
+	}
