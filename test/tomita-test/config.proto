@@ -1,0 +1,20 @@
+encoding "utf8"; // указываем кодировку, в которой написан конфигурационный файл
+
+TTextMinerConfig {
+  Dictionary = "tomita/mydic.gzt"; // путь к корневому словарю
+
+  Input = {
+    Type = dpl;
+  }
+
+  Articles = [
+    { Name = "molvatika" } 
+  ]
+  Facts = [
+    { Name = "SimpleFact" }
+  ]
+  Output = {
+    //Format = xml;
+    Format = text;
+  }
+}
