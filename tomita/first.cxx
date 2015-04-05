@@ -1,29 +1,14 @@
 #encoding "utf-8"    // сообщаем парсеру о том, в какой кодировке написана грамматика
 
-// parse hashtags
-HashTag -> AnyWord<wff=/(_|[A-Za-zА-Яа-я0-9])+/>;
-
-S -> '#' interp (SimpleFact.IsHashTag=true) HashTag interp (SimpleFact.Noun);
-
-//WordSepPart -> SimConjAnd | LBracket | RBracket | Hyphen | Comma | Colon;
-//
-//WordSep -> Word | Word WordSepPart;
-//
-//GeneralName -> WordSep Word<h-reg1,~h-reg2> interp (HashTag.HashTag);
-//
-//S -> GeneralName ;
-//
-//S -> GeneralName GeneralName;
-
 // не разрешаем омонимы (разные части речи)
 
 Part -> Noun<no_hom> | Word<gram="persn"> | Word<gram="famn"> | Word<gram="geo">; 
 
-S -> Part interp (SimpleFact.Noun) | Prep interp (SimpleFact.Prep) Part interp (SimpleFact.Noun);
+NounWithPrep -> Part interp (SimpleFact.Noun) | Prep interp (SimpleFact.Prep) Part interp (SimpleFact.Noun);
 
 OtherNoHoms -> Adv<no_hom> | Adj<no_hom> | Verb<no_hom>; 
 
-S -> OtherNoHoms interp (SimpleFact.Noun);
+S -> NounWithPrep | OtherNoHoms interp (SimpleFact.Noun);
 
 
 // омонимы только для согласованных существительных
@@ -42,3 +27,25 @@ S -> Prep interp (SimpleFact.Prep) Noun<gnc-agr[2]> interp (SimpleFact.Noun) Ver
 S -> Verb<gnc-agr[2]> interp (SimpleFact.Noun) Noun<gnc-agr[2]> interp (SimpleFact.Noun) ;
 
 S -> Verb<gnc-agr[2]> interp (SimpleFact.Noun) Prep interp (SimpleFact.Prep)  Noun<gnc-agr[2]> interp (SimpleFact.Noun) ;
+
+// parse hashtags
+HashTag -> AnyWord<wff=/(_|[A-Za-zА-Яа-я0-9])+/>;
+
+S -> '#' interp (SimpleFact.IsHashTag=true) HashTag interp (SimpleFact.Noun);
+
+// имена собственные
+WordSepPart -> SimConjAnd | LBracket | RBracket | Hyphen | Comma | Colon;
+
+SimpleWord -> Word {weight = 0.5}; 
+
+NohomOrWord -> SimpleWord | NounWithPrep | OtherNoHoms interp (SimpleFact.Noun)  ;
+
+WordSep -> NohomOrWord | NohomOrWord WordSepPart;
+
+// First capital, not number, others not capitals
+WordCapFirst -> Word<h-reg1,~h-reg2,wff=/[^0-9].+/>;
+
+GeneralName -> WordCapFirst interp (SimpleFact.Noun; SimpleFact.IsPersonName=true);
+
+S -> WordSep GeneralName + ;
+
