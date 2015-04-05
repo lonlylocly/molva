@@ -80,10 +80,22 @@ class TotalFreq:
         self.bigram_db = bigram_db
         self.lemma_freqs = {}
         self.lemma_nexts = {}
+        self.total_cnt = None 
         self.init_total_cnt()
         self.init_lemma_freqs()
         self.fill_lemma_nexts()
         logging.info("done TotalFreq")
+
+    def to_json(self):
+        return {
+            "nouns": self.nouns,
+            "lemma_freqs": self.lemma_freqs,
+            "lemma_nexts": self.lemma_nexts,
+            "total_cnt": self.total_cnt
+        }
+
+    def __str__(self):
+        return json.dumps(self.to_json(), indent=2, ensure_ascii=False)
 
     def get_nouns_joined(self):
         return ",".join(map(str,self.nouns))
@@ -225,16 +237,28 @@ class BagFreq:
         self.word_freqs = {}
         self.pair_freqs = {}
         self.lemma_pair_freqs = {}
-        #self.init_total_cnt()
         self.init_word_freqs()
         self.init_pair_freqs()
-        #self.init_lemma_freqs()
         self.init_lemma_nexts()
         self.init_nouns_lemmas()
         self.init_lemma_pair_freqs()
 
         logging.info("done BagFreq")
  
+    def to_json(self):
+        m = {}
+        for t in self.lemma_pair_freqs:
+            m[str(t)] = self.lemma_pair_freqs[t]
+        return {
+            "bag": self.bag,
+            "word_freqs": self.word_freqs,
+            "pair_freqs": self.pair_freqs,
+            "lemma_pair_freqs": m
+        }
+
+    def __str__(self):
+        return json.dumps(self.to_json(), indent=2, ensure_ascii=False)
+
     def get_bag_joined(self):
         s = ",".join(map(str, self.bag)) 
         return s
@@ -420,8 +444,8 @@ class BagFreq:
                 return self.pair_freqs[n1][n2]
         return MAX_COEF
 
-    def __str__(self):
-        return str({"pair_freqs": self.pair_freqs})
+    #def __str__(self):
+    #    return str({"pair_freqs": self.pair_freqs})
 
 def get_bag_best_pair(neighbours, bag):
     best = MAX_COEF
