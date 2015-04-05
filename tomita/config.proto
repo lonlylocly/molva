@@ -2,8 +2,6 @@ encoding "utf8"; // указываем кодировку, в которой н�
 
 TTextMinerConfig {
   Dictionary = "tomita/mydic.gzt"; // путь к корневому словарю
-  
-  //PrettyOutput = "PrettyOutput.html"; // путь к файлу с отладочным выводом в удобном для чтения виде
 
   Input = {
     Type = dpl;
@@ -14,12 +12,6 @@ TTextMinerConfig {
   ]
   Facts = [
     { Name = "SimpleFact" }
-    { Name = "HashTag" }
-    //{ Name = "AdjNounFact" }
-    //{ Name = "VerbNounFact" }
-    //{ Name = "SimpleWord" }
-    //{ Name = "AdjFact" }
-    //{ Name = "VerbFact" }
   ]
   Output = {
     Format = xml;
