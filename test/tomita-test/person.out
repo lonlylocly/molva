@@ -281,3 +281,22 @@ RT @ suharig2015 : Форум социальных работников в Яр�
 	{
 		Noun = канцлер
 	}
+RT @ Kevinsnydwr : Когда твоего друга нет в школе https : / / t.co / kTCq3XZJTe 
+	SimpleFact
+	{
+		Noun = Когда
+		IsPersonName = true
+	}
+	SimpleFact
+	{
+		Noun = твой
+	}
+	SimpleFact
+	{
+		Noun = друг
+	}
+	SimpleFact
+	{
+		Noun = школа
+		Prep = в
+	}
