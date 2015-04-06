@@ -34,7 +34,7 @@ HashTag -> AnyWord<wff=/(_|[A-Za-zА-Яа-я0-9])+/>;
 S -> '#' interp (SimpleFact.IsHashTag=true) HashTag interp (SimpleFact.Noun);
 
 // имена собственные
-WordSepPart -> SimConjAnd | Hyphen | Comma | Colon;
+WordSepPart -> SimConjAnd | Hyphen | Comma ;
 
 SimpleWord -> Word {weight = 0.5}; 
 
