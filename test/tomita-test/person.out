@@ -294,3 +294,21 @@ RT @ Kevinsnydwr : Когда твоего друга нет в школе https
 		Noun = школа
 		Prep = в
 	}
+Меркель , Олланд и Порошенко поставили условие : 
+	SimpleFact
+	{
+		Noun = Олланд
+		IsPersonName = true
+	}
+	SimpleFact
+	{
+		Noun = Порошенко
+	}
+	SimpleFact
+	{
+		Noun = поставить
+	}
+	SimpleFact
+	{
+		Noun = условие
+	}
