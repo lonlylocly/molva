@@ -161,6 +161,7 @@ RT @ krabsnago : Шеф-редактор Spiegel объяснил появлен
 	SimpleFact
 	{
 		Noun = Игорь
+		IsPersonName = true
 	}
 	SimpleFact
 	{
@@ -297,11 +298,6 @@ RT @ Kevinsnydwr : Когда твоего друга нет в школе https
 Меркель , Олланд и Порошенко поставили условие : 
 	SimpleFact
 	{
-		Noun = Олланд
-		IsPersonName = true
-	}
-	SimpleFact
-	{
 		Noun = Порошенко
 	}
 	SimpleFact
@@ -328,11 +324,6 @@ RT @ WLifantseva97 : Как пройти миссию затерянное в в
 		Prep = в
 	}
 быстро заработать кресталы в panzare http : / / t.co / phUra5Ddr0 Как 
-	SimpleFact
-	{
-		Noun = Как
-		IsPersonName = true
-	}
 Яркого Доброго утра День сегодня не из легких Но я рада что 2 урока Всем хорошего дня 
 	SimpleFact
 	{
@@ -341,7 +332,6 @@ RT @ WLifantseva97 : Как пройти миссию затерянное в в
 	SimpleFact
 	{
 		Noun = Добрый
-		IsPersonName = true
 	}
 	SimpleFact
 	{
@@ -350,11 +340,6 @@ RT @ WLifantseva97 : Как пройти миссию затерянное в в
 	SimpleFact
 	{
 		Noun = День
-		IsPersonName = true
-	}
-	SimpleFact
-	{
-		Noun = Но
 		IsPersonName = true
 	}
 	SimpleFact
