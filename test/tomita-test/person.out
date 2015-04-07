@@ -312,3 +312,65 @@ RT @ Kevinsnydwr : Когда твоего друга нет в школе https
 	{
 		Noun = условие
 	}
+RT @ GRAHAMLondon : Не могу насмотреться на него ! ! ! 
+	SimpleFact
+	{
+		Noun = мочь
+	}
+RT @ WLifantseva97 : Как пройти миссию затерянное в веках в скайриме 
+	SimpleFact
+	{
+		Noun = миссия
+	}
+	SimpleFact
+	{
+		Noun = век
+		Prep = в
+	}
+быстро заработать кресталы в panzare http : / / t.co / phUra5Ddr0 Как 
+	SimpleFact
+	{
+		Noun = Как
+		IsPersonName = true
+	}
+Яркого Доброго утра День сегодня не из легких Но я рада что 2 урока Всем хорошего дня 
+	SimpleFact
+	{
+		Noun = яркий
+	}
+	SimpleFact
+	{
+		Noun = Добрый
+		IsPersonName = true
+	}
+	SimpleFact
+	{
+		Noun = утро
+	}
+	SimpleFact
+	{
+		Noun = День
+		IsPersonName = true
+	}
+	SimpleFact
+	{
+		Noun = Но
+		IsPersonName = true
+	}
+	SimpleFact
+	{
+		Noun = урок
+	}
+	SimpleFact
+	{
+		Noun = Весь
+		IsPersonName = true
+	}
+	SimpleFact
+	{
+		Noun = хороший
+	}
+	SimpleFact
+	{
+		Noun = день
+	}
