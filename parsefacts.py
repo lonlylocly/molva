@@ -311,6 +311,7 @@ class SimpleFact:
         self.prep_id = None
         self.lead_id = None
         self.is_hash_tag = False
+        self.is_person_name = False
 
     def __str__(self):
         s = json.dumps({
@@ -335,6 +336,7 @@ def get_nouns_preps(elem):
         noun = raw_fact.find("./Noun").get('val').lower()
         prep = raw_fact.find("./Prep")
         is_hash_tag = raw_fact.find("./IsHashTag")
+        is_person_name = raw_fact.find("./IsPersonName")
 
         fact = SimpleFact()
         fact.noun_lemma = noun
@@ -347,6 +349,9 @@ def get_nouns_preps(elem):
         
         if is_hash_tag is not None:
             fact.is_hash_tag = str(is_hash_tag.get('val')) == '1'
+
+        if is_person_name is not None:
+            fact.is_person_name = str(is_person_name.get('val')) == '1'
 
 
         facts.append(fact)
@@ -373,7 +378,28 @@ def get_nouns_preps(elem):
                     fact.prep = f.text.replace('"','')
 
     return facts
-        
+
+class MatchTypeCnt:
+
+    def __init__(self):
+        self.total = 0
+        self.hash_tag = 0
+        self.person_name = 0
+
+    def add_cnt(self, facts):
+        for f in facts:
+            self.total += 1
+            if f.is_hash_tag:
+                self.hash_tag += 1
+            if f.is_person_name:
+                self.person_name += 1
+
+    def __str__(self):
+        hash_ratio   = None if self.total == 0 else float(self.hash_tag) / self.total
+        person_ratio = None if self.total == 0 else float(self.person_name) / self.total
+        return "MatchTypeCnt: Total cnt: %s; Hash tags: %s; Hash/Total ratio: %s; Person names: %s; Person/Total ratio: %s " % (
+            self.total, self.hash_tag, hash_ratio, self.person_name, person_ratio)
+ 
 @util.time_logger
 def parse_facts_file(tweet_index, facts, date):
     ind = Indexer(DB_DIR)
@@ -423,11 +449,14 @@ def parse_facts_file(tweet_index, facts, date):
     word_mates = []
     word_cnt = []
 
+    match_type_cnt = MatchTypeCnt()
+
     for event, elem in tree:
         if event == 'end' and elem.tag == 'document':
             cur_doc = int(elem.attrib['di'])
             post_id, create_time = ids[cur_doc -1]
             nouns_preps = get_nouns_preps(elem)
+            match_type_cnt.add_cnt(nouns_preps)
             lemmas = []
             nouns = []
             for np in nouns_preps:
@@ -477,6 +506,8 @@ def parse_facts_file(tweet_index, facts, date):
     save_nouns(cur, sources_total, table="sources")
     save_nouns(cur_main, nouns_total)
     save_nouns(cur_main, sources_total, table="sources")
+
+    logging.info(str(match_type_cnt))
 
     return
 
