@@ -1,20 +1,28 @@
 package ru.spb.molva.align;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by lonlylocly on 4/16/15.
  */
 public class Graph {
 
+
+    final Pair mockPair = new Pair() {
+        @Override
+        public double getDistance() {
+            return 0;
+        }
+    };
+
+    final Vertex root = new Vertex(mockPair, 0, 0);
+    final Vertex end = new Vertex(mockPair, 0, Double.MAX_VALUE);
+
     private List<List<Vertex>> matrix = new ArrayList<List<Vertex>>();
     private int linkCount = 0;
 
     public void build(List<Pair> pairs, int depth) {
-        final Vertex root = new Vertex(null, 0, 0);
-        final Vertex end = new Vertex(null, 0, 0);
+        end.setDepth(depth);
 
         final List<Vertex> colRoot = new ArrayList<Vertex>();
         colRoot.add(root);
@@ -47,13 +55,85 @@ public class Graph {
 
     }
 
+    public void dijkstra() {
+        Set<Vertex> unvisited = new HashSet<Vertex>();
+        for(int i=0; i<matrix.size(); i++) {
+            for(Vertex v : matrix.get(i)) {
+                unvisited.add(v);
+            }
+        }
+        Vertex cur = matrix.get(0).get(0);
+        while(!unvisited.isEmpty()) {
+            for (Vertex v : cur.getNext()) {
+                if (!isPathWalkable(cur, v)) {
+                    continue;
+                }
+                double actDistance = v.getDistance();
+                double newDistance = cur.getDistance() + v.getPair().getDistance();
+                if (newDistance < actDistance) {
+                    v.setDistance(newDistance);
+                    v.setParent(cur);
+                }
+            }
+            unvisited.remove(cur);
+            cur = getClosestVertex(unvisited);
+            if (cur == null) {
+                break;
+            }
+//            if (cur == end) {
+//                break;
+//            }
+        }
+
+        Vertex cur2 = end.getParent();
+        while(cur2 != root) {
+            System.out.println(String.format("%d -> %d", cur2.getPair().getS1().getSourceMd5(),
+                    cur2.getPair().getS2().getSourceMd5()));
+            cur2 = cur2.getParent();
+        }
+    }
+
+    public Vertex getClosestVertex(Set<Vertex> vs) {
+        Vertex closest = null;
+        double closestDistance = Double.MAX_VALUE;
+        for (Vertex v : vs) {
+            if (v.getDistance() < closestDistance) {
+                closest = v;
+                closestDistance = v.getDistance();
+            }
+        }
+        return closest;
+    }
+
+    /**
+     * Return false if path back to root contains same Word1 as next node does.
+     * (Avoid word repetitions.)
+     * @param cur
+     * @param next
+     * @return
+     */
+    private boolean isPathWalkable(Vertex cur, Vertex next) {
+        if (next == end) {
+            return true;
+        }
+        Word w1 = next.getPair().getS1().getWord();
+        while(cur != root) {
+            Word w2 = cur.getPair().getS1().getWord();
+            if (w1.equals(w2)) {
+                return false;
+            }
+            cur = cur.getParent();
+        }
+        return true;
+    }
+
     public boolean isEligible(Vertex v1, Vertex v2) {
         // root
-        if (v1.getPair() == null) {
+        if (v1.getPair() == mockPair) {
             return true;
         }
         // end
-        if (v2.getPair() == null ) {
+        if (v2.getPair() == mockPair ) {
             return true;
         }
         // if tail of v1 equals head of v2
@@ -61,5 +141,14 @@ public class Graph {
             return true;
         }
         return false;
+    }
+
+
+    public List<List<Vertex>> getMatrix() {
+        return matrix;
+    }
+
+    public int getLinkCount() {
+        return linkCount;
     }
 }

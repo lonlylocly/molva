@@ -47,4 +47,13 @@ public class Word {
     public int hashCode() {
         return wordMd5;
     }
+
+    @Override
+    public String toString() {
+        return "Word{" +
+                "wordMd5=" + wordMd5 +
+                ", count=" + count +
+                ", text='" + text + '\'' +
+                '}';
+    }
 }

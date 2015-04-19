@@ -61,4 +61,14 @@ public class Source {
         result = 31 * result + (word != null ? word.hashCode() : 0);
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "Source{" +
+                "sourceMd5=" + sourceMd5 +
+                ", count=" + count +
+                ", text='" + text + '\'' +
+                ", word=" + word +
+                '}';
+    }
 }
