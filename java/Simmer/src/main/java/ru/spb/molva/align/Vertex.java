@@ -1,27 +1,32 @@
 package ru.spb.molva.align;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * Created by lonlylocly on 4/16/15.
  */
 public class Vertex {
-    public static final int MAX_DIST = Integer.MAX_VALUE;
+    public static final double MAX_DIST = Double.MAX_VALUE;
+    public static final VertexComparator cmp = new VertexComparator();
 
     private Pair pair;
     private Vertex parent;
     int depth;
-    int distance = MAX_DIST;
+    double distance = MAX_DIST;
 
     private List<Vertex> next = new ArrayList<Vertex>();
+
+    private PriorityQueue<Vertex> nextQueue = new PriorityQueue<Vertex>(cmp);
 
     public Vertex(Pair pair, int depth) {
         this.pair = pair;
         this.depth = depth;
     }
 
-    public Vertex(Pair pair, int depth, int distance) {
+    public Vertex(Pair pair, int depth, double distance) {
         this.pair = pair;
         this.depth = depth;
         this.distance = distance;
@@ -43,20 +48,16 @@ public class Vertex {
         this.parent = parent;
     }
 
-    public int getDistance() {
+    public double getDistance() {
         return distance;
     }
 
-    public void setDistance(int distance) {
+    public void setDistance(double distance) {
         this.distance = distance;
     }
 
-    public List<Vertex> getNext() {
+    public Collection<Vertex> getNext() {
         return next;
-    }
-
-    public void setNext(List<Vertex> next) {
-        this.next = next;
     }
 
     public int getDepth() {
@@ -66,7 +67,6 @@ public class Vertex {
     public void setDepth(int depth) {
         this.depth = depth;
     }
-
 
     @Override
     public boolean equals(Object o) {
@@ -85,5 +85,15 @@ public class Vertex {
         int result = pair != null ? pair.hashCode() : 0;
         result = 31 * result + depth;
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Vertex{" +
+                "distance=" + distance +
+                ", pair=" + pair +
+                ", parent=" + parent +
+                ", depth=" + depth +
+                '}';
     }
 }

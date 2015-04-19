@@ -11,6 +11,17 @@ public class Pair {
     private Source s2;
     private int count;
 
+    public double getDistance() {
+        if (s1.getWord().getCount() == 0) {
+            return Double.NaN;
+        }
+        double totCnt = s1.getWord().getCount();
+        double resCnt = count / totCnt;
+        double res = - Math.log(resCnt);
+
+        return res;
+    }
+
     public Source getS1() {
         return s1;
     }
@@ -52,5 +63,14 @@ public class Pair {
         int result = s1 != null ? s1.hashCode() : 0;
         result = 31 * result + (s2 != null ? s2.hashCode() : 0);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Pair{" +
+                "s1=" + s1 +
+                ", s2=" + s2 +
+                ", count=" + count +
+                '}';
     }
 }
