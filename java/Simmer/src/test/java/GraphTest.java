@@ -58,16 +58,25 @@ public class GraphTest {
         g.build(pairs, 2);
         g.dijkstra();
 
-        List<Integer> expectedSources = Arrays.asList(11, 20, 20, 30);
+        List<Long> expectedSources = asListLong(11, 20, 20, 30);
 
-        List<Integer> actualSources = getActualSources(g);
+        List<Long> actualSources = getActualSources(g);
 
         Assert.assertThat(actualSources, is(expectedSources) );
     }
 
-    private List<Integer> getActualSources(Graph g) {
+    public static List<Long> asListLong(Integer... xs) {
+        List<Long> l = new ArrayList<Long>();
+        for (Integer i : Arrays.asList(xs)) {
+            l.add(new Long(i));
+        }
+
+        return l;
+    }
+
+    private List<Long> getActualSources(Graph g) {
         System.out.println("");
-        List<Integer> actualSources = new ArrayList<Integer>();
+        List<Long> actualSources = new ArrayList<Long>();
 
         for (Vertex v : g.getBestTerminalPointPath()) {
             System.out.println(String.format("%d -> %d (%f)", v.getPair().getS1().getSourceMd5(),
@@ -93,9 +102,9 @@ public class GraphTest {
         g.build(pairs, 2);
         g.dijkstra();
 
-        List<Integer> expectedSources = Arrays.asList(10, 20, 20, 30);
+        List<Long> expectedSources = asListLong(10, 20, 20, 30);
 
-        List<Integer> actualSources = getActualSources(g);
+        List<Long> actualSources = getActualSources(g);
 
         Assert.assertThat(actualSources, is(expectedSources) );
     }
@@ -116,9 +125,9 @@ public class GraphTest {
         g.build(pairs, 2);
         g.dijkstra();
 
-        List<Integer> expectedSources = Arrays.asList(11, 20);
+        List<Long> expectedSources =  asListLong(11, 20);
 
-        List<Integer> actualSources = getActualSources(g);
+        List<Long> actualSources = getActualSources(g);
 
         Assert.assertThat(actualSources, is(expectedSources) );
     }
@@ -140,9 +149,9 @@ public class GraphTest {
         g.build(pairs, 2);
         g.dijkstra();
 
-        List<Integer> expectedSources = Arrays.asList(11, 20);
+        List<Long> expectedSources = asListLong(11, 20);
 
-        List<Integer> actualSources = getActualSources(g);
+        List<Long> actualSources = getActualSources(g);
 
         Assert.assertThat(actualSources, is(expectedSources) );
     }
@@ -167,9 +176,9 @@ public class GraphTest {
         g.build(pairs, 2);
         g.dijkstra();
 
-        List<Integer> expectedSources = Arrays.asList(11, 21, 21, 30);
+        List<Long> expectedSources =  asListLong(11, 21, 21, 30);
 
-        List<Integer> actualSources = getActualSources(g);
+        List<Long> actualSources = getActualSources(g);
 
         Assert.assertThat(actualSources, is(expectedSources) );
     }

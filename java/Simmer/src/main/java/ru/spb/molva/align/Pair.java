@@ -67,10 +67,6 @@ public class Pair {
 
     @Override
     public String toString() {
-        return "Pair{" +
-                "s1=" + s1 +
-                ", s2=" + s2 +
-                ", count=" + count +
-                '}';
+        return "[" + s1.getText() + " -> " + s2.getText() + "]";
     }
 }

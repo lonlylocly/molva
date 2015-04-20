@@ -10,7 +10,6 @@ import java.util.PriorityQueue;
  */
 public class Vertex {
     public static final double MAX_DIST = Double.MAX_VALUE;
-    public static final VertexComparator cmp = new VertexComparator();
 
     private Pair pair;
     private Vertex parent;
@@ -18,8 +17,6 @@ public class Vertex {
     double distance = MAX_DIST;
 
     private List<Vertex> next = new ArrayList<Vertex>();
-
-    private PriorityQueue<Vertex> nextQueue = new PriorityQueue<Vertex>(cmp);
 
     public Vertex(Pair pair, int depth) {
         this.pair = pair;
