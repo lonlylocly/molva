@@ -18,6 +18,8 @@ public class Graph {
     final Vertex root = new Vertex(mockPair, 0, 0);
     final Vertex end = new Vertex(mockPair, 0, Double.MAX_VALUE);
 
+    private Set<Vertex> terminalPoints = new HashSet<Vertex>();
+
     private List<List<Vertex>> matrix = new ArrayList<List<Vertex>>();
     private int linkCount = 0;
 
@@ -73,6 +75,10 @@ public class Graph {
                 if (newDistance < actDistance) {
                     v.setDistance(newDistance);
                     v.setParent(cur);
+                    terminalPoints.add(v);
+                    if (terminalPoints.contains(cur)) {
+                        terminalPoints.remove(cur);
+                    }
                 }
             }
             unvisited.remove(cur);
@@ -80,16 +86,6 @@ public class Graph {
             if (cur == null) {
                 break;
             }
-//            if (cur == end) {
-//                break;
-//            }
-        }
-
-        Vertex cur2 = end.getParent();
-        while(cur2 != root) {
-            System.out.println(String.format("%d -> %d", cur2.getPair().getS1().getSourceMd5(),
-                    cur2.getPair().getS2().getSourceMd5()));
-            cur2 = cur2.getParent();
         }
     }
 
@@ -143,6 +139,30 @@ public class Graph {
         return false;
     }
 
+    public List<Vertex> getBestTerminalPointPath() {
+        List<Vertex> bestPath = null;
+        int bestSize = 0;
+        double bestDistance = Double.MAX_VALUE;
+        for (Vertex v : getTerminalPoints()) {
+            List<Vertex> l = new ArrayList<Vertex>();
+            Vertex cur = v;
+            while(cur.getParent() != null ) {
+                if (cur.getPair().getS1() == null) {
+                    cur = cur.getParent();
+                    continue;
+                }
+                l.add(0, cur);
+                cur = cur.getParent();
+            }
+            if (v.getDistance() < bestDistance && l.size() >= bestSize) {
+                bestSize = l.size();
+                bestPath = l;
+                bestDistance = v.getDistance();
+            }
+        }
+        return  bestPath;
+    }
+
 
     public List<List<Vertex>> getMatrix() {
         return matrix;
@@ -150,5 +170,9 @@ public class Graph {
 
     public int getLinkCount() {
         return linkCount;
+    }
+
+    public Set<Vertex> getTerminalPoints() {
+        return terminalPoints;
     }
 }
