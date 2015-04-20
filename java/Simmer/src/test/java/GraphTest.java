@@ -1,13 +1,12 @@
 import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
-import ru.spb.molva.align.Graph;
-import ru.spb.molva.align.Pair;
-import ru.spb.molva.align.Source;
-import ru.spb.molva.align.Word;
+import ru.spb.molva.align.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.*;
 
@@ -50,16 +49,129 @@ public class GraphTest {
         List<Pair> pairs = new ArrayList<Pair>();
         Pair p1 = getPair(10, 1, 20, 2, 10, 5);
         Pair p2 = getPair(20, 2, 30, 3, 20, 4);
-        pairs.add(p1);
+        Pair p3 = getPair(11, 1, 20, 2, 10, 6);
+
+        pairs.add(p3);
         pairs.add(p2);
+        pairs.add(p1);
 
         g.build(pairs, 2);
         g.dijkstra();
 
-        Assert.assertThat(g.getMatrix().get(1).get(0).getNext().size(), is(1));
-        Assert.assertThat(g.getMatrix().get(1).get(0).getPair(), is(p1));
-        Assert.assertThat(g.getMatrix().get(1).get(1).getNext().size(), is(0));
-        Assert.assertThat(g.getMatrix().get(1).get(1).getPair(), is(p2));
+        List<Integer> expectedSources = Arrays.asList(11, 20, 20, 30);
+
+        List<Integer> actualSources = getActualSources(g);
+
+        Assert.assertThat(actualSources, is(expectedSources) );
+    }
+
+    private List<Integer> getActualSources(Graph g) {
+        System.out.println("");
+        List<Integer> actualSources = new ArrayList<Integer>();
+
+        for (Vertex v : g.getBestTerminalPointPath()) {
+            System.out.println(String.format("%d -> %d (%f)", v.getPair().getS1().getSourceMd5(),
+                    v.getPair().getS2().getSourceMd5(), v.getDistance()));
+            actualSources.add(v.getPair().getS1().getSourceMd5());
+            actualSources.add(v.getPair().getS2().getSourceMd5());
+        }
+        return actualSources;
+    }
+
+    @Test
+    public void dijkstraTest2() {
+        Graph g = new Graph();
+        List<Pair> pairs = new ArrayList<Pair>();
+        Pair p1 = getPair(10, 1, 20, 2, 10, 5);
+        Pair p2 = getPair(20, 2, 30, 3, 20, 4);
+        Pair p3 = getPair(11, 1, 20, 2, 10, 3);
+
+        pairs.add(p3);
+        pairs.add(p2);
+        pairs.add(p1);
+
+        g.build(pairs, 2);
+        g.dijkstra();
+
+        List<Integer> expectedSources = Arrays.asList(10, 20, 20, 30);
+
+        List<Integer> actualSources = getActualSources(g);
+
+        Assert.assertThat(actualSources, is(expectedSources) );
+    }
+
+    /**
+     * Choose from two incomplete paths
+     */
+    @Test
+    public void dijkstraTest3() {
+        Graph g = new Graph();
+        List<Pair> pairs = new ArrayList<Pair>();
+        Pair p1 = getPair(10, 1, 20, 2, 10, 5);
+        Pair p3 = getPair(11, 1, 20, 2, 10, 6);
+
+        pairs.add(p3);
+        pairs.add(p1);
+
+        g.build(pairs, 2);
+        g.dijkstra();
+
+        List<Integer> expectedSources = Arrays.asList(11, 20);
+
+        List<Integer> actualSources = getActualSources(g);
+
+        Assert.assertThat(actualSources, is(expectedSources) );
+    }
+
+    /**
+     * Choose from two incomplete paths, other order
+     * (make sure that path size And distance are considered)
+     */
+    @Test
+    public void dijkstraTest4() {
+        Graph g = new Graph();
+        List<Pair> pairs = new ArrayList<Pair>();
+        Pair p1 = getPair(10, 1, 20, 2, 10, 5);
+        Pair p3 = getPair(11, 1, 20, 2, 10, 6);
+
+        pairs.add(p1);
+        pairs.add(p3);
+
+        g.build(pairs, 2);
+        g.dijkstra();
+
+        List<Integer> expectedSources = Arrays.asList(11, 20);
+
+        List<Integer> actualSources = getActualSources(g);
+
+        Assert.assertThat(actualSources, is(expectedSources) );
+    }
+
+    /**
+     * two complete paths, same size, one is discovered later
+     */
+    @Test
+    public void dijkstraTest5() {
+        Graph g = new Graph();
+        List<Pair> pairs = new ArrayList<Pair>();
+        Pair p1 = getPair(10, 1, 20, 2, 10, 5);
+        Pair p2 = getPair(20, 2, 30, 3, 20, 4);
+        Pair p3 = getPair(11, 1, 21, 2, 10, 6);
+        Pair p4 = getPair(21, 2, 30, 3, 20, 4);
+
+        pairs.add(p1);
+        pairs.add(p2);
+        pairs.add(p3);
+        pairs.add(p4);
+
+        g.build(pairs, 2);
+        g.dijkstra();
+
+        List<Integer> expectedSources = Arrays.asList(11, 21, 21, 30);
+
+        List<Integer> actualSources = getActualSources(g);
+
+        Assert.assertThat(actualSources, is(expectedSources) );
     }
 
     private Pair getPair(int s1, int w1, int s2, int w2) {
@@ -81,8 +193,8 @@ public class GraphTest {
     private Source getSource(int sourceMd5, int wordMd5) {
         Source s1 = new Source();
         Word w1 = new Word();
-        w1.setWordMd5(sourceMd5);
-        s1.setSourceMd5(wordMd5);
+        w1.setWordMd5(wordMd5);
+        s1.setSourceMd5(sourceMd5);
         s1.setWord(w1);
         return s1;
     }
