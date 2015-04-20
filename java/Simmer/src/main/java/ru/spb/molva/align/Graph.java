@@ -155,7 +155,7 @@ public class Graph {
                 l.add(0, cur);
                 cur = cur.getParent();
             }
-            if (v.getDistance() < bestDistance && l.size() >= bestSize) {
+            if (l.size() > bestSize || (l.size() == bestSize && v.getDistance() < bestDistance)) {
                 bestSize = l.size();
                 bestPath = l;
                 bestDistance = v.getDistance();
