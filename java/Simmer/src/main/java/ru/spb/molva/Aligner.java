@@ -21,6 +21,7 @@ import static java.lang.String.format;
  */
 public class Aligner {
 
+    public static final int BEST_TREND_CNT = 3;
     public static Logger log = LogManager.getLogger(Aligner.class);
 
     public static final int MAX_CLUSTERS = 30;
@@ -126,7 +127,7 @@ public class Aligner {
             Collections.sort(trends);
             Collections.reverse(trends);
             double sumTrend = 0;
-            for(int i =0; i<1 && i < trends.size(); i++) {
+            for(int i =0; i< BEST_TREND_CNT && i < trends.size(); i++) {
                 sumTrend += trends.get(i);
             }
 
