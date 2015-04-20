@@ -79,6 +79,7 @@ public class Aligner {
         log.info(format("Write aligned clusters to %s", args[2]));
         PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(outputFile)));
         writer.write(new Gson().toJson(alignedClusters));
+        writer.close();
 
         log.info("Done");
     }
