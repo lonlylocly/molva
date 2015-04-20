@@ -113,9 +113,10 @@ public class Graph {
             return true;
         }
         Word w1 = next.getPair().getS1().getWord();
+        Word w2 = next.getPair().getS2().getWord();
         while(cur != root) {
-            Word w2 = cur.getPair().getS1().getWord();
-            if (w1.equals(w2)) {
+            Word w = cur.getPair().getS1().getWord();
+            if (w1.equals(w) || w2.equals(w)) {
                 return false;
             }
             cur = cur.getParent();

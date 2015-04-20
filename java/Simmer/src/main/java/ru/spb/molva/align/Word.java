@@ -4,15 +4,28 @@ package ru.spb.molva.align;
  * Created by lonlylocly on 4/16/15.
  */
 public class Word {
-    private int wordMd5;
-    private int count;
-    private String text;
+    private long wordMd5 = 0;
+    private int count = 0;
+    private String text = "";
 
-    public int getWordMd5() {
+    public Word() {
+    }
+
+    public Word(long wordMd5, int count, String text) {
+        this.wordMd5 = wordMd5;
+        this.count = count;
+        this.text = text;
+    }
+
+    public Word(long wordMd5) {
+        this.wordMd5 = wordMd5;
+    }
+
+    public long getWordMd5() {
         return wordMd5;
     }
 
-    public void setWordMd5(int wordMd5) {
+    public void setWordMd5(long wordMd5) {
         this.wordMd5 = wordMd5;
     }
 
@@ -45,7 +58,7 @@ public class Word {
 
     @Override
     public int hashCode() {
-        return wordMd5;
+        return (int) (wordMd5 ^ (wordMd5 >>> 32));
     }
 
     @Override

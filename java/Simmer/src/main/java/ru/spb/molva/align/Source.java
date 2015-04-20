@@ -5,17 +5,18 @@ package ru.spb.molva.align;
  */
 public class Source {
 
-    private int sourceMd5;
+    private long sourceMd5;
     private int count;
     private String text;
+    private double trend;
 
     private Word word;
 
-    public int getSourceMd5() {
+    public long getSourceMd5() {
         return sourceMd5;
     }
 
-    public void setSourceMd5(int sourceMd5) {
+    public void setSourceMd5(long sourceMd5) {
         this.sourceMd5 = sourceMd5;
     }
 
@@ -43,6 +44,14 @@ public class Source {
         this.word = word;
     }
 
+    public double getTrend() {
+        return trend;
+    }
+
+    public void setTrend(double trend) {
+        this.trend = trend;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -57,7 +66,7 @@ public class Source {
 
     @Override
     public int hashCode() {
-        int result = sourceMd5;
+        int result = (int) (sourceMd5 ^ (sourceMd5 >>> 32));
         result = 31 * result + (word != null ? word.hashCode() : 0);
         return result;
     }
