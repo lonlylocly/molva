@@ -25,6 +25,7 @@
     "mysql_user": "molva",
     "mysql_password": "PchC3po1",
     "mysql_db": "molva",
+    "wordstats_noise_treshold": 0.001,
     "trash_words": [
         "этот",
         "любой",
@@ -64,7 +65,10 @@
         "чет",
         "вы",
         "мы",
-        "как"
+        "как",
+        "мочь",
+        "день",
+        "лет"
     ],
     "swear_words": [
         "дерьмо",
