@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>molva.spb.ru - О чем говорит twitter</title>
+<title>molva.spb.ru - Последние события в Twitter</title>
 <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
@@ -15,17 +15,9 @@
 <script type="text/javascript" src="//yastatic.net/share/share.js" charset="utf-8"></script>
 
 <script id="cluster-template" type="text/x-handlebars-template">
-<div class="row" style="padding-bottom: 10 px; margin-bottom: 20px;">
+<h3 class="molva-header">Последние события в Twitter</h3>
+<div class="row molva-header">
     <div class="col-md-8">
-        <h2>{{i18n.howto.caption}}</h2>
-        <p>
-        <ol>
-        <li>{{i18n.howto.first_line}}</li>
-        <li>{{i18n.howto.second_line}}</li>
-        </ol>
-        {{i18n.howto.search}} <a href="https://twitter.com/search?q={{groups.0.query_string}}"  target="_blank" 
-                        title='Уточнить тему "{{groups.0.query_string}}" поиском в Twitter'>"{{groups.0.gen_title}}"</a> {{i18n.howto.in_twitter}}.
-        </p> 
         <a href="#" class="btn btn-sm btn-default" onClick="goBack()">{{i18n.earlier}}</a> 
         <a href="#" class="btn btn-sm btn-default" onClick="goNow()">{{i18n.now}}</a>
         <span>{{i18n.updated}} <span id="current-timestamp">{{update_time}}</span>.</span>
@@ -40,11 +32,11 @@
         <div class="col-md-1">
             <span class="{{this.trend_class}}" title="Прирост активности по теме">{{this.avg_trend}}</span>
         </div>
-        <div class="col-md-7">
-            <a href="https://twitter.com/search?q={{this.query_string}}"  target="_blank" 
-                        title='Уточнить тему "{{this.query_string}}" поиском в Twitter'>{{this.gen_title}}</a>
+        <div class="col-md-8">
+            <a href="http://molva.spb.ru/topic?date={{urlEscape ../update_time}}&offset={{@index}}&lang={{../i18n.lang}}"  target="_blank" 
+                        title='Показать твиты по теме "{{this.gen_title}}"'>{{this.gen_title}}</a>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
               <ul class="dropdown">
                 <a href="#" class="dropdown-toggle btn btn-sm btn-default" data-toggle="dropdown" style="float: left; margin-right: 10px;">{{../i18n.lookup}} <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
@@ -58,7 +50,6 @@
                         title='Уточнить тему "{{this.query_string}}" поиском в Twitter'>Twitter</a></li>
                 </ul>
             </ul>
-            <a href="http://molva.spb.ru/topic?date={{urlEscape ../update_time}}&offset={{@index}}&lang={{../i18n.lang}}" class=" btn btn-sm btn-default">{{../i18n.this_topic}}</a>
         </div>
     </div>
     </li>
@@ -69,10 +60,15 @@
 <script id="shares-template" type="text/x-handlebars-template">
 <scr{{!}}ipt type="text/javascript" src="//yastatic.net/share/share.js" charset="utf-8"></scr{{!}}ipt>
 <div class="row featurette shares-block">
-    <div class="col-md-4">
-        <div class="yashare-auto-init" data-yashareL10n="ru" data-yashareTitle="{{shareTitle}}" data-yashareLink="{{shareUrl}}" data-yashareImage="http://molva.spb.ru/img/molva-chan-trend.png"
-         data-yashareQuickServices="vkontakte,facebook,twitter,gplus" data-yashareTheme="counter"
-        ></div> 
+    <div class="col-md-12">
+        <div style="float: left;">
+            Поделиться этими новостями в социальных сетях:
+        </div>
+        <div>
+            <div class="yashare-auto-init" data-yashareL10n="ru" data-yashareTitle="{{shareTitle}}" data-yashareLink="{{shareUrl}}" data-yashareImage="http://molva.spb.ru/img/molva-chan-trend.png"
+             data-yashareQuickServices="vkontakte,facebook,twitter,gplus" data-yashareTheme="counter"
+            ></div> 
+        </div>
     </div>
 </div>
 </script>

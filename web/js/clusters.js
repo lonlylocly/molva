@@ -4,6 +4,13 @@ Handlebars.registerHelper('urlEscape', function(smth) {
   return encodeURIComponent(smth);
 });
 
+Handlebars.registerHelper('urlInsertLinks', function(smth) {
+    var str = smth.replace(/http[^ ]+/g, function(str){ return '<a href="' + str +'" target="_blank">' +str + '</a>';});
+    console.log(str);
+    return str;
+});
+
+
 function getCurUrlParams() {
     var cur_url = "" + document.URL;
     var url_parts = cur_url.split("?");
@@ -114,7 +121,7 @@ function fill_cluster_properties(cl) {
             console.log(e);
         }
 
-        cl[i]["query_string"] = mems.join("+");
+        cl[i]["query_string"] = mems.join("+").replace(/#/g,'');
         cl[i]["title_string"] = mems.join(" ");
         if ( cl[i]["members_len"] > 0) {
             cl2.push(cl[i]);
@@ -282,7 +289,7 @@ function getI18n(){
             "earlier": "Раньше",
             "now": "Сейчас",
             "updated": "Обновлено",
-            "lookup": "Уточнить",
+            "lookup": "В других источниках",
             "this_topic": "Только эта тема",
             "howto": {
                 "caption": "Как пользоваться молвой",
@@ -326,7 +333,7 @@ function loadClusters() {
             var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset + "&limit=" + limit;;
             var source2 = $("#shares-template").html();
             var template2 = Handlebars.compile(source2);
-            $( "#shares-holder" ).html( template2({"shareUrl": shareUrl, "shareTitle": "О чем говорит Twitter"}) );
+            $( "#shares-holder" ).html( template2({"shareUrl": shareUrl, "shareTitle": "Последние события в Twitter"}) );
             
             var chooseLangTemplate = "<a href=\"./?lang=en\">En</a>";
 
