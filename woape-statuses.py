@@ -7,7 +7,7 @@ import json
 import time
 
 import molva.stats as stats
-from Fetcher import get_tw_create_time, Fetcher
+from molva.Fetcher import get_tw_create_time, Fetcher
 from molva.util import try_several_times
 from molva.Indexer import Indexer
 from molva.Exceptions import WoapeException
