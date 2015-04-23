@@ -20,7 +20,7 @@ logging.config.fileConfig("logging.conf")
 
 settings = {} 
 try:
-    settings = json.load(open('streaming-settings.json', 'r'))
+    settings = json.load(open('global-settings.json', 'r'))
 except Exception as e:
     logging.warn(e)
 
