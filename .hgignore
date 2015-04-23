@@ -6,6 +6,7 @@ profile-cmp/*
 *.pyc
 tomita/*bin
 tomita/tomita-mac
+tomita-linux64
 
 java/Simmer/.idea*
 java/Simmer/Simmer.iml
