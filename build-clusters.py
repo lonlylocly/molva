@@ -6,11 +6,10 @@ import logging, logging.config
 import json
 from datetime import datetime
 
-import stats
+import molva.stats as stats
 from Indexer import Indexer
 import molva.util as util
 import molva.KMeanCluster as KMeanCluster
-import aligner
 
 logging.config.fileConfig("logging.conf")
 

@@ -6,7 +6,7 @@ import re
 import codecs
 import logging, logging.config
 
-import stats
+import molva.stats as stats
 import molva.util as util
 
 INDEX_CHUNK_SIZE = 50000

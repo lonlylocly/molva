@@ -6,7 +6,7 @@ import codecs
 import argparse
 from datetime import datetime
 
-import stats
+import molva.stats as stats
 import molva.util as util
 
 logging.config.fileConfig("logging.conf")

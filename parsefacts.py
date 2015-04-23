@@ -13,7 +13,7 @@ import argparse
 import xml.etree.cElementTree as ElementTree
 
 from Indexer import Indexer
-import stats
+import molva.stats as stats
 import molva.util as util
 
 logging.config.fileConfig("logging.conf")
