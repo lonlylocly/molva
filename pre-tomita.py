@@ -2,7 +2,7 @@
 import logging, logging.config
 import json
 
-from Indexer import Indexer
+from molva.Indexer import Indexer
 import molva.util as util
 
 
