@@ -11,7 +11,7 @@ import traceback
 from datetime import datetime, timedelta
 from datetime import time as datetimeTime
 
-import stats
+import molva.stats as stats
 from Indexer import Indexer
 import molva.util as util
 from Fetcher import Fetcher

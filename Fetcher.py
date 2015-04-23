@@ -7,7 +7,7 @@ import re
 from datetime import date
 import traceback
 
-import stats
+import molva.stats as stats
 from molva.TwitterClient import TwitterClient
 from molva.Exceptions import WoapeException
 import molva.util as util

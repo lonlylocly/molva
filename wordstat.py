@@ -10,7 +10,7 @@ import argparse
 import traceback
 import codecs
 
-import stats
+import molva.stats as stats
 from Indexer import Indexer
 import molva.util as util
 

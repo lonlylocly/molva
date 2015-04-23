@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timedelta
 import argparse
 
-import stats
+import molva.stats as stats
 import molva.util as util
 
 logging.config.fileConfig("logging.conf")

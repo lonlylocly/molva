@@ -9,7 +9,7 @@ import argparse
 import re
 from datetime import date, timedelta, datetime
 
-import stats
+import molva.stats as stats
 import molva.util as util
 
 

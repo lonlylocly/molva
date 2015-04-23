@@ -1,5 +1,4 @@
 #!/usr/bin/python
-import stats
 import logging
 import logging.config
 import os
@@ -7,6 +6,7 @@ import sys
 import json
 import time
 
+import molva.stats as stats
 from Fetcher import get_tw_create_time, Fetcher
 from molva.util import try_several_times
 from Indexer import Indexer

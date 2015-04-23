@@ -5,7 +5,7 @@ import logging, logging.config
 import json
 from datetime import datetime, timedelta, date
 
-import stats
+import molva.stats as stats
 from Indexer import Indexer
 import molva.util as util
 from Fetcher import to_mysql_timestamp

@@ -12,7 +12,7 @@ from subprocess import check_output
 import sqlite3
 from datetime import datetime, timedelta
 
-import stats
+import molva.stats as stats
 from Indexer import Indexer
 import molva.util as util
 
