@@ -116,9 +116,10 @@ class RelevantHandler(tornado.web.RequestHandler):
         date = self.parse_date(self.get_argument("date", default=None))
         
         logging.info("Date %s (UTC)" % date)
-        logging.info(str(self.cookies))
 
         r = self.get_relevant(date)
+
+        logging.info("Done fetch")
 
         self.write(r)
 

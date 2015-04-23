@@ -80,3 +80,8 @@ font-size: 50px;
 .quality-assess {
     display: none;
 }
+
+.molva-header {
+    padding-bottom: 10 px; 
+    margin-bottom: 20px;
+}
