@@ -14,7 +14,7 @@ from datetime import time as datetimeTime
 import molva.stats as stats
 from molva.Indexer import Indexer
 import molva.util as util
-from Fetcher import Fetcher
+from molva.Fetcher import Fetcher
 
 logging.config.fileConfig("logging.conf")
 
