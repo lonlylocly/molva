@@ -7,7 +7,7 @@ import json
 from datetime import datetime
 
 import molva.stats as stats
-from Indexer import Indexer
+from molva.Indexer import Indexer
 import molva.util as util
 import molva.KMeanCluster as KMeanCluster
 

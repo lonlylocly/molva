@@ -11,7 +11,7 @@ import traceback
 import codecs
 
 import molva.stats as stats
-from Indexer import Indexer
+from molva.Indexer import Indexer
 import molva.util as util
 
 logging.config.fileConfig("logging.conf")

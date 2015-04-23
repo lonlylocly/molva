@@ -12,7 +12,7 @@ import argparse
 
 import xml.etree.cElementTree as ElementTree
 
-from Indexer import Indexer
+from molva.Indexer import Indexer
 import molva.stats as stats
 import molva.util as util
 
