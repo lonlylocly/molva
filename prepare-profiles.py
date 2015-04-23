@@ -7,8 +7,7 @@ import json
 
 import stats
 from Indexer import Indexer
-from util import digest
-import util
+import molva.util as util
 
 logging.config.fileConfig("logging.conf")
 
@@ -24,7 +23,7 @@ DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
 BLOCKED_NOUNS_LIST = u"\n".join(list(u"абвгдеёжзиклмнопрстуфхцчшщыьъэюя"))
 
-BLOCKED_NOUNS = ",".join(map( lambda x: str(digest(x)), BLOCKED_NOUNS_LIST.split("\n")))
+BLOCKED_NOUNS = ",".join(map( lambda x: str(util.digest(x)), BLOCKED_NOUNS_LIST.split("\n")))
 
 NOUNS_LIMIT = 2000
 

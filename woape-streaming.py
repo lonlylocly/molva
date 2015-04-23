@@ -13,7 +13,7 @@ from datetime import time as datetimeTime
 
 import stats
 from Indexer import Indexer
-import util
+import molva.util as util
 from Fetcher import Fetcher
 
 logging.config.fileConfig("logging.conf")

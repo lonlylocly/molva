@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from time import time
 import os
 
-import util
+import molva.util as util
 
 logging.config.fileConfig("logging.conf")
 

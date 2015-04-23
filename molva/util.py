@@ -10,7 +10,7 @@ import os
 import os.path
 from datetime import datetime, timedelta, date
 
-from Exceptions import WoapeException
+from molva.Exceptions import WoapeException
 
 def digest_large(s):
     large = int(hashlib.md5(s.encode('utf-8')).hexdigest(), 16)

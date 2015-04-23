@@ -10,8 +10,8 @@ from datetime import datetime, timedelta, date
 import MySQLdb
 import MySQLdb.cursors
 
-from profile import NounProfile, ProfileCompare
-import util
+from molva.profile import NounProfile, ProfileCompare
+import molva.util as util
 
 def get_cursor(db):
     logging.info("get cursor for " + db)

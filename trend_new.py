@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import argparse
 
 import stats
-import util
+import molva.util as util
 
 logging.config.fileConfig("logging.conf")
 

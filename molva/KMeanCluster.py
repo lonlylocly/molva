@@ -8,7 +8,7 @@ import random
 import logging
 
 import stats
-import util
+import molva.util as util
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 

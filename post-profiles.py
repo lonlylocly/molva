@@ -7,8 +7,7 @@ import json
 
 import stats
 from Indexer import Indexer
-from util import digest
-import util
+import molva.util as util
 
 logging.config.fileConfig("logging.conf")
 

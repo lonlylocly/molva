@@ -12,7 +12,7 @@ import codecs
 
 import stats
 from Indexer import Indexer
-import util
+import molva.util as util
 
 logging.config.fileConfig("logging.conf")
 logging.getLogger().setLevel(logging.INFO)

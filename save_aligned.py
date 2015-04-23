@@ -7,7 +7,7 @@ import argparse
 from datetime import datetime
 
 import stats
-import util
+import molva.util as util
 
 logging.config.fileConfig("logging.conf")
 logging.getLogger().setLevel(logging.INFO)
