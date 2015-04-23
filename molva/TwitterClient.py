@@ -4,7 +4,7 @@ import logging
 import time
 import copy
 
-from Exceptions import WoapeException
+from molva.Exceptions import WoapeException
 
 
 class TwitterClient:

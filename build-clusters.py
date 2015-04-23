@@ -8,7 +8,7 @@ from datetime import datetime
 
 import stats
 from Indexer import Indexer
-import util
+import molva.util as util
 import molva.KMeanCluster as KMeanCluster
 import aligner
 

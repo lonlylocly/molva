@@ -10,7 +10,7 @@ import re
 from datetime import date, timedelta, datetime
 
 import stats
-import util
+import molva.util as util
 
 
 logging.config.fileConfig("logging.conf")

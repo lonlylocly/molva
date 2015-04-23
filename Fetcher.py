@@ -8,9 +8,9 @@ from datetime import date
 import traceback
 
 import stats
-from TwitterClient import TwitterClient
-from Exceptions import WoapeException
-import util
+from molva.TwitterClient import TwitterClient
+from molva.Exceptions import WoapeException
+import molva.util as util
 
 MYSQL_TIMESTAMP = "%Y%m%d%H%M%S"
 

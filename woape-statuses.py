@@ -5,14 +5,12 @@ import logging.config
 import os
 import sys
 import json
-import util
 import time
 
 from Fetcher import get_tw_create_time, Fetcher
-from TwitterClient import TwitterClient
-from util import try_several_times
+from molva.util import try_several_times
 from Indexer import Indexer
-from Exceptions import WoapeException
+from molva.Exceptions import WoapeException
 
 
 logging.config.fileConfig("logging.conf")

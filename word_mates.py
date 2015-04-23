@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, date
 
 import stats
 from Indexer import Indexer
-import util
+import molva.util as util
 from Fetcher import to_mysql_timestamp
 
 logging.config.fileConfig("logging.conf")

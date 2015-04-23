@@ -3,7 +3,7 @@ import logging, logging.config
 import json
 
 from Indexer import Indexer
-import util
+import molva.util as util
 
 
 logging.config.fileConfig("logging.conf")

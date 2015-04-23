@@ -12,10 +12,9 @@ from subprocess import check_output
 import sqlite3
 from datetime import datetime, timedelta
 
-import KMeanCluster
 import stats
 from Indexer import Indexer
-import util
+import molva.util as util
 
 logging.config.fileConfig("logging.conf")
 
