@@ -312,6 +312,7 @@ class SimpleFact:
         self.lead_id = None
         self.is_hash_tag = False
         self.is_person_name = False
+        self.is_number = False
 
     def __str__(self):
         s = json.dumps({
@@ -337,6 +338,7 @@ def get_nouns_preps(elem):
         prep = raw_fact.find("./Prep")
         is_hash_tag = raw_fact.find("./IsHashTag")
         is_person_name = raw_fact.find("./IsPersonName")
+        is_number = raw_fact.find("./IsNumber")
 
         fact = SimpleFact()
         fact.noun_lemma = noun
@@ -353,6 +355,8 @@ def get_nouns_preps(elem):
         if is_person_name is not None:
             fact.is_person_name = str(is_person_name.get('val')) == '1'
 
+        if is_number is not None:
+            fact.is_number = str(is_number.get('val')) == '1'
 
         facts.append(fact)
 
@@ -385,6 +389,7 @@ class MatchTypeCnt:
         self.total = 0
         self.hash_tag = 0
         self.person_name = 0
+        self.number = 0
 
     def add_cnt(self, facts):
         for f in facts:
@@ -393,12 +398,14 @@ class MatchTypeCnt:
                 self.hash_tag += 1
             if f.is_person_name:
                 self.person_name += 1
+            if f.is_number:
+                self.number += 1
 
     def __str__(self):
         hash_ratio   = None if self.total == 0 else float(self.hash_tag) / self.total
         person_ratio = None if self.total == 0 else float(self.person_name) / self.total
-        return "MatchTypeCnt: Total cnt: %s; Hash tags: %s; Hash/Total ratio: %s; Person names: %s; Person/Total ratio: %s " % (
-            self.total, self.hash_tag, hash_ratio, self.person_name, person_ratio)
+        return "MatchTypeCnt: Total cnt: %s; Hash tags: %s; Hash/Total ratio: %s; Person names: %s; Person/Total ratio: %s; Numbers: %d" % (
+            self.total, self.hash_tag, hash_ratio, self.person_name, person_ratio, self.number)
  
 @util.time_logger
 def parse_facts_file(tweet_index, facts, date):
