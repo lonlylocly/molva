@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fdo_objects>
+  <document url="" di="18" bi="-1" date="2015-05-01">
+    <facts>
+      <SimpleFact FactID="0" LeadID="0" FieldsInfo="n0;n1;" pos="16" len="9" sn="0" fw="3" lw="4">
+        <Noun val="ЧЕТВЕРГ"/>
+        <Prep val="В"/>
+        <IsHashTag val="0"/>
+        <IsPersonName val="0"/>
+        <IsNumber val="0"/>
+      </SimpleFact>
+      <SimpleFact FactID="1" LeadID="0" FieldsInfo="n2;" pos="8" len="7" sn="0" fw="2" lw="2">
+        <Noun val="СООБЩИТЬ"/>
+        <IsHashTag val="0"/>
+        <IsPersonName val="0"/>
+        <IsNumber val="0"/>
+      </SimpleFact>
+      <SimpleFact FactID="2" LeadID="0" FieldsInfo="n3;" pos="27" len="2" sn="0" fw="6" lw="6">
+        <Noun val="30"/>
+        <IsHashTag val="0"/>
+        <IsPersonName val="0"/>
+        <IsNumber val="1"/>
+      </SimpleFact>
+      <SimpleFact FactID="3" LeadID="0" FieldsInfo="n4;" pos="30" len="6" sn="0" fw="7" lw="7">
+        <Noun val="АПРЕЛЬ"/>
+        <IsHashTag val="0"/>
+        <IsPersonName val="0"/>
+        <IsNumber val="0"/>
+      </SimpleFact>
+    </facts>
+    <Leads>
+      <Lead text="&lt;l&gt;&lt;h t=&quot;ya&quot; di=&quot;18&quot; u=&quot;&quot;&gt;&lt;d&gt;2015-05-01 04:41&lt;/d&gt;&lt;s&gt;stdin&lt;/s&gt;&lt;/h&gt;&lt;b&gt;&lt;s&gt;Об этом &lt;N n2=&quot;&quot; lemma=&quot;сообщить&quot;&gt;сообщил&lt;/N&gt; &lt;P n1=&quot;&quot; lemma=&quot;в&quot;&gt;в&lt;/P&gt; &lt;N n0=&quot;&quot; lemma=&quot;четверг&quot;&gt;четверг&lt;/N&gt;, &lt;N n3=&quot;&quot; lemma=&quot;30&quot;&gt;30&lt;/N&gt; &lt;N n4=&quot;&quot; lemma=&quot;апрель&quot;&gt;апреля&lt;/N&gt;, пресс-секр..&lt;/s&gt;&lt;/b&gt;&lt;/l&gt;" id="0"/>
+    </Leads>
+  </document>
+</fdo_objects>

@@ -38,6 +38,12 @@ HashTag -> AnyWord<wff=/(_|[A-Za-zА-Яа-я0-9])+/>;
 
 S -> '#' interp (SimpleFact.IsHashTag=true) HashTag interp (SimpleFact.Noun);
 
+// Numericals
+
+Numeric -> AnyWord<wff=/[0-9]+/>;
+
+S -> Numeric interp (SimpleFact.Noun; SimpleFact.IsNumber=true);
+
 // имена собственные
 WordSepPart -> SimConjAnd | Hyphen | Comma ;
 
