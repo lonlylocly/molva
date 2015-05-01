@@ -404,8 +404,12 @@ class MatchTypeCnt:
     def __str__(self):
         hash_ratio   = None if self.total == 0 else float(self.hash_tag) / self.total
         person_ratio = None if self.total == 0 else float(self.person_name) / self.total
-        return "MatchTypeCnt: Total cnt: %s; Hash tags: %s; Hash/Total ratio: %s; Person names: %s; Person/Total ratio: %s; Numbers: %d" % (
-            self.total, self.hash_tag, hash_ratio, self.person_name, person_ratio, self.number)
+        number_ratio = None if self.total == 0 else float(self.number) / self.total
+        s = "MatchTypeCnt: Total cnt: %s; Hash tags: %s; Hash/Total ratio: %.2f; Person names: %s; Person/Total ratio: %.2f; " % (
+            self.total, self.hash_tag, hash_ratio, self.person_name, person_ratio
+        )
+        s += "Numbers: %d; Number ratio: %.2f" % (self.number, number_ratio)
+        return s
  
 @util.time_logger
 def parse_facts_file(tweet_index, facts, date):
