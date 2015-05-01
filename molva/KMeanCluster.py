@@ -14,13 +14,14 @@ sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 class KMeansClusteriser:
 
-    def __init__(self, sim_dict, clusters_num, max_iter=100, trash_words=None):
+    def __init__(self, sim_dict, clusters_num, max_iter=100, trash_words=None, pre_clusters=None, single_element=1):
         self.sim_dict = sim_dict
         self.clusters_num = clusters_num
         self.clusters = {}
         self.max_iter = max_iter
         self.trash_words = trash_words if trash_words is not None else []
-
+        self.pre_clusters = pre_clusters if pre_clusters is not None else []
+        self.single_element = single_element
 
     def build_clusters(self):
         cl = self.init_clusters() 
@@ -28,6 +29,7 @@ class KMeansClusteriser:
         return self.build_clusters_from_init(cl)
 
     def init_clusters(self):
+        clusters_num = self.clusters_num - len(self.pre_clusters)
         init_clusters = self.sim_dict.keys()
         random.shuffle(init_clusters)
         filtered_init_clusters = []
@@ -40,7 +42,7 @@ class KMeansClusteriser:
 
         logging.info("Filtered %s init clusters (trash words)" % filtered_cnt)
 
-        return filtered_init_clusters[:self.clusters_num]
+        return self.pre_clusters + filtered_init_clusters[:clusters_num]
 
     def build_clusters_from_init(self, init_clusters):
         self.clusters = {}
@@ -169,9 +171,12 @@ class KMeansClusteriser:
 
         for c in self.clusters.values():
             for i in range(0, len(c)):
-                for j in range(i+1, len(c)):
+                for j in range(i, len(c)):
                     cnt += 1
-                    dist += self.sim_dict[c[i]][c[j]]
+                    if (i == j) :
+                        dist += self.single_element 
+                    else:
+                        dist += self.sim_dict[c[i]][c[j]]
 
         return dist / cnt
 
@@ -185,8 +190,8 @@ class KMeansClusteriser:
 #    {"id": , "text": ,"members_md5":}
 #  }
 #}
-def get_clusters(sim_dict, clusters_num, nouns, trash_words=None):
-    kmeans = KMeansClusteriser(sim_dict, clusters_num, trash_words=trash_words)
+def get_clusters(sim_dict, clusters_num, nouns, trash_words=None, pre_clusters=None):
+    kmeans = KMeansClusteriser(sim_dict, clusters_num, trash_words=trash_words, pre_clusters=pre_clusters)
     cl = kmeans.build_clusters()
 
     dists = kmeans.get_cluster_dists()
