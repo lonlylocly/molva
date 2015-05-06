@@ -340,6 +340,8 @@ CREATE_TABLES = {
         CREATE TABLE IF NOT EXISTS quality_marks (
             update_time integer,
             username text,
+            exp_name text,
+            exp_descr text,
             marks text
         )
     """,
