@@ -113,22 +113,60 @@ def save_word_cnt(cur, word_cnt_tuples):
     cur.executemany("insert into post_cnt values (?, ?)", word_cnt_tuples)    
     cur.execute("commit")
 
+class Rank:
+    def __init__(self, value):
+        self.value = value
+        self.rank = None
+
+    def __str__(self):
+        return "value: %s; rank: %s" % (self.value, self.rank)
+
+    @staticmethod
+    def weight_ranks(ranks):
+        cur_rank = 0
+        for rank in sorted(ranks, key=lambda x: x.value, reverse=True) :
+            rank.rank = cur_rank
+            cur_rank += 1       
+
+class WordCombinedRank:
+
+    def __init__(self, word, cnt=0, trend=0):
+        self.word = word
+        self.cnt = Rank(cnt)
+        self.trend = Rank(trend)
+
+    def __str__(self):
+        return "%s; cnt: %s; trend: %s" % (self.word, self.cnt, self.trend)
+        
+
 @util.time_logger
 def get_trending_words(db_dir, word_cnt_tuples):
     cur = stats.get_cursor(db_dir + "/tweets_display.db")
 
-    #stats.create_given_tables(cur, ["noun_trend"])
-    #cur.execute("""
-    #    select noun_md5, trend 
-    #    from noun_trend
-    #    order by trend desc
-    #    limit 2000
-    #""")
-    #words = map(lambda x: str(x[0]), cur.fetchall())
-    words = []
+    stats.create_given_tables(cur, ["noun_trend"])
+    cur.execute("""
+        select noun_md5, trend 
+        from noun_trend
+        order by trend desc
+        limit 2000
+    """)
+    word_trends = map(lambda x: (int(x[0]), float(x[1])), cur.fetchall())
 
-    for i in sorted(word_cnt_tuples, key=lambda x: x[1], reverse=True)[:2000-len(words)]:
-        words.append(str(i[0]))
+    word_ranks = {}
+    for w in word_cnt_tuples:
+        word, cnt = w
+        word_ranks[word] = WordCombinedRank(word, cnt=cnt)
+
+    for w in word_trends:
+        word, trend = w
+        word_ranks[word].trend.value = trend
+
+    Rank.weight_ranks(map(lambda x: x.trend, word_ranks.values()))
+    Rank.weight_ranks(map(lambda x: x.cnt, word_ranks.values()))
+
+    words = []
+    for word_rank in sorted(word_ranks.values(), key=lambda x: x.cnt.rank + x.trend.rank)[:2000]:
+        words.append(str(word_rank.word))
 
     return words
 
