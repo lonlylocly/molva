@@ -388,7 +388,9 @@ function sendQualityAssessment() {
     }
     var postData = {"update_time": $("#current-timestamp").text(), 
         "marks": marks,
-        "username": signedInUserEmail
+        "username": signedInUserEmail,
+        "experiment_name": $("#experiment_name").val(),
+        "experiment_descr": $("#experiment_descr").val()
     };
     $.post("/api/mark_topic", JSON.stringify(postData))
     .done(function() {

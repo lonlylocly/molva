@@ -132,6 +132,15 @@
 </ul>
 <div class="row quality-assess" style="margin-bottom: 20px;">
     <div class="col-md-3">
+        <form>
+            <p>
+                Название эксперимента: <input type="text" id="experiment_name" value=""></input>
+            </p>
+            <p>
+                Название эксперимента: <textarea rows="3" id="experiment_descr"></textarea>
+            </p>
+        </form>
+
         <button type="button" class="btn btn-default" onClick="sendQualityAssessment()">Отправить оценки</button>
         <span id="marks-send-status"></span>
     </div>

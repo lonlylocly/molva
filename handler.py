@@ -224,11 +224,18 @@ class QualityMarkHandler(tornado.web.RequestHandler):
                 if "update_time" in req_data and req_data["update_time"] is not None:
                     update_time = req_data["update_time"]
                     update_time = int(re.sub('[-\s:]','', update_time))
+                exp_name = ""
+                if "experiment_name" in req_data and req_data["experiment_name"] is not None:
+                    exp_name = req_data["experiment_name"]
+                exp_descr = ""
+                if "experiment_descr" in req_data and req_data["experiment_descr"] is not None:
+                    exp_descr = req_data["experiment_descr"]
+
                 cur.execute("""
                     insert into quality_marks 
-                    (update_time, username, marks) 
-                    values (?, ?, ?)
-                """, (update_time, username, json.dumps(req_data["marks"])))
+                    (update_time, username, exp_name, exp_descr,  marks) 
+                    values (?, ?, ?, ?, ?)
+                """, (update_time, username, exp_name, exp_descr, json.dumps(req_data["marks"])))
 
         except Exception as e:
             logging.error(e)

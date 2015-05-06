@@ -40,10 +40,12 @@ class Mark:
         return json.dumps(self.to_json())
 
 class MarkSet:
-    def __init__(self, upd=None, username=None, marks=None):
+    def __init__(self, upd=None, username=None, exp_name=None, exp_descr=None, marks=None):
         self.update_time = upd
         self.username = username
         self.marks = marks if marks is not None else []
+        self.exp_name = exp_name if exp_name is not None else ''
+        self.exp_descr = exp_descr if exp_descr is not None else ''
 
         self.metric_sum = {}
 
@@ -83,8 +85,9 @@ class MarkSet:
         return self.metric_sum.keys()
 
 class Marks:
-    def __init__(self):
+    def __init__(self, show_name=False):
         self.marks = {}
+        self.show_name = show_name
 
     def put_markset(self, markset):
         if markset.get_key() not in self.marks:
@@ -104,13 +107,18 @@ class Marks:
 
     def get_stat_matrix(self):
         names = self.get_metric_names()
-        stat = [["update_time", "username"] + names + ['total']]
+        headers = ["update_time", "username"] + names + ['total']
+        if self.show_name:
+            headers.insert(0, "exp_name")
+        stat = [headers]
         for k in sorted(self.marks):
             m = self.marks[k]
             av = m.get_metric_average()
             total_mark = 0
             metric_cnt = 0
             stat_row = list(k)
+            if self.show_name:
+                stat_row.insert(0, m.exp_name)
             for n in names:
                 val = ""
                 if n in av:
@@ -119,7 +127,10 @@ class Marks:
                         total_mark += float(val) / minmax[n]["max"]
                         metric_cnt += 1
                 stat_row.append(val)
-            stat_row.append("%.2f" % (total_mark / metric_cnt * 100))
+            if metric_cnt == 0:
+                stat_row.append("N/A")
+            else:
+                stat_row.append("%.2f" % (total_mark / metric_cnt * 100))
             stat.append(stat_row)
         return stat
 
@@ -139,20 +150,20 @@ class Marks:
         return "\n".join(map(lambda x: patt % tuple(x),stat))
                 
 
-def get_marks(cur, filter_spam):
+def get_marks(cur, filter_spam, show_name):
     cur.execute("""
-        select  update_time, username, marks
+        select  update_time, username, exp_name, exp_descr, marks
         from quality_marks
     """)
 
-    marks_all = Marks()
+    marks_all = Marks(show_name)
     while True:
         r= cur.fetchone()
         if r is None:
             break
-        upd, user, marks = r
+        upd, user, exp_name, exp_descr, marks = r
         upd = d.strftime(d.strptime(str(upd), "%Y%m%d%H%M%S"), "%Y-%m-%d %H:%M:%S")
-        markset = MarkSet(upd, user)
+        markset = MarkSet(upd, user, exp_name, exp_descr)
         marks = json.loads(marks)
 
         for m in marks:
@@ -172,12 +183,13 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--filter-spam", action="store_true")
+    parser.add_argument("--show-name", action="store_true")
 
     args = parser.parse_args()
 
     cur = stats.get_cursor(settings["db_dir"] + "/quality_marks.db")
     
-    m = get_marks(cur, args.filter_spam)
+    m = get_marks(cur, args.filter_spam, args.show_name)
     print m
 
     return
