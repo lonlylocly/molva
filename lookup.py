@@ -218,6 +218,10 @@ def get_relevant_tweets(cur1, cur2, cluster):
         "members_md5": str(cluster["members_md5"])
     }
 
+@util.time_logger
+def save_relevant(cur_rel, cluster_date, rel_tweets):
+    cur_rel.execute("replace into relevant values (?, ?)" , (cluster_date, json.dumps(rel_tweets)))
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -251,8 +255,7 @@ def main():
 
         #print json.dumps(r, indent=2, ensure_ascii=False)
 
-
-    cur_rel.execute("replace into relevant values (?, ?)" , (d, json.dumps(rel_tweets)))
+    save_relevant(cur_rel, d, rel_tweets)
     
     return
 
