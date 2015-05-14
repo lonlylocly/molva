@@ -142,8 +142,9 @@ class Fetcher:
             cur = self.get_db_for_date(mysql_time)
             cur.execute("""
                 INSERT OR IGNORE INTO tweets
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (reply["id"], reply["text"], reply["user"]["screen_name"], reply["in_reply_to_screen_name"], reply["in_reply_to_status_id"], mysql_time))
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (reply["id"], reply["text"], reply["user"]["screen_name"], reply["user"]["id"], 
+                reply["in_reply_to_screen_name"], reply["in_reply_to_status_id"], mysql_time))
         except Exception as e:
             traceback.print_exc()
             self.log.error(e)

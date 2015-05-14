@@ -158,6 +158,7 @@ CREATE_TABLES = {
             id integer,
             tw_text text,
             username text,
+            user_id integer,
             in_reply_to_username text,
             in_reply_to_id integer,
             created_at integer,

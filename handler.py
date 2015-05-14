@@ -83,6 +83,7 @@ class ClusterHandler(tornado.web.RequestHandler):
 
 class RelevantHandler(tornado.web.RequestHandler):
 
+    @util.time_logger
     def get_relevant(self, date):
         cur = stats.get_cursor(settings["db_dir"] + "/tweets_relevant.db") 
         if date is not None:
