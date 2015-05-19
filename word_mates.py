@@ -159,6 +159,9 @@ def get_trending_words(db_dir, word_cnt_tuples):
 
     for w in word_trends:
         word, trend = w
+        if word not in word_ranks:
+            logging.warn("No such word_md5 at word_ranks %s" % word)
+            continue
         word_ranks[word].trend.value = trend
 
     Rank.weight_ranks(map(lambda x: x.trend, word_ranks.values()))
