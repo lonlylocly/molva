@@ -92,6 +92,24 @@ def save_word_time_cnt2(mcur, word_cnt, word_time_cnt_table):
     mcur.execute(query)
 
 @util.time_logger
+def save_word_hour_cnt(mcur, word_cnt, word_hour_cnt_table):
+    vals = []
+    for i in word_cnt:
+        word, tenminute = i
+        hour = str(tenminute)[:10] 
+        vals.append("(%s, %s, 1)" % (word, hour))
+    if len(vals) == 0:
+        return
+    query = """
+        INSERT INTO %s 
+        (word_md5, hour, cnt)
+        VALUES %s 
+        ON DUPLICATE KEY UPDATE
+        cnt = cnt + VALUES(cnt)
+    """ % (word_hour_cnt_table, ",".join(vals))
+    mcur.execute(query)
+
+@util.time_logger
 def save_word_time_cnt(cur, cur_words, vals):
     f = lambda : _save_word_time_cnt(cur, cur_words, vals)
     try_several_times(f, 3, finilizer=lambda : cur_words.execute("rollback"))
@@ -342,10 +360,12 @@ def parse_facts_file(tweet_index, facts, date):
 
     mcur = stats.get_mysql_cursor(settings)
     word_time_cnt_table = "word_time_cnt_%s" % date
+    word_hour_cnt_table = "word_hour_cnt_%s" % date
     word_mates_table = "word_mates_%s" % date
     bigram_table = "bigram_%s" % date
     stats.create_mysql_tables(mcur, {
         word_time_cnt_table: "word_time_cnt",
+        word_hour_cnt_table: "word_hour_cnt",
         word_mates_table: "word_mates",
         bigram_table: "bigram_day"
     })
@@ -399,7 +419,6 @@ def parse_facts_file(tweet_index, facts, date):
 
                     noun_sources.append((post_id, util.digest(np.noun_lemma), util.digest(np.with_prep())))
                     word_cnt.append((util.digest(np.noun_lemma), cut_to_tenminute(create_time)))
-                    # tweets_nouns.append((post_id, util.digest(np.noun_lemma)))
                 except Exception as e:
                     traceback.print_exc()
                     logging.error(e)
@@ -411,6 +430,7 @@ def parse_facts_file(tweet_index, facts, date):
                 logging.info("seen %s docid" % (cur_doc))
                 save_tweet_nouns(cur, noun_sources)
                 save_word_time_cnt2(mcur, word_cnt, word_time_cnt_table)
+                save_word_hour_cnt(mcur, word_cnt, word_hour_cnt_table)
                 noun_sources = []
                 word_cnt = []
 
@@ -426,8 +446,8 @@ def parse_facts_file(tweet_index, facts, date):
             elem.clear()
 
     save_tweet_nouns(cur, noun_sources)
-    #save_word_time_cnt(cur, cur_words, noun_sources)
     save_word_time_cnt2(mcur, word_cnt, word_time_cnt_table)
+    save_word_hour_cnt(mcur, word_cnt, word_hour_cnt_table)
     save_bigram_day(mcur, lemma_word_pairs, bigram_table)
     save_word_mates2(mcur, word_mates, word_mates_table)
 
