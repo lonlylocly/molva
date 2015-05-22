@@ -374,6 +374,14 @@ MYSQL_CREATE_TABLES = {
             PRIMARY KEY(tenminute, word_md5)   
         ) ENGINE=MYISAM DEFAULT CHARSET=utf8
     """,
+    "word_hour_cnt": """
+        CREATE TABLE IF NOT EXISTS word_hour_cnt (
+            word_md5 int unsigned not null,
+            hour int unsigned not null,
+            cnt int unsigned not null,
+            PRIMARY KEY(word_md5, hour)   
+        ) ENGINE=MYISAM DEFAULT CHARSET=utf8
+    """,
     "word_mates": """
         CREATE TABLE IF NOT EXISTS word_mates (
             word1 int unsigned not null,
