@@ -246,13 +246,6 @@ def _save_lemma_word_pairs(cur, lemma_word_pairs, db_type="", keep_ratio=1):
     cur.execute("commit")
     logging.info("done")
 
-
-@util.time_logger
-def save_lemma_word_pairs(cur, lemma_word_pairs, db_type="", keep_ratio=1):
-    logging.info("Skip ...")
-    #f = lambda : _save_lemma_word_pairs(cur, lemma_word_pairs, db_type, keep_ratio)
-    #try_several_times(f, 3, finilizer=lambda : cur.execute("rollback"))
-
 @util.time_logger
 def save_bigram_day(mcur, bigram_pairs, table):
     logging.info("Bigrams len: %s" % (len(bigram_pairs)))
@@ -495,7 +488,6 @@ def parse_facts_file(tweet_index, facts, date):
                 word_cnt = []
 
             if len(lemma_word_pairs) >= CHUNK_SIZE :
-                #save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = KEEP_RATIO) 
                 save_bigram_day(mcur, lemma_word_pairs, bigram_table)
                 lemma_word_pairs = []
 
@@ -509,7 +501,6 @@ def parse_facts_file(tweet_index, facts, date):
     save_tweet_nouns(cur, noun_sources)
     #save_word_time_cnt(cur, cur_words, noun_sources)
     save_word_time_cnt2(mcur, word_cnt, word_time_cnt_table)
-    save_lemma_word_pairs(cur_bigram, lemma_word_pairs, db_type='bigram', keep_ratio = KEEP_RATIO) 
     save_bigram_day(mcur, lemma_word_pairs, bigram_table)
     #save_word_mates2(mcur, word_mates, word_mates_table)
 
