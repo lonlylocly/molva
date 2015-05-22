@@ -429,7 +429,7 @@ def parse_facts_file(tweet_index, facts, date):
     #save_word_time_cnt(cur, cur_words, noun_sources)
     save_word_time_cnt2(mcur, word_cnt, word_time_cnt_table)
     save_bigram_day(mcur, lemma_word_pairs, bigram_table)
-    #save_word_mates2(mcur, word_mates, word_mates_table)
+    save_word_mates2(mcur, word_mates, word_mates_table)
 
     save_nouns(cur, nouns_total)
     save_nouns(cur, sources_total, table="sources")
