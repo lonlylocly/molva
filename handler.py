@@ -130,14 +130,14 @@ class TrendHandler(tornado.web.RequestHandler):
         logging.info("Get word time cnt: %s, %s, %s" % (word_md5, time1, time2))
         utc_now = datetime.utcnow()
         res = []
-        default_left_time_bound = (utc_now - timedelta(3)).strftime("%Y%m%d%H%M%S")[:11]
+        default_left_time_bound = (utc_now - timedelta(3)).strftime("%Y%m%d%H%M%S")[:10]
         time = ""
         if time1 is not None:
-            time += " and tenminute >= " + time1
+            time += " and hour >= " + str(time1)[:10]
         else:
-            time += " and tenminute >= " + default_left_time_bound
+            time += " and hour >= " + default_left_time_bound
         if time2 is not None:
-            time += " and tenminute < " + time2
+            time += " and hour < " + str(time2)[:10]
 
         where = "word_md5 = %s" % word_md5
         if word_md5 == util.digest('0'):
@@ -146,13 +146,12 @@ class TrendHandler(tornado.web.RequestHandler):
         mcur = stats.get_mysql_cursor(settings)
         for day in [3, 2, 1, 0]:
             date = (utc_now - timedelta(day)).strftime("%Y%m%d")
-            stats.create_mysql_tables(mcur, {"word_time_cnt_"+date: "word_time_cnt"})
+            stats.create_mysql_tables(mcur, {"word_hour_cnt_"+date: "word_hour_cnt"})
             mcur.execute("""
-                SELECT word_md5, substr(tenminute, 1, 10) as hour, sum(cnt) 
-                FROM word_time_cnt_%(date)s
+                SELECT word_md5, hour, cnt
+                FROM word_hour_cnt_%(date)s
                 WHERE %(where)s 
                 %(time)s
-                GROUP BY hour
             """ % {"where": where, "time": time, "date": date})
             while True:
                 r = mcur.fetchone()
@@ -178,6 +177,7 @@ class TrendHandler(tornado.web.RequestHandler):
 
         return (time1, time2)
 
+    @util.time_logger
     def get(self):
         try:
             word = self.get_argument("word", default=None)
