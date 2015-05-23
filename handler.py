@@ -11,6 +11,7 @@ import logging
 from subprocess import check_output
 import sqlite3
 from datetime import datetime, timedelta
+from dateutil import tz
 
 import molva.stats as stats
 from molva.Indexer import Indexer
@@ -123,6 +124,18 @@ class RelevantHandler(tornado.web.RequestHandler):
 
         self.write(r)
 
+def utc_to_local(utctime):
+    from_zone = tz.tzutc()
+    to_zone = tz.tzlocal()
+
+    utc = datetime.strptime(utctime, '%Y%m%d%H%M%S')
+
+    utc = utc.replace(tzinfo=from_zone)
+
+    local = utc.astimezone(to_zone)
+
+    return local.strftime("%Y%m%d%H%M%S")
+
 class TrendHandler(tornado.web.RequestHandler):
 
     @util.time_logger
@@ -144,22 +157,27 @@ class TrendHandler(tornado.web.RequestHandler):
             where = "1"
 
         mcur = stats.get_mysql_cursor(settings)
-        for day in [3, 2, 1, 0]:
-            date = (utc_now - timedelta(day)).strftime("%Y%m%d")
-            stats.create_mysql_tables(mcur, {"word_hour_cnt_"+date: "word_hour_cnt"})
-            mcur.execute("""
-                SELECT word_md5, hour, cnt
-                FROM word_hour_cnt_%(date)s
-                WHERE %(where)s 
-                %(time)s
-            """ % {"where": where, "time": time, "date": date})
-            while True:
-                r = mcur.fetchone()
-                if r is None:
-                    break
-                word, hour, cnt = r
-                res.append((str(word), str(hour), int(cnt)))
-        logging.info("word time cnt: %s" % len(res))
+        try:
+            for day in [3, 2, 1, 0]:
+                date = (utc_now - timedelta(day)).strftime("%Y%m%d")
+                #stats.create_mysql_tables(mcur, {"word_hour_cnt_"+date: "word_hour_cnt"})
+                mcur.execute("""
+                    SELECT word_md5, hour, cnt
+                    FROM word_hour_cnt_%(date)s
+                    WHERE %(where)s 
+                    %(time)s
+                """ % {"where": where, "time": time, "date": date})
+                while True:
+                    r = mcur.fetchone()
+                    if r is None:
+                        break
+                    word, hour, cnt = r
+                    utctime = str(hour) + "0000"
+                    res.append((str(word), utc_to_local(utctime), int(cnt)))
+            logging.info("word time cnt: %s" % len(res))
+        except Exception as e:
+            logging.error(e)
+
         return res
 
     def parse_times(self, time1, time2):
