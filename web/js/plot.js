@@ -1,14 +1,43 @@
 
-var myLineChart = null;
-var myCorrChart = null;
+function getCurUrlParamArrays() {
+    var cur_url = "" + document.URL;
+    var url_parts = cur_url.split("?");
+    
+    var params = {};
+    if (url_parts.length > 1) {
+        var param_parts = url_parts[1].split("&");
+        for(var i =0 ; i< param_parts.length; i++) {
+            var p = param_parts[i].split("=");
+            var key = p[0];
+            var val = p[1];
+            if (!(key in params)) {
+                params[key] = [];
+            }
+            params[key].push(p[1]);
+        }
+    }
+    
+    return params;
+}
 
-function linear_approx(series) {
+
+function linear_approx(series, seriesLabel) {
     var xs = [];
-    for(var i =1; i<=series.length; i++) {
-        xs.push(i);
+    var ys = []
+    for(var i =0; i<series.length; i++) {
+        xs.push(series[i][0]);
+        ys.push(series[i][1]);
     }
 
-    return linear_approx_full(series, xs);
+    var y2s = linear_approx_full(ys, xs);
+
+    var data = [];
+    for (var i = 0; i<series.length; i++) {
+        data.push([xs[i], y2s[i]]);
+    }
+
+    return {"data": data, "label": '"' + seriesLabel + '" (аппроксимация)' 
+    }
 }
 function linear_approx_full(series, xs) {
     var n = series.length;
@@ -40,53 +69,29 @@ function linear_approx_full(series, xs) {
     return approx;
 }
 
-function loadGraph() {
-    Chart.defaults.global.animation = false;
-    Chart.defaults.global.responsive = true;
+function changeGraph() {
+    var word = $("#wordSelector").val();
+    if (word != undefined) {
+        window.location.assign('/graph2?word=' + encodeURIComponent(word));
+    }
+}
 
-    Chart.defaults.global.scaleLabel = "<%='  ' + value%>";
+function getTimeLabel(time_hour) {
+    var month = time_hour.substr(4,2);
+    var day   = time_hour.substr(6,2);
+    var hour  = time_hour.substr(8,2);
 
-    var dataTemplate = {
-        labels: [],
-        datasets: [
-            {
-                label: "",
-                fillColor: "rgba(220,220,220,0.2)",
-                strokeColor: "rgba(220,220,220,1)",
-                pointColor: "rgba(220,220,220,1)",
-                pointStrokeColor: "#fff",
-                pointHighlightFill: "#fff",
-                pointHighlightStroke: "rgba(220,220,220,1)",
-                data: []
-            },
-            {
-                label: "Скользящее среднее",
-                fillColor: "rgba(151,187,205,0.2)",
-                strokeColor: "rgba(151,187,205,1)",
-                pointColor: "rgba(151,187,205,1)",
-                pointStrokeColor: "#fff",
-                pointHighlightFill: "#fff",
-                pointHighlightStroke: "rgba(151,187,205,1)",
-                data: []
-            },
-            {
-                label: "Линейная аппроксимация",
-                fillColor: "rgba(187,151,205,0.2)",
-                strokeColor: "rgba(187,151,205,1)",
-                pointColor: "rgba(151,187,205,1)",
-                pointStrokeColor: "#fff",
-                pointHighlightFill: "#fff",
-                pointHighlightStroke: "rgba(151,187,205,1)",
-                data: []
-            }
-        ]
-    };
+    var label = month +"." + day + " " + hour + ":00";
 
+    return label;
+}
 
-    // Get context with jQuery - using jQuery's .get() method.
+function addWordAndPlot(wordToPlot, color, plotDataSeries, showApprox, labelsLong) {
+    wordToPlot = decodeURIComponent(wordToPlot).trim();
 
-    var wordToPlot = $("#wordSelector").val();
-    var query = "/api/trend?word="+wordToPlot;
+    var encodedWord = encodeURIComponent(wordToPlot.toLowerCase().replace('#',''));
+
+    var query = "/api/trend?word=" + encodedWord;
     if ($("#timeSelector1").val() != "") {
         query += "&time1=2015" + $("#timeSelector1").val();
     }
@@ -100,49 +105,68 @@ function loadGraph() {
             var dataSeries = resp["dataSeries"];
             var labels = [];
             var data = [];
+            var tickDist = Math.round(dataSeries.length / 5);
             for(var i=0; i<dataSeries.length; i++) {
-               labels.push(dataSeries[i]["hour"].substr(4,10)); 
-               data.push(dataSeries[i]["count"]); 
-            } 
-            dataTemplate["labels"] = labels;
-            dataTemplate["datasets"][0]["label"] = wordToPlot;
-            dataTemplate["datasets"][0]["data"] = data;
-            dataTemplate["datasets"][1]["data"] = resp["movingAverage"];
-            dataTemplate["datasets"][2]["data"] = linear_approx(data);
-            
-            var ctx = $("#wordsChart").get(0).getContext("2d");
-            if (!(myLineChart === null)) {
-                myLineChart.destroy();
-            }
-            myLineChart = new Chart(ctx).Line(dataTemplate, {pointHitDetectionRadius : 5,});
+                var label = getTimeLabel(dataSeries[i]["hour"]);
+                var unixtime = parseFloat(dataSeries[i]["utc_unixtime"]);
 
-            $("#wordsChart").get(0).onclick = function(evt){
-                var activePoints = myLineChart.getPointsAtEvent(evt);
-                console.log(activePoints);
-                console.log(evt);
-                var pointLabel = activePoints[0]["label"];
-                var ts1 = $("#timeSelector1").val();
-                var ts2 = $("#timeSelector2").val();
-                if( ts1 == "") {
-                    $("#timeSelector1").val(pointLabel);
-                } else if ($("#timeSelector2").val() == "") {
-                    if (pointLabel > ts1) {
-                        $("#timeSelector2").val(pointLabel);
-                    } else {
-                        $("#timeSelector1").val(pointLabel);
-                        $("#timeSelector2").val(ts1);
-                    }
-                } else {
-                    if (pointLabel > ts2) {
-                        $("#timeSelector1").val($("#timeSelector2").val());
-                        $("#timeSelector2").val(pointLabel);
-                    } else {
-                        $("#timeSelector1").val(pointLabel);
-                    }
+                if (i % tickDist == 0) {
+                    labels.push([unixtime, label]); 
                 }
-                // => activePoints is an array of points on the canvas that are at the same position as the click event.
-            };
+                labelsLong[unixtime] = label;
+                data.push([unixtime, dataSeries[i]["count"]]); 
+            } 
+            plotDataSeries.push({"label": wordToPlot, "data": data, "color": color,
+                //lines: {
+                //    show: true,
+                //    fill: true,
+                //    fillColor: { colors: [{ opacity: 0.3 }, { opacity: 0.1}] }
+                //}
+                bars: {
+                    show: true,
+                    barWidth: 3600, //hour
+                    fill: true,
+                    fillColor: { colors: [ { opacity: 0.5 }, { opacity: 0.1 } ] }
+                }
+            });
+            if (showApprox) {
+                plotDataSeries.push(linear_approx(data, wordToPlot));
+            }
+            $.plot("#wordsChart", plotDataSeries, {
+                yaxis: {
+                    min: 0
+                },
+                xaxis: {
+                    ticks: labels 
+                },
+                grid: {
+                    hoverable: true,
+                    borderWidth: 0
+                }
+            });
+            
 
+            $("#wordsChart").bind("plothover", function (event, pos, item) {
+
+                if (item) {
+                    var x = item.datapoint[0],
+                        y = item.datapoint[1];
+
+                    var pointLabel = item.series.label;
+
+                    var times = "раз";
+                    var lastDigit = String(y).substr(-1, 1);
+                    if ( lastDigit == "2" || lastDigit == "3" || lastDigit == "4") {
+                        times = "раза";
+                    }
+
+                    $("#tooltip").html('"' + pointLabel + '"' + " " + labelsLong[x] + "<br/> " + y + " " + times)
+                        .css({top: item.pageY+5, left: item.pageX+5})
+                        .fadeIn(200);
+                } else {
+                    $("#tooltip").hide();
+                }
+            });            
         } catch (e){
             console.log(e);
         }
@@ -151,139 +175,39 @@ function loadGraph() {
             console.log("Unknown error");
     });
 
-    
-
 }
 
-function getWordData(wordToPlot) {
-    var query = "/api/trend?word="+wordToPlot;
-    if ($("#timeSelector1").val() != "") {
-        query += "&time1=2015" + $("#timeSelector1").val();
-    }
-    if ($("#timeSelector2").val() != "") {
-        query += "&time2=2015" + $("#timeSelector2").val();
-    }
-    
-    var wordData = {};
+function loadGraph() {
 
-    console.log(query);
-    console.log(wordToPlot);
-    $.ajax(query, {"async": false})
-    .done(function( data ) {
-        try{
-            var resp = JSON.parse(data);
-            wordData = resp;
-        } catch (e){
-            console.log(e);
-        }
-    })
-    .fail(
-    function() {
-            console.log("Unknown error");
+    $('#wordSelector').bind('keypress',function (event){
+      if (event.keyCode === 13){
+        $("#change-graph-btn").trigger('click');
+      }
     });
 
-    var wordDataMap = {};
-    for(var i=0; i<wordData["dataSeries"].length; i++) {
-        wordDataMap[wordData["dataSeries"][i]["hour"]] = wordData["dataSeries"][i]["count"];
-    }
+    // Get context with jQuery - using jQuery's .get() method.
 
-    return wordDataMap;
+    var bigWordToPlot = getCurUrlParams()["word"];
+    if (bigWordToPlot == undefined) {
+        return;
+    }
+    bigWordToPlot = decodeURIComponent(bigWordToPlot).trim();
+    $("#wordSelector").val(bigWordToPlot);
+    console.log(bigWordToPlot);
+
+    var showTrend = "trend" in getCurUrlParams();
+    
+    var wordsToPlot = bigWordToPlot.split(' ');
+    var plotDataSeries = [];
+    var labelsLong = {};
+
+    for(var k=0; k<wordsToPlot.length && k < 5; k++) {
+        if (wordsToPlot[k] == "") {
+            continue;
+        }
+        addWordAndPlot(wordsToPlot[k], k, plotDataSeries, showTrend, labelsLong); 
+    }
 
 }
 
-function loadCorr() {
-    try {
-        Chart.defaults.global.animation = false;
-        Chart.defaults.global.responsive = true;
 
-        Chart.defaults.global.scaleLabel = "<%='  ' + value%>";
-
-        var dataTemplate = {
-            labels: [],
-            datasets: [
-                {
-                    label: "",
-                    fillColor: "rgba(220,220,220,0.2)",
-                    strokeColor: "rgba(220,220,220,1)",
-                    pointColor: "rgba(220,220,220,1)",
-                    pointStrokeColor: "#fff",
-                    pointHighlightFill: "#fff",
-                    pointHighlightStroke: "rgba(220,220,220,1)",
-                    data: []
-                },
-                {
-                    label: "",
-                    fillColor: "rgba(187,151,205,0.2)",
-                    strokeColor: "rgba(187,151,205,1)",
-                    pointColor: "rgba(151,187,205,1)",
-                    pointStrokeColor: "#fff",
-                    pointHighlightFill: "#fff",
-                    pointHighlightStroke: "rgba(151,187,205,1)",
-                    data: []
-                },
-                {
-                    label: "Линейная аппроксимация",
-                    fillColor: "rgba(187,151,205,0.2)",
-                    strokeColor: "rgba(187,151,205,1)",
-                    pointColor: "rgba(151,187,205,1)",
-                    pointStrokeColor: "#fff",
-                    pointHighlightFill: "#fff",
-                    pointHighlightStroke: "rgba(151,187,205,1)",
-                    data: []
-                }
-            ]
-        };
-
-
-        var wordA = getWordData($("#wordSelectorA").val());
-        var wordB = getWordData($("#wordSelectorB").val());
-
-        var hoursMap = {};
-        for(var k in wordA) hoursMap[k] = 1;
-        for(var k in wordB) hoursMap[k] = 1;
-        var hours = []
-        for(var k in hoursMap) hours.push(k);
-        hours.sort();
-        var series = [];
-        for(var i=0; i<hours.length; i++) {
-            var a = 0;
-            var b = 0;
-            if (hours[i] in wordA) {
-                a = wordA[hours[i]];
-            } 
-            if (hours[i] in wordB) {
-                b = wordB[hours[i]];
-            } 
-            series.push([a,b]);
-        }
-        series.sort(function(x,y) {
-            if (x[0] < y[0]) {
-                return -1;
-            }
-            if (x[0] > y[0]) {
-                return 1;
-            }
-            return 0;
-        });
-
-        var wordASeries = [];
-        var wordBSeries = [];
-        for(var i=0; i<series.length; i++) {
-            wordASeries.push(series[i][0]);
-            wordBSeries.push(series[i][1]);
-        }
-
-        dataTemplate["labels"] = wordASeries;
-        dataTemplate["datasets"][0]["data"] = wordBSeries;
-        dataTemplate["datasets"][1]["data"] = linear_approx_full(wordBSeries, wordASeries);
-
-        
-        var ctx = $("#corrChart").get(0).getContext("2d");
-        if (!(myCorrChart === null)) {
-            myCorrChart.destroy();
-        }
-        myCorrChart = new Chart(ctx).Line(dataTemplate, {pointHitDetectionRadius : 5,});
-    } catch(e) {
-        console.log(e);
-    }
-}

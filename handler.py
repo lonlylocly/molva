@@ -134,7 +134,9 @@ def utc_to_local(utctime):
 
     local = utc.astimezone(to_zone)
 
-    return local.strftime("%Y%m%d%H%M%S")
+    local_str = local.strftime("%Y%m%d%H%M%S")
+
+    return local_str
 
 class TrendHandler(tornado.web.RequestHandler):
 
@@ -173,7 +175,8 @@ class TrendHandler(tornado.web.RequestHandler):
                         break
                     word, hour, cnt = r
                     utctime = str(hour) + "0000"
-                    res.append((str(word), utc_to_local(utctime), int(cnt)))
+                    utc_unixtime = datetime.strptime(utctime, '%Y%m%d%H%M%S').strftime('%s')
+                    res.append((str(word), utc_to_local(utctime), int(cnt), utc_unixtime))
             logging.info("word time cnt: %s" % len(res))
         except Exception as e:
             logging.error(e)
@@ -214,7 +217,7 @@ class TrendHandler(tornado.web.RequestHandler):
             res = self.get_word_time_cnt(word_md5, time1, time2)
 
             res = sorted(res, key=lambda x: x[1])
-            res = map(lambda x: {"hour": x[1], "count": x[2]}, res)
+            res = map(lambda x: {"hour": x[1], "count": x[2], "utc_unixtime": x[3]}, res)
             #mov_av = [0]
             #for i in range(1, len(res) -1):
             #    ma = float(res[i-1]["count"] + res[i]["count"] + res[i+1]["count"]) / 3

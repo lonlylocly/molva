@@ -6,16 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
     <meta name="author" content="">
-    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/custom.css" rel="stylesheet">
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/custom.css" rel="stylesheet">
 
 <!--border: 2px solid rgb(218,218,218);-->
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/js/handlebars-v1.3.0.js"></script>
-
-<script src="/js/clusters.js"></script>
-<script src="/js/jquery.flot.js"></script>
-<script src="/js/plot2.js"></script>
 
 </head>
 <body>
@@ -43,25 +39,37 @@
 
 
     <div class="container">
-        <div class="form-inline">
-                <div class="form-group">
-                Слово: <input id="wordSelector" class="form-control" type="text" placeholder="Слово на график"></input>
-                </div>
-                <div class="form-group">
-                От: <input id="timeSelector1" class="form-control" type="text" placeholder=""></input>
-                </div>
-                <div class="form-group">
-                До: <input id="timeSelector2" class="form-control" type="text" placeholder=""></input>
-                </div>
-                <button class="btn btn-success" id="change-graph-btn" type="submit" onClick="changeGraph()">Показать</button>
-        </div>
-        <div id="wordsChart" style="width: 800px; height: 400px;"></div>
+        <h2 class="molva-header">График частотности слов в Twitter: как это работает</h2>
+        
+        <p class="lead">
+            График строится на основе частотности слов в русскоязычном <a href="http://www.twitter.com">Twitter</a>. 
+            Каждый столбик на диаграмме означает, сколько за некоторый час, например, с 12 до 13 часов 24 мая,
+            в системе <a href="http://molva.spb.ru">molva.spb.ru</a> было зарегистрировано указанное слово.
+        </p>
 
+        <p class="lead">
+            В статистике участвуют твиты, полученные через <a href="https://dev.twitter.com/docs/api">API потока данных Twitter</a>, содержащие 
+            слова на русском языке. Через этот API в <a href="http://molva.spb.ru">молву</a> поступают сообщения Twitter в реальном времени.
+        </p>
+
+        <p class="lead">
+            Слова приводятся к своей словарной форме (с помощью <a href="http://api.yandex.ru/tomita/">Tomita-парсера</a>), отображаемая на графике
+            статистика частотности суммирует частоту слова во всех его словоформ. 
+            При вводе слов в строку запроса (для отображения на графике), нужно вводить слово в его словарной форме
+            (<em>масло</em>, а не <em>маслу</em>; <em>Иванов</em>, а не <em>Ивановым</em>). Регистр букв значения не имеет.
+        </p>
+
+        <p class="lead">
+            На график можно вывести до 5 слов одновременно.
+        </p>
+        
     
-      <footer  style="padding-bottom: 30px;">
+        <footer  style="padding-bottom: 30px;">
             <p>&copy; <a href="http://twitter.com/lonlylocly" id="contact">Николай Васильев</a>
-            &middot; Built using <a href="http://getbootstrap.com">Bootstrap</a></p>
-      </footer>
+            &middot; Built using <a href="http://getbootstrap.com">Bootstrap</a>
+            &middot; Based on <a href="http://www.twitter.com">Twitter</a> data
+            </p>
+        </footer>
 
     </div>
 
@@ -98,5 +106,6 @@
 <noscript><div><img src="//mc.yandex.ru/watch/25227179" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
 <!-- /Yandex.Metrika counter -->
 
+        <div id="tooltip" class="chart-tooltip"> </div>
 </body>
 </html>

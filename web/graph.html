@@ -14,7 +14,7 @@
 <script src="/js/handlebars-v1.3.0.js"></script>
 
 <script src="/js/clusters.js"></script>
-<script src="/js/Chart.js"></script>
+<script src="/js/jquery.flot.js"></script>
 <script src="/js/plot.js"></script>
 
 </head>
@@ -43,24 +43,23 @@
 
 
     <div class="container">
+        <h3 class="molva-header">График частотности слов в Twitter</h3>
         <div class="form-inline">
                 <div class="form-group">
-                Слово: <input id="wordSelector" class="form-control" type="text" placeholder="Слово на график"></input>
+                Слова: <input id="wordSelector" class="form-control" type="text" placeholder="Введите одно или несколько слов"></input>
                 </div>
-                <div class="form-group">
-                От: <input id="timeSelector1" class="form-control" type="text" placeholder=""></input>
-                </div>
-                <div class="form-group">
-                До: <input id="timeSelector2" class="form-control" type="text" placeholder=""></input>
-                </div>
-                <button class="btn btn-success" type="submit" onClick="loadGraph()">Показать</button>
+                <button class="btn btn-success" id="change-graph-btn" type="submit" onClick="changeGraph()">Показать</button>
         </div>
-        <canvas id="wordsChart" width="800" height="400"></canvas>
-
+        <div id="wordsChart" style="width: 800px; height: 400px;"></div>
+    
+        <p><a href="/graph/about">Подробнее</a> о том, как это работает.</p>
     
       <footer  style="padding-bottom: 30px;">
             <p>&copy; <a href="http://twitter.com/lonlylocly" id="contact">Николай Васильев</a>
-            &middot; Built using <a href="http://getbootstrap.com">Bootstrap</a></p>
+            &middot; Built using <a href="http://getbootstrap.com">Bootstrap</a>
+            &middot; <a href="http://www.flotcharts.org">Flot charts</a>
+            &middot; Based on <a href="http://www.twitter.com">Twitter</a> data
+            </p>
       </footer>
 
     </div>
@@ -98,5 +97,6 @@
 <noscript><div><img src="//mc.yandex.ru/watch/25227179" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
 <!-- /Yandex.Metrika counter -->
 
+        <div id="tooltip" class="chart-tooltip"> </div>
 </body>
 </html>
