@@ -3,6 +3,9 @@ var signedInUserEmail = null;
 Handlebars.registerHelper('urlEscape', function(smth) {
   return encodeURIComponent(smth);
 });
+Handlebars.registerHelper('urlDoubleEscape', function(smth) {
+  return encodeURIComponent(encodeURIComponent(smth));
+});
 
 Handlebars.registerHelper('urlInsertLinks', function(smth) {
     var str = smth.replace(/http[^ ]+/g, function(str){ return '<a href="' + str +'" target="_blank">' +str + '</a>';});
@@ -46,12 +49,14 @@ function getCurUrlIntParam(param, default_val) {
 
 function get_max_trend(cluster) {
     var trend_vals = []
+    var max_trend = 0;
     for(var i=0; i<cluster["members"].length; i++) {
-        trend_vals.push(parseFloat(cluster["members"][i]["trend"]));    
+        if (cluster["members"][i]["trend"] > max_trend) {
+            max_trend = cluster["members"][i]["trend"];
+        }
     }
-    trend_vals.sort().reverse();
 
-    return trend_vals[0];
+    return max_trend;
 }
 
 function get_avg_trend(cluster) {
@@ -108,6 +113,17 @@ function compare_max_trend (a,b) {
     return 0;
 }
 
+function makeGraphLink(members) {
+    var texts = [];
+    var lemmas = [];
+    for(var i=0; i<members.length; i++) {
+        texts.push(encodeURIComponent(encodeURIComponent(members[i]["text"])));
+        lemmas.push(encodeURIComponent(members[i]["stem_text"]));
+    }
+
+    return "/graph?word=" + lemmas.join('%20') + "&surface=" + texts.join('%20') + "&trend";
+}
+
 function fill_cluster_properties(cl) {
     var cl2= [];
     for(var i=0; i<cl.length; i++) {
@@ -123,6 +139,7 @@ function fill_cluster_properties(cl) {
 
         cl[i]["query_string"] = mems.join("+").replace(/#/g,'');
         cl[i]["title_string"] = mems.join(" ");
+        cl[i]["graph_link"] = makeGraphLink(cl[i]["members"]);
         if ( cl[i]["members_len"] > 0) {
             cl2.push(cl[i]);
         }
@@ -308,6 +325,8 @@ Handlebars.registerHelper('i18n', function(smth) {
     var i18n = getI18n();
     return  (smth in i18n ? i18n[smth] : "") ;
 });
+
+
 
 function loadClusters() {
     var request = getApiRequest();

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>molva.spb.ru - О чем говорит twitter</title>
+<title>molva.spb.ru - График частотности слов в Twitter</title>
 <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
@@ -44,11 +44,13 @@
 
     <div class="container">
         <h3 class="molva-header">График частотности слов в Twitter</h3>
-        <div class="form-inline">
-                <div class="form-group">
-                Слова: <input id="wordSelector" class="form-control" type="text" placeholder="Введите одно или несколько слов"></input>
-                </div>
-                <button class="btn btn-success" id="change-graph-btn" type="submit" onClick="changeGraph()">Показать</button>
+        <div class="input-group" style="width: 800px;">
+                <input id="wordSelector" class="form-control" type="text" placeholder="Слова для графика" ></input>
+                <span class="input-group-addon"><input type="checkbox" id="trend-checkbox"/> тренд</span>
+                <span class="input-group-btn">
+                    <button class="btn btn-success" id="change-graph-btn" type="submit" onClick="changeGraph()">Показать</button>
+                </span>
+                
         </div>
         <div id="wordsChart" style="width: 800px; height: 400px;"></div>
     
