@@ -24,7 +24,7 @@ td, th {
     
     border: 2px solid rgb(218,218,218);
 }
-.trend-raise {
+.trend-raise, .trend-raise:hover, .trend-raise:focus {
     color: #5cb85c;
 }
 .trend-fall {
@@ -99,6 +99,8 @@ font-size: 50px;
     margin-top: 20px;
     margin-bottom: 20px;
 }
-#wordSelector {
-    width: 400px;
+
+.molva-sidebar {
+    margin-top: 30px;
 }
+

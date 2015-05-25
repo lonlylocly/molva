@@ -1,55 +1,23 @@
 
-function getCurUrlParamArrays() {
-    var cur_url = "" + document.URL;
-    var url_parts = cur_url.split("?");
-    
-    var params = {};
-    if (url_parts.length > 1) {
-        var param_parts = url_parts[1].split("&");
-        for(var i =0 ; i< param_parts.length; i++) {
-            var p = param_parts[i].split("=");
-            var key = p[0];
-            var val = p[1];
-            if (!(key in params)) {
-                params[key] = [];
-            }
-            params[key].push(p[1]);
-        }
-    }
-    
-    return params;
-}
-
-
 function linear_approx(series, seriesLabel) {
-    var xs = [];
-    var ys = []
-    for(var i =0; i<series.length; i++) {
-        xs.push(series[i][0]);
-        ys.push(series[i][1]);
-    }
-
-    var y2s = linear_approx_full(ys, xs);
-
-    var data = [];
-    for (var i = 0; i<series.length; i++) {
-        data.push([xs[i], y2s[i]]);
-    }
-
-    return {"data": data, "label": '"' + seriesLabel + '" (аппроксимация)' 
-    }
-}
-function linear_approx_full(series, xs) {
     var n = series.length;
     var xy_mean = 0;
     var x_mean = 0;
     var y_mean = 0;
     var x2_mean = 0;
+    var x_min = series[0][0];
     for(var i =0; i<n; i++) {
-        xy_mean += xs[i]*series[i];
-        y_mean += series[i];
-        x_mean += xs[i];
-        x2_mean += xs[i] * xs[i];
+        if (series[i][0] < x_min) {
+            x_min = series[i][0];
+        }
+    }
+    for(var i =0; i<n; i++) {
+        var x = (series[i][0] - x_min) / 3600;
+        var y = series[i][1];
+        xy_mean += x * y;
+        y_mean += y;
+        x_mean += x;
+        x2_mean += x * x;
     }
     xy_mean = xy_mean / n;
     x_mean = x_mean / n;
@@ -61,18 +29,27 @@ function linear_approx_full(series, xs) {
 
     console.log("A: " + a + "; B: " + b + "; x_mean: " + x_mean + "; y_mean: " + y_mean);   
  
-    var approx = []
+    var approx_series = []
     for(var i =0; i<n; i++) {
-        approx.push(a + b * i);
+        var approx_x = (series[i][0] - x_min) / 3600;
+        var approx_y = a + b * approx_x;
+        approx_series.push([series[i][0], approx_y]);
     }
 
-    return approx;
+    return {"data": approx_series, "approx_slope": b.toFixed(2), "approx_add": a, 
+        "shadowSize": 0
+    };
 }
 
 function changeGraph() {
     var word = $("#wordSelector").val();
+    var trend = $("#trend-checkbox").prop('checked');
     if (word != undefined) {
-        window.location.assign('/graph2?word=' + encodeURIComponent(word));
+        var url = '/graph?word=' + encodeURIComponent(word);
+        if (trend) {
+            url += '&trend';
+        }
+        window.location.assign(url);
     }
 }
 
@@ -86,7 +63,53 @@ function getTimeLabel(time_hour) {
     return label;
 }
 
-function addWordAndPlot(wordToPlot, color, plotDataSeries, showApprox, labelsLong) {
+function sumSeries(series) {
+    var sum = 0;
+    for(var i=0; i<series.length; i++) {
+        sum += series[i][1];
+    }
+    return sum;
+}
+
+function compareSeries (a,b) {
+    var a_val = a["sumData"];
+    var b_val = b["sumData"];
+
+    if (a_val < b_val) return -1;
+    if (a_val > b_val) return 1;
+    return 0;
+}
+
+function makeTooltipHandler(labelsLong) {
+
+    return function tooltipHandler (event, pos, item) {
+        if (item) {
+            var x = item.datapoint[0],
+                y = item.datapoint[1];
+
+            var tooltipText = "";
+            var pointLabel = item.series.label;
+            if ("approx_label" in item.series) {
+                tooltipText = item.series["approx_label"];
+            } else {
+                var times = "раз";
+                var lastDigit = String(y).substr(-1, 1);
+                if ( lastDigit == "2" || lastDigit == "3" || lastDigit == "4") {
+                    times = "раза";
+                }
+                tooltipText = '"' + pointLabel + '"' + " " + labelsLong[x] + "<br/> " + y + " " + times
+            }
+
+            $("#tooltip").html(tooltipText)
+                .css({top: item.pageY+15, left: item.pageX+15})
+                .fadeIn(200);
+        } else {
+            $("#tooltip").hide();
+        }
+    }
+}
+
+function addWordAndPlot(wordToPlot, wordSurface, color, plotDataSeries, showApprox, labelsLong) {
     wordToPlot = decodeURIComponent(wordToPlot).trim();
 
     var encodedWord = encodeURIComponent(wordToPlot.toLowerCase().replace('#',''));
@@ -116,22 +139,28 @@ function addWordAndPlot(wordToPlot, color, plotDataSeries, showApprox, labelsLon
                 labelsLong[unixtime] = label;
                 data.push([unixtime, dataSeries[i]["count"]]); 
             } 
-            plotDataSeries.push({"label": wordToPlot, "data": data, "color": color,
-                //lines: {
-                //    show: true,
-                //    fill: true,
-                //    fillColor: { colors: [{ opacity: 0.3 }, { opacity: 0.1}] }
-                //}
+            var sumData = sumSeries(data);
+            var approx = linear_approx(data, wordToPlot);
+            approx["color"] = color;
+            approx["sumData"] = sumData + 1;
+            if (showApprox) {
+                plotDataSeries.push(approx);
+                wordSurface = wordSurface + " (trend: " + approx["approx_slope"] + ")";
+            }
+            approx["approx_label"] = wordSurface; 
+
+            plotDataSeries.push({"label": wordSurface, "data": data, "color": color,
                 bars: {
                     show: true,
                     barWidth: 3600, //hour
                     fill: true,
-                    fillColor: { colors: [ { opacity: 0.5 }, { opacity: 0.1 } ] }
-                }
+                    fillColor: { colors: [ { opacity: 0.7 }, { opacity: 0.3 } ] }
+                }, 
+                sumData: sumData
             });
-            if (showApprox) {
-                plotDataSeries.push(linear_approx(data, wordToPlot));
-            }
+
+            plotDataSeries.sort(compareSeries).reverse();
+
             $.plot("#wordsChart", plotDataSeries, {
                 yaxis: {
                     min: 0
@@ -142,31 +171,15 @@ function addWordAndPlot(wordToPlot, color, plotDataSeries, showApprox, labelsLon
                 grid: {
                     hoverable: true,
                     borderWidth: 0
-                }
+                },
+                legend: {
+                    margin: 20,
+                    position: "nw"
+                } 
             });
             
 
-            $("#wordsChart").bind("plothover", function (event, pos, item) {
-
-                if (item) {
-                    var x = item.datapoint[0],
-                        y = item.datapoint[1];
-
-                    var pointLabel = item.series.label;
-
-                    var times = "раз";
-                    var lastDigit = String(y).substr(-1, 1);
-                    if ( lastDigit == "2" || lastDigit == "3" || lastDigit == "4") {
-                        times = "раза";
-                    }
-
-                    $("#tooltip").html('"' + pointLabel + '"' + " " + labelsLong[x] + "<br/> " + y + " " + times)
-                        .css({top: item.pageY+5, left: item.pageX+5})
-                        .fadeIn(200);
-                } else {
-                    $("#tooltip").hide();
-                }
-            });            
+            $("#wordsChart").bind("plothover", makeTooltipHandler(labelsLong));
         } catch (e){
             console.log(e);
         }
@@ -188,16 +201,24 @@ function loadGraph() {
     // Get context with jQuery - using jQuery's .get() method.
 
     var bigWordToPlot = getCurUrlParams()["word"];
+    var bigSurfaceWordToPlot = getCurUrlParams()["surface"];
     if (bigWordToPlot == undefined) {
         return;
     }
+    if (bigSurfaceWordToPlot == undefined) {
+        bigSurfaceWordToPlot = bigWordToPlot;
+    }
+
     bigWordToPlot = decodeURIComponent(bigWordToPlot).trim();
     $("#wordSelector").val(bigWordToPlot);
     console.log(bigWordToPlot);
 
     var showTrend = "trend" in getCurUrlParams();
+    $("#trend-checkbox").prop('checked', showTrend);
     
     var wordsToPlot = bigWordToPlot.split(' ');
+    bigSurfaceWordToPlot = decodeURIComponent(bigSurfaceWordToPlot).trim(); 
+    var surfacesToPlot = bigSurfaceWordToPlot.split(' ');
     var plotDataSeries = [];
     var labelsLong = {};
 
@@ -205,7 +226,8 @@ function loadGraph() {
         if (wordsToPlot[k] == "") {
             continue;
         }
-        addWordAndPlot(wordsToPlot[k], k, plotDataSeries, showTrend, labelsLong); 
+        var surface = decodeURIComponent(surfacesToPlot[k]);
+        addWordAndPlot(wordsToPlot[k], surface, k, plotDataSeries, showTrend, labelsLong); 
     }
 
 }

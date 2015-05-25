@@ -37,10 +37,32 @@
 <script id="cluster-template" type="text/x-handlebars-template">
 <h3><img src="https://g.twimg.com/Twitter_logo_blue.png" class="twitter-logo-relevant"/> Сообщения Twitter по теме: 
             {{#each members}}
-                <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'
-                >{{this.text}} <sub>{{this.trend}}</sub></a> 
+                <div class="btn-group" role="group">
+                    
+                    <div class="dropdown dropdown-menu-right">
+                      <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true">
+                        {{this.text}}
+                        <span class="caret"></span>
+                      </button>
+                      <ul class="dropdown-menu" role="menu" >
+                        <li role="presentation" class="dropdown-header">
+                            Показатель тренда: {{this.trend}}
+                        </li>
+                        <li role="presentation">
+                            <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'
+                            >Искать слово "{{this.text}}" в твиттере</a>
+                        <li> 
+
+                        <li role="presentation">
+                            <a role="menuitem" tabindex="-1" href="/graph?word={{urlEscape this.stem_text}}&surface={{urlEscape this.text}}"
+                            >График частотности</a>
+                        </li>
+                      </ul>
+                    </div>
+                </div>
             {{/each}}
 </h3>
+<p>Частотность <a href="/graph?word={{#each members}}{{urlEscape this.stem_text}}%20{{/each}}&surface={{#each members}}{{urlDoubleEscape this.text}}%20{{/each}}&trend">темы</a>.</p>
 </script>
 
 <script id="shares-template" type="text/x-handlebars-template">
