@@ -234,11 +234,9 @@ def main():
 
 
     cur_display = stats.get_cursor("%s/tweets_display.db" % args.dir) 
-    cur_rel = stats.get_cursor("%s/tweets_relevant.db" % args.dir) 
     cur1 = stats.get_cursor("%s/tweets_%s.db" % (args.dir, today))
     cur2 = stats.get_cursor("%s/tweets_%s.db" % (args.dir, ystd))
    
-    stats.create_given_tables(cur_rel, ["relevant"])
 
     cur_display.execute("""
         select cluster_date, cluster from clusters
@@ -255,6 +253,8 @@ def main():
 
         #print json.dumps(r, indent=2, ensure_ascii=False)
 
+    cur_rel = stats.get_cursor("%s/tweets_relevant.db" % args.dir) 
+    stats.create_given_tables(cur_rel, ["relevant"])
     save_relevant(cur_rel, d, rel_tweets)
     
     return
