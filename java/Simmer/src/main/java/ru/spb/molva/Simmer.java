@@ -77,7 +77,7 @@ public class Simmer {
         saveSims(writer, sims);
 
         System.out.println(String.format("Total %s seen", cnt));
-        logStats("Common keys length", stat);
+        //logStats("Common keys length", stat);
         writer.close();
 
     }
