@@ -208,7 +208,7 @@ function loadTopicDebug() {
 
             $( "#cluster-holder" ).html( template(topic) );
 
-            var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset;
+            var shareUrl = "http://molva.spb.ru/topic?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset;
             var source2 = $("#shares-template").html();
             var template2 = Handlebars.compile(source2);
             $( "#shares-holder" ).html( template2({"shareUrl": shareUrl, "shareTitle": '"' + topic["title_string"] + '"'}) );
