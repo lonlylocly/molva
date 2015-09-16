@@ -227,27 +227,26 @@ def main():
 
     parser.add_argument("--dir")
     parser.add_argument("--num")
+    parser.add_argument("--clusters")
+    parser.add_argument("--clusters-out")
+
     args = parser.parse_args()
+
+    f_out = codecs.open(args.clusters_out, 'w', encoding="utf8")
 
     today=date.today().strftime('%Y%m%d')
     ystd=(date.today() - timedelta(1)).strftime('%Y%m%d')
 
-
-    cur_display = stats.get_cursor("%s/tweets_display.db" % args.dir) 
+    cl = json.load(codecs.open(args.clusters, 'r', encoding="utf8"))
+    
+    today = (datetime.utcnow()).strftime("%Y%m%d%H%M%S")
+    update_time = (datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+    
     cur1 = stats.get_cursor("%s/tweets_%s.db" % (args.dir, today))
     cur2 = stats.get_cursor("%s/tweets_%s.db" % (args.dir, ystd))
-   
 
-    cur_display.execute("""
-        select cluster_date, cluster from clusters
-        order by cluster_date desc
-        limit 1
-    """) 
-
-    d, c = cur_display.fetchone()
-    c = json.loads(c)
     rel_tweets = []
-    for cluster in c["clusters"]:
+    for cluster in cl:
         r = get_relevant_tweets(cur1, cur2, cluster)
         rel_tweets.append(r)
 
@@ -255,8 +254,12 @@ def main():
 
     cur_rel = stats.get_cursor("%s/tweets_relevant.db" % args.dir) 
     stats.create_given_tables(cur_rel, ["relevant"])
-    save_relevant(cur_rel, d, rel_tweets)
-    
+    save_relevant(cur_rel, today, rel_tweets)
+
+    final_cl = {"clusters": cl, "update_time": update_time, "cluster_id": today}
+    cl_json = json.dump(final_cl, f_out)
+    f_out.close()
+   
     return
 
             
