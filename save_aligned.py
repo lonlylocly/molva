@@ -29,17 +29,13 @@ def main():
 
     cur_display = stats.get_cursor(DB_DIR + "/tweets_display.db")
 
-    cl = json.load(codecs.open(args.clusters, 'r',encoding="utf8"))
-    
-    today = (datetime.utcnow()).strftime("%Y%m%d%H%M%S")
-    update_time = (datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+    final_cl_raw = codecs.open(args.clusters, 'r',encoding="utf8").read()
+    final_cl = json.loads(final_cl_raw)
 
-    final_cl = {"clusters": cl, "update_time": update_time}
-    cl_json = json.dumps(final_cl)
     cur_display.execute("""
         replace into clusters (cluster_date, cluster)
         values (?, ?)
-    """, (today, cl_json))
+    """, (final_cl["cluster_id"], final_cl_raw))
 
 
 if __name__ == '__main__':
