@@ -12,6 +12,7 @@ from subprocess import check_output
 import sqlite3
 from datetime import datetime, timedelta
 from dateutil import tz
+import traceback
 
 import molva.stats as stats
 from molva.Indexer import Indexer
@@ -94,7 +95,7 @@ class RelevantHandler(tornado.web.RequestHandler):
                 where cluster_date = '%(date)s'
             """  % ({'date': date}))
 
-        res = cur.fetchone()[0] 
+        res = cur.fetchone()[0]
 
         return res
 
@@ -110,19 +111,22 @@ class RelevantHandler(tornado.web.RequestHandler):
             
             return mydate
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return None
 
     def get(self):
-        date = self.parse_date(self.get_argument("date", default=None))
-        
-        logging.info("Date %s (UTC)" % date)
+        try:
+            date = self.parse_date(self.get_argument("date", default=None))
+            
+            logging.info("Date %s (UTC)" % date)
 
-        r = self.get_relevant(date)
+            r = self.get_relevant(date)
 
-        logging.info("Done fetch")
+            logging.info("Done fetch")
 
-        self.write(r)
+            self.write(r)
+        except Exception as e:
+            logging.error(traceback.format_exc())
 
 def utc_to_local(utctime):
     from_zone = tz.tzutc()
