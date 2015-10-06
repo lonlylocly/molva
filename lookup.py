@@ -33,6 +33,7 @@ class Tweet:
     def __init__(self, text, tw_id, created_at, username="", tweet_id=""):
         self.text = text
         self.words = []
+        self.all_words = []
         self.tw_id = tw_id
         self.created_at = created_at
         self.username = username
@@ -104,6 +105,25 @@ def print_list(l):
         logging.debug(i.__str__())
     
 
+@util.time_logger
+def get_tweets_nouns(cur, tweets):
+    cur.execute("""
+        select n.id, n.noun_md5
+        from tweets_nouns n
+        where n.id in (%s)
+    """ % ",".join([str(x) for x in tweets.keys()]) )    
+
+    while True:
+        r = cur.fetchone()
+        if r is None or len(r) < 2:
+            break
+        tw_id, noun_md5 = r
+        if tw_id in tweets:
+            tweets[tw_id].all_words.append(noun_md5)
+
+    return tweets
+
+@util.time_logger
 def get_related_tweets(cur, words):
     word_md5s = set()
     for w in words:
@@ -134,7 +154,9 @@ def get_related_tweets(cur, words):
             tweets[tw_id] = Tweet(tw_text, tw_id, created_at, username, tw_id)
 
         tweets[tw_id].words.append(noun_md5)
-    
+
+    get_tweets_nouns(tweets)
+
     return tweets 
 
 def filter_silly_spam(tw):
@@ -197,7 +219,7 @@ def main2():
 def dedup_tweets(tweets):
     dedup_tw = {}
     for tw_id in tweets:
-        words_str = [str(x) for x in sorted(tweets[tw_id].words)]
+        words_str = [str(x) for x in sorted(tweets[tw_id].all_words)]
         text_md5 = util.digest(",".join(words_str))
         if text_md5 not in dedup_tw:
             dedup_tw[text_md5] = tw_id
