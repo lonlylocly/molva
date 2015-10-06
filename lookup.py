@@ -191,6 +191,22 @@ def main2():
 
     return
 
+#
+# remove duplicate tweets (i.e. composed from same set of parsed tokens)
+#
+def dedup_tweets(tweets):
+    dedup_tw = {}
+    for tw_id in tweets:
+        words_str = [str(x) for x in sorted(tweets[tw_id].words)]
+        text_md5 = util.digest(",".join(words_str))
+        if text_md5 not in dedup_tw:
+            dedup_tw[text_md5] = tw_id
+    groupped_tw = {}
+    for text_md5 in dedup_tw:
+        groupped_tw[dedup_tw[text_md5]] = tweets[dedup_tw[text_md5]]
+
+    return groupped_tw 
+
 def get_relevant_tweets(cur1, cur2, cluster):
 
     words = map(lambda x: Word(word_md5=x["id"]), cluster["members"])
@@ -207,6 +223,7 @@ def get_relevant_tweets(cur1, cur2, cluster):
             tw_cnt[l] = 0
         tw_cnt[l] += 1
 
+    tweets = dedup_tweets(tweets)
     rel_tw = []
     for i in sorted(tweets.keys(), key=lambda x: (len(tweets[x].words), tweets[x].created_at), reverse=True)[:10]:
         rel_tw.append(tweets[i].to_json())
