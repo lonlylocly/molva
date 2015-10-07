@@ -109,11 +109,6 @@ def save_word_hour_cnt(mcur, word_cnt, word_hour_cnt_table):
     """ % (word_hour_cnt_table, ",".join(vals))
     mcur.execute(query)
 
-@util.time_logger
-def save_word_time_cnt(cur, cur_words, vals):
-    f = lambda : _save_word_time_cnt(cur, cur_words, vals)
-    try_several_times(f, 3, finilizer=lambda : cur_words.execute("rollback"))
-
 def _save_tweet_nouns(cur, vals):
     cur.execute("begin transaction")
 
@@ -128,46 +123,6 @@ def cut_to_tenminute(event_time):
     tenminute = int(str(event_time)[:11])
 
     return tenminute
-
-def _save_word_time_cnt(cur, cur_words, vals):
-    cur_words.execute("begin transaction")
-
-    tweet_ids = set()
-    for v in vals:
-        tweet_ids.add(v[0])
-
-    tweet_times = {}
-    cur.execute("""
-        select id, created_at 
-        from tweets
-        where id in (%s)
-    """ % ",".join(map(str, tweet_ids)))
-    
-    while True:
-        res = cur.fetchone()
-        if res is None:
-            break
-        t_id, created_at = res
-        t_id = int(t_id)
-        tenminute = cut_to_tenminute(created_at) # обрезаем до десятков минут
-        tweet_times[t_id] = tenminute
-
-    for v in vals:
-        cur_words.execute("""
-            insert or ignore into word_time_cnt
-            (word_md5, tenminute, cnt) 
-            values (%s, %s, 0)
-        """ % (v[1], tweet_times[int(v[0])])) 
-
-        cur_words.execute("""
-            update word_time_cnt
-            set cnt = cnt + 1
-            where 
-            word_md5 = %s 
-            and tenminute = %s
-        """ % (v[1], tweet_times[int(v[0])]))
-
-    cur_words.execute("commit")
 
 @util.time_logger
 def save_word_mates2(mcur, pairs, table):
@@ -356,7 +311,6 @@ def parse_facts_file(tweet_index, facts, date):
     cur = ind.get_db_for_date(date) 
     cur_main = stats.get_main_cursor(DB_DIR)
     cur_bigram = stats.get_cursor(DB_DIR + "/tweets_bigram.db")
-    cur_words = stats.get_cursor("%s/words_%s.db" % (DB_DIR, date))
 
     mcur = stats.get_mysql_cursor(settings)
     word_time_cnt_table = "word_time_cnt_%s" % date
