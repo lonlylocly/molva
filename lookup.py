@@ -43,6 +43,7 @@ class Tweet:
         j = {
             "text": self.text, 
             "words": self.words, 
+            "all_words": self.all_words, 
             "created_at": self.created_at, 
             "username": self.username,
             "created_at_str": datetime.strptime(str(self.created_at) ,"%Y%m%d%H%M%S").strftime("%Y-%m-%d %H:%M:%S"),
@@ -222,6 +223,8 @@ def dedup_tweets(tweets):
         words_str = [str(x) for x in sorted(tweets[tw_id].all_words)]
         text_md5 = util.digest(",".join(words_str))
         if text_md5 not in dedup_tw:
+            dedup_tw[text_md5] = tw_id
+        elif tweets[dedup_tw[text_md5]].created_at < tweets[tw_id].created_at:
             dedup_tw[text_md5] = tw_id
     groupped_tw = {}
     for text_md5 in dedup_tw:
