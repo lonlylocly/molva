@@ -281,7 +281,7 @@ def main():
 
     cl = json.load(codecs.open(args.clusters, 'r', encoding="utf8"))
     
-    today = (datetime.utcnow()).strftime("%Y%m%d%H%M%S")
+    today_time = (datetime.utcnow()).strftime("%Y%m%d%H%M%S")
     update_time = (datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
     
     cur1 = stats.get_cursor("%s/tweets_%s.db" % (args.dir, today))
@@ -296,9 +296,9 @@ def main():
 
     cur_rel = stats.get_cursor("%s/tweets_relevant.db" % args.dir) 
     stats.create_given_tables(cur_rel, ["relevant"])
-    save_relevant(cur_rel, today, rel_tweets)
+    save_relevant(cur_rel, today_time, rel_tweets)
 
-    final_cl = {"clusters": cl, "update_time": update_time, "cluster_id": today}
+    final_cl = {"clusters": cl, "update_time": update_time, "cluster_id": today_time}
     cl_json = json.dump(final_cl, f_out)
     f_out.close()
    
