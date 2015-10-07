@@ -155,7 +155,7 @@ def get_related_tweets(cur, words):
 
         tweets[tw_id].words.append(noun_md5)
 
-    get_tweets_nouns(tweets)
+    get_tweets_nouns(cur, tweets)
 
     return tweets 
 
