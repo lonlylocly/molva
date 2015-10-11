@@ -166,12 +166,27 @@ function getApiRequest() {
 }
 
 function parseResponse(resp){
+    _parseResponse(resp, true)
+}
+
+function _parseResponse(resp, doFilter){
 
     var cl = resp["clusters"];
 
     cl.sort(compare_max_trend).reverse();
 
-    var topics = fill_cluster_properties(cl); 
+    var cl2 = [];
+
+    if (doFilter) {
+        for(var i=0; i<cl.length; i++) {
+            if (!("topic_density" in cl[i]) || cl[i]["topic_density"] > 3) {
+                cl2.push(cl[i]);
+            }
+        }
+    } else {
+        cl2 = cl;
+    }
+    var topics = fill_cluster_properties(cl2); 
 
     return topics;
 }
@@ -329,6 +344,14 @@ Handlebars.registerHelper('i18n', function(smth) {
 
 
 function loadClusters() {
+    _loadClusters(true);
+}
+
+function loadClustersDebug() {
+    _loadClusters(false);
+}
+
+function _loadClusters(doFilter) {
     var request = getApiRequest();
     var limit = getCurUrlIntParam("limit",20);
     var offset = getCurUrlIntParam("offset",0);
@@ -338,7 +361,7 @@ function loadClusters() {
     $.get( request, function( data ) {
         try{
             var resp = JSON.parse(data);
-            var cl2 = parseResponse(resp);
+            var cl2 = _parseResponse(resp, doFilter);
             var source = $("#cluster-template").html();
             var template = Handlebars.compile(source);
             var renderDoc = {
