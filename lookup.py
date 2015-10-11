@@ -217,10 +217,11 @@ def main2():
 #
 # remove duplicate tweets (i.e. composed from same set of parsed tokens)
 #
-def dedup_tweets(tweets):
+def dedup_tweets(tweets, all_words=True):
     dedup_tw = {}
     for tw_id in tweets:
-        words_str = [str(x) for x in sorted(tweets[tw_id].all_words)]
+        wordset = tweets[tw_id].all_words if all_words else tweets[tw_id].words
+        words_str = [str(x) for x in sorted(wordset)]
         text_md5 = util.digest(",".join(words_str))
         if text_md5 not in dedup_tw:
             dedup_tw[text_md5] = tw_id
@@ -249,6 +250,7 @@ def get_relevant_tweets(cur1, cur2, cluster):
         tw_cnt[l] += 1
 
     tweets = dedup_tweets(tweets)
+    tweets_density = dedup_tweets(tweets, all_words=False)
     rel_tw = []
     for i in sorted(tweets.keys(), key=lambda x: (len(tweets[x].words), tweets[x].created_at), reverse=True)[:10]:
         rel_tw.append(tweets[i].to_json())
@@ -257,7 +259,8 @@ def get_relevant_tweets(cur1, cur2, cluster):
         "relevance_distribution": tw_cnt, 
         "words": map(lambda x: x.word_md5, words), 
         "tweets_cnt": len(tweets.keys()),
-        "members_md5": str(cluster["members_md5"])
+        "members_md5": str(cluster["members_md5"]),
+        "density": len(tweets_density)
     }
 
 @util.time_logger
@@ -291,6 +294,7 @@ def main():
     for cluster in cl:
         r = get_relevant_tweets(cur1, cur2, cluster)
         rel_tweets.append(r)
+        cl["topic_density"] = r["density"]
 
         #print json.dumps(r, indent=2, ensure_ascii=False)
 
