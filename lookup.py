@@ -294,7 +294,7 @@ def main():
     for cluster in cl:
         r = get_relevant_tweets(cur1, cur2, cluster)
         rel_tweets.append(r)
-        cl["topic_density"] = r["density"]
+        cluster["topic_density"] = r["density"]
 
         #print json.dumps(r, indent=2, ensure_ascii=False)
 
