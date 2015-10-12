@@ -166,7 +166,7 @@ function getApiRequest() {
 }
 
 function parseResponse(resp){
-    _parseResponse(resp, true)
+    return _parseResponse(resp, true)
 }
 
 function _parseResponse(resp, doFilter){
