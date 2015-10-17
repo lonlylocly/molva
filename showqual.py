@@ -49,7 +49,28 @@ class MarkSet:
 
         self.metric_sum = {}
 
+    def _count_precision(self, mark):
+        if "spam" not in mark.metrics or "topic_density" not in mark.metrics:
+            return
+        dens = int(mark.metrics["topic_density"])
+        is_spam = mark.metrics["spam"] == "1"
+    
+        mark.metrics["false_negative"] = 0
+        mark.metrics["false_positive"] = 0
+        mark.metrics["true_positive"] = 0
+        mark.metrics["true_negative"] = 0
+        if dens > 3 and is_spam:
+           mark.metrics["false_positive"] = 1
+        elif dens > 3 and not is_spam:
+           mark.metrics["true_positive"] = 1
+        elif dens <= 3 and is_spam:
+           mark.metrics["true_negative"] = 1
+        else:
+           mark.metrics["false_negative"] = 1
+            
+
     def put_mark(self, mark, filter_spam=False):
+        self._count_precision(mark)
         if filter_spam and "spam" in mark.metrics and mark.metrics["spam"] == "1":
             logging.info("Skip mark - it is spam")
             return
