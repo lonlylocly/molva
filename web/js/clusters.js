@@ -262,15 +262,40 @@ function loadTopicDebug() {
     });
 }
 
-function loadTopic() {
+function getTweetPositions(tw_len, cols) {
+    var tweet_positions = [];
+    var j = 0;
+    var a = 0;
+    for(var i=0; i<tw_len; i++) {
+        if ((a + j * cols) >= tw_len) {
+            a += 1;
+            j = 0
+            tweet_positions.push(-1);
+        }
+        tweet_positions.push(a + j * cols);
+        j += 1;
+    }
+    return tweet_positions;
+}
+
+function loadTopicDebug2() {
+    
     var request = getApiRequest();
     var offset = getCurUrlIntParam("offset",0);
+    var members_md5 = "";     
+    var date = getCurUrlParams()["date"];
+    if (date < "2015-10-24 00:16:43") {
+        loadTopicDebug();
+        console("load version 0.1");
+        return;
+    }
 
-     $.get( request, function( data ) {
+    $.get( request, function( data ) {
         try{
             var resp = JSON.parse(data);
             var topic = parseResponse(resp)[offset];
             topic["update_time"] = resp["update_time"];
+            members_md5 = topic["members_md5"]
             
             topic["i18n"] = getI18n();
 
@@ -279,7 +304,7 @@ function loadTopic() {
 
             $( "#cluster-holder" ).html( template(topic) );
 
-            var shareUrl = "http://molva.spb.ru/?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset;
+            var shareUrl = "http://molva.spb.ru/topic?date=" + encodeURIComponent(resp["update_time"])+ "&offset=" + offset;
             var source2 = $("#shares-template").html();
             var template2 = Handlebars.compile(source2);
             $( "#shares-holder" ).html( template2({"shareUrl": shareUrl, "shareTitle": '"' + topic["title_string"] + '"'}) );
@@ -292,8 +317,44 @@ function loadTopic() {
     .fail(function() {
         $( "#cluster-holder" ).html("Произошла ошибка.")
     });
-   
+
+    $.get( '/api/relevant?date=' + date, function( data ) {
+        try{
+            var resp = JSON.parse(data);
+            var tw_rel = null;
+            console.log(members_md5);
+            for(var i=0; i<resp.length; i++) {
+                if (resp[i]["members_md5"] == members_md5) {
+                    tw_rel = resp[i];
+                    break;
+                }
+            }
+            var tweet_positions = getTweetPositions(tw_rel["tweets"].length, 4) 
+            var tw_text = '<div class="row">';
+            tw_text += '<div class="col-md-3">';
+            for(var i=0; i<tweet_positions.length; i++) {
+                var j = tweet_positions[i];
+                if (j==-1) {
+                    tw_text += '</div><div class="col-md-3">';
+                    continue;
+                }
+                tw_text += tw_rel["tweets"][j]["embed_html"];
+            }
+            tw_text += '</div></div>';
+            //var source = $("#relevant-template").html();
+            //var template = Handlebars.compile(source);
+
+            $( "#relevant-holder" ).html( tw_text);
+
+        } catch (e){
+            console.log(e);
+        }
+    })
+    .fail(function() {
+        $( "#relevent-holder" ).html("Произошла ошибка.")
+    });
 }
+
 
 function getI18n(){
     var lang = getCurUrlStringParam("lang","ru");

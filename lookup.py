@@ -8,10 +8,12 @@ import codecs
 import argparse
 import re
 from datetime import date, timedelta, datetime
+import requests
 
 import molva.stats as stats
 import molva.util as util
 
+requests.packages.urllib3.disable_warnings()
 
 logging.config.fileConfig("logging.conf")
 
@@ -38,6 +40,7 @@ class Tweet:
         self.created_at = created_at
         self.username = username
         self.tweet_id = tweet_id
+        self.html = ""
 
     def to_json(self):
         j = {
@@ -47,7 +50,8 @@ class Tweet:
             "created_at": self.created_at, 
             "username": self.username,
             "created_at_str": datetime.strptime(str(self.created_at) ,"%Y%m%d%H%M%S").strftime("%Y-%m-%d %H:%M:%S"),
-            "tweet_id": str(self.tweet_id)
+            "tweet_id": str(self.tweet_id),
+            "embed_html": self.html
         }
             
         return j
@@ -233,6 +237,23 @@ def dedup_tweets(tweets, all_words=True):
 
     return groupped_tw 
 
+def get_embed_html(tweet):
+    try:
+        url="https://twitter.com/%s/status/%s" % (tweet.username, tweet.tweet_id)
+        html = requests.get('https://api.twitter.com/1/statuses/oembed.json?url='+url+'&maxwidth=250&conversation=none').json()["html"]
+        tweet.html = html
+        logging.info("Success with tw id: %s" % tweet.tweet_id)
+    except:
+        logging.exception("Failed to get embedded tweet")
+    return tweet
+
+def put_trend(cl):
+    trend = 0.0
+    for m in cl["members"]:
+        if m["trend"] > trend:
+            trend = m["trend"]
+    cl["trend"] = trend
+
 def get_relevant_tweets(cur1, cur2, cluster):
 
     words = map(lambda x: Word(word_md5=x["id"]), cluster["members"])
@@ -251,11 +272,14 @@ def get_relevant_tweets(cur1, cur2, cluster):
 
     tweets = dedup_tweets(tweets)
     tweets_density = dedup_tweets(tweets, all_words=False)
-    rel_tw = []
-    for i in sorted(tweets.keys(), key=lambda x: (len(tweets[x].words), tweets[x].created_at), reverse=True)[:10]:
-        rel_tw.append(tweets[i].to_json())
+    rel_tw_ids = sorted(tweets.keys(), key=lambda x: (len(tweets[x].words), tweets[x].created_at), reverse=True)[:10]
+    rel_tw = [tweets[x] for x in rel_tw_ids]
 
-    return {"tweets": rel_tw, 
+    if len(tweets_density) > 3:
+        [get_embed_html(x) for x in rel_tw]
+
+    return {
+        "tweets": [x.to_json() for x in rel_tw], 
         "relevance_distribution": tw_cnt, 
         "words": map(lambda x: x.word_md5, words), 
         "tweets_cnt": len(tweets.keys()),
@@ -291,18 +315,25 @@ def main():
     cur2 = stats.get_cursor("%s/tweets_%s.db" % (args.dir, ystd))
 
     rel_tweets = []
-    for cluster in cl:
+    for x in cl:
+        put_trend(x)
+    filtered_cl = [x for x in cl if x["trend"] > 0.0]
+    logging.info("Filtered out %d of %d (trend > 0.0)" % (len(cl) - len(filtered_cl), len(cl)))
+    
+    top_cl = sorted(cl, key=lambda x: x["trend"], reverse=True)
+    tw_with_embed_cnt = 0
+    for cluster in top_cl:
         r = get_relevant_tweets(cur1, cur2, cluster)
         rel_tweets.append(r)
-        cluster["topic_density"] = r["density"]
+        cluster["topic_density"] = r["density"] 
 
-        #print json.dumps(r, indent=2, ensure_ascii=False)
+    logging.info("Have %d topics with tweets embeds out of %d" % (tw_with_embed_cnt, len(top_cl))) 
 
     cur_rel = stats.get_cursor("%s/tweets_relevant.db" % args.dir) 
     stats.create_given_tables(cur_rel, ["relevant"])
     save_relevant(cur_rel, today_time, rel_tweets)
 
-    final_cl = {"clusters": cl, "update_time": update_time, "cluster_id": today_time}
+    final_cl = {"clusters": top_cl, "update_time": update_time, "cluster_id": today_time}
     cl_json = json.dump(final_cl, f_out)
     f_out.close()
    
