@@ -67,7 +67,7 @@ def get_clusters(args, sim_dict, nouns, noun_trend, post_cnt):
     total_md5 = util.digest("__total__")
     best_ratio = 10 
     cl = []
-    for k in [900, 1000, 1100]:
+    for k in [800, 900, 1000, 1100]:
         for i in range(0, int(args.i)): 
             logging.info("get %s clusters, iteration %s" % (k, i))
             resp = KMeanCluster.get_clusters(sim_dict, int(k), nouns, trash_words=trash_words_md5,
