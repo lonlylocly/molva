@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>molva.spb.ru - О чем говорит twitter</title>
+<title>molva.spb.ru - Последние события в Twitter</title>
 <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
@@ -12,7 +12,6 @@
 <!--border: 2px solid rgb(218,218,218);-->
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/js/handlebars-v1.3.0.js"></script>
-<script src="https://apis.google.com/js/client:platform.js" async defer></script>
 
 <script id="relevant-template" type="text/x-handlebars-template">
 <ul class="list-group">
@@ -20,58 +19,68 @@
     <li class="list-group-item">
     <div style="padding: 10 px">
         <div>
-            <a href="https://twitter.com/{{this.username}}">@{{this.username}}</a>
+            <a href="https://twitter.com/{{this.username}}" target="_blank">@{{this.username}}</a>
         </div>
         <div>
             <p style="white-space: pre-wrap;">{{this.text}}</p>
         </div>
         <div>
-            <a href="https://twitter.com/{{this.username}}/status/{{this.tweet_id}}"><small>{{this.created_at_str}}</small></a>
+            <a href="https://twitter.com/{{this.username}}/status/{{this.tweet_id}}" target="_blank"><small>{{this.created_at_str}}</small></a>
         </div>
     </div>
     </li>
 {{/each}}
 </div>
+
 </script>
 
 <script id="cluster-template" type="text/x-handlebars-template">
-<h3><img src="https://g.twimg.com/Twitter_logo_blue.png" class="twitter-logo-relevant"/> Сообщения Twitter по теме: 
-            {{#each members}}
-                <div class="btn-group" role="group">
-                    
-                    <div class="dropdown dropdown-menu-right">
-                      <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true">
-                        {{this.text}}
-                        <span class="caret"></span>
-                      </button>
-                      <ul class="dropdown-menu" role="menu" >
-                        <li role="presentation" class="dropdown-header">
-                            Показатель тренда: {{this.trend}}
-                        </li>
-                        <li role="presentation">
-                            <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'
-                            >Искать слово "{{this.text}}" в твиттере</a>
-                        <li> 
+<div class="row molva-header row-offcanvas row-offcanvas-right">
+    <div class="col-xs-12 col-sm-9">
+        <h3><img src="https://g.twimg.com/Twitter_logo_blue.png" class="twitter-logo-relevant"/> Сообщения Twitter по теме: 
+                    {{#each members}}
+                        <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'
+                        >{{this.text}}</sub></a> 
+                    {{/each}}
+        </h3>
+    </div> <!--col-xs-12-->
+    <div class="col-xs-6 col-sm-3 sidebar-offcanvas molva-sidebar" id="sidebar">
+        <div class="btn-group-vertical" role="group" >
+          <div class="btn-group" role="group">
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Поискать в других источниках <span class="caret"></span></button>
+            <ul class="dropdown-menu" role="menu">
+                <li><a href="http://google.com/search?q={{this.query_string}}"  target="_blank"
+                  title='Уточнить тему "{{this.query_string}}" поиском в Google'>Google</a></li>
+                <li><a href="http://yandex.ru/yandsearch?text={{this.query_string}}"  target="_blank"
+                  title='Уточнить тему "{{this.query_string}}" поиском в Яндексе'><span style="color: red">Я</span>ндекс</a></li>
+                <li><a href="http://news.yandex.ru/yandsearch?rpt=nnews2&text={{this.query_string}}" target="_blank"
+                  title='Уточнить тему "{{this.query_string}}" поиском по Яндекс.Новостям'><span style="color: red">Я</span>ндекс.Новости</a></li>
+                <li><a href="https://twitter.com/search?q={{this.query_string}}"  target="_blank"
+                  title='Уточнить тему "{{this.query_string}}" поиском в Twitter'>Twitter</a></li>
+            </ul>
+          </div>
+          <!--"/graph?word={{#each members}}{{urlEscape this.stem_text}}%20{{/each}}&surface={{#each members}}{{urlDoubleEscape this.text}}%20{{/each}}&trend"-->
+          <a href="{{graph_link}}"
+            class="btn btn-default" 
+            >График частотности слов темы</a>
+        </div>
+    </div><!--/.sidebar-offcanvas-->
 
-                        <li role="presentation">
-                            <a role="menuitem" tabindex="-1" href="/graph?word={{urlEscape this.stem_text}}&surface={{urlEscape this.text}}"
-                            >График частотности</a>
-                        </li>
-                      </ul>
-                    </div>
-                </div>
-            {{/each}}
-</h3>
-<p>Частотность <a href="/graph?word={{#each members}}{{urlEscape this.stem_text}}%20{{/each}}&surface={{#each members}}{{urlDoubleEscape this.text}}%20{{/each}}&trend">темы</a>.</p>
+</div>
+
 </script>
 
 <script id="shares-template" type="text/x-handlebars-template">
 <scr{{!}}ipt type="text/javascript" src="//yastatic.net/share/share.js" charset="utf-8"></scr{{!}}ipt>
 <div class="row featurette shares-block">
-    <div class="col-md-4">
-        <div class="yashare-auto-init" data-yashareL10n="ru" data-yashareTitle="{{shareTitle}}" data-yashareLink="{{shareUrl}}" data-yashareImage="http://molva.spb.ru/img/molva-chan-trend.png"
-         data-yashareQuickServices="vkontakte,facebook,twitter,gplus" data-yashareTheme="counter"
-        ></div> 
+    <div class="col-md-12">
+        <div style="float: left;">
+        </div>
+        <div>
+            <div class="yashare-auto-init" data-yashareL10n="ru" data-yashareTitle="{{shareTitle}}" data-yashareLink="{{shareUrl}}" data-yashareImage="http://molva.spb.ru/img/molva-chan-trend.png"
+             data-yashareQuickServices="vkontakte,facebook,twitter,gplus" data-yashareTheme="counter"
+            ></div> 
+        </div>
     </div>
 </div>
 </script>
@@ -81,7 +90,7 @@
 </head>
 <body>
     <script>
-        loadTopicDebug()
+        loadTopicDebug2()
     </script>
 
     <div class="navbar navbar-fixed-top navbar-default" role="navigation">
@@ -93,7 +102,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="http://molva.spb.ru/debug">molva.spb.ru <sub class="beta-mark">&beta;eta</sub></a>
+          <a class="navbar-brand" href="http://molva.spb.ru/">molva.spb.ru <sub class="beta-mark">&beta;eta</sub></a>
         </div>
         <div class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
@@ -115,17 +124,6 @@
 
         <div id="shares-holder">
         </div>
-
-    <span id="signinButton">
-      <span
-        class="g-signin"
-        data-callback="signinCallback"
-        data-clientid="1053467607144-77mhoifglcc1giv8mdngsmp3gaoogiva.apps.googleusercontent.com"
-        data-cookiepolicy="single_host_origin"
-        data-scope="https://www.googleapis.com/auth/plus.profile.emails.read">
-      </span>
-    </span>
-
 
       <footer  style="padding-bottom: 30px;">
             <p>&copy; <a href="http://twitter.com/lonlylocly" id="contact">Николай Васильев</a>
