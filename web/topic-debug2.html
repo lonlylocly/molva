@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>molva.spb.ru - О чем говорит twitter</title>
+<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/custom.css" rel="stylesheet">
+
+<!--border: 2px solid rgb(218,218,218);-->
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="/js/handlebars-v1.3.0.js"></script>
+<script src="https://apis.google.com/js/client:platform.js" async defer></script>
+
+<script id="relevant-template" type="text/x-handlebars-template">
+<ul class="list-group">
+{{#each tweets}}
+    <li class="list-group-item">
+    <div style="padding: 10 px">
+        <!--<div>
+            <a href="https://twitter.com/{{this.username}}">@{{this.username}}</a>
+        </div>
+        <div>
+            <p style="white-space: pre-wrap;">{{this.text}}</p>
+        </div>
+        <div>
+            <a href="https://twitter.com/{{this.username}}/status/{{this.tweet_id}}"><small>{{this.created_at_str}}</small></a>
+        </div>-->
+        {{this.embed_html}}
+    </div>
+    </li>
+{{/each}}
+</div>
+</script>
+
+<script id="cluster-template" type="text/x-handlebars-template">
+<h3><img src="https://g.twimg.com/Twitter_logo_blue.png" class="twitter-logo-relevant"/> Сообщения Twitter по теме: 
+            {{#each members}}
+                <div class="btn-group" role="group">
+                    
+                    <div class="dropdown dropdown-menu-right">
+                      <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true">
+                        {{this.text}}
+                        <span class="caret"></span>
+                      </button>
+                      <ul class="dropdown-menu" role="menu" >
+                        <li role="presentation" class="dropdown-header">
+                            Показатель тренда: {{this.trend}}
+                        </li>
+                        <li role="presentation">
+                            <a href="https://twitter.com/search?q={{this.text}}" target="_blank" title='Искать слово "{{this.text}}" в твиттере'
+                            >Искать слово "{{this.text}}" в твиттере</a>
+                        <li> 
+
+                        <li role="presentation">
+                            <a role="menuitem" tabindex="-1" href="/graph?word={{urlEscape this.stem_text}}&surface={{urlEscape this.text}}"
+                            >График частотности</a>
+                        </li>
+                      </ul>
+                    </div>
+                </div>
+            {{/each}}
+</h3>
+<p>Частотность <a href="/graph?word={{#each members}}{{urlEscape this.stem_text}}%20{{/each}}&surface={{#each members}}{{urlDoubleEscape this.text}}%20{{/each}}&trend">темы</a>.</p>
+</script>
+
+<script id="shares-template" type="text/x-handlebars-template">
+<scr{{!}}ipt type="text/javascript" src="//yastatic.net/share/share.js" charset="utf-8"></scr{{!}}ipt>
+<div class="row featurette shares-block">
+    <div class="col-md-4">
+        <div class="yashare-auto-init" data-yashareL10n="ru" data-yashareTitle="{{shareTitle}}" data-yashareLink="{{shareUrl}}" data-yashareImage="http://molva.spb.ru/img/molva-chan-trend.png"
+         data-yashareQuickServices="vkontakte,facebook,twitter,gplus" data-yashareTheme="counter"
+        ></div> 
+    </div>
+</div>
+</script>
+
+<script src="/js/clusters.js"></script>
+
+</head>
+<body>
+    <script>
+        loadTopicDebug2()
+    </script>
+
+    <div class="navbar navbar-fixed-top navbar-default" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="http://molva.spb.ru/debug">molva.spb.ru <sub class="beta-mark">&beta;eta</sub></a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="/about">About</a></li>
+            <li><a href="/contact">Contact</a></li>
+            <li id="choose-lang"></li>
+          </ul>
+        </div><!-- /.nav-collapse -->
+      </div><!-- /.container -->
+    </div><!-- /.navbar -->
+
+
+    <div class="container">
+        <div id="cluster-holder">
+            <p>Загрузка...</p>
+        </div>
+         <div id="relevant-holder">
+        </div>   
+
+        <div id="shares-holder">
+        </div>
+
+    <span id="signinButton">
+      <span
+        class="g-signin"
+        data-callback="signinCallback"
+        data-clientid="1053467607144-77mhoifglcc1giv8mdngsmp3gaoogiva.apps.googleusercontent.com"
+        data-cookiepolicy="single_host_origin"
+        data-scope="https://www.googleapis.com/auth/plus.profile.emails.read">
+      </span>
+    </span>
+
+
+      <footer  style="padding-bottom: 30px;">
+            <p>&copy; <a href="http://twitter.com/lonlylocly" id="contact">Николай Васильев</a>
+            &middot; Built using <a href="http://getbootstrap.com">Bootstrap</a></p>
+      </footer>
+
+    </div>
+
+    <script src="/bootstrap/js/bootstrap.min.js"></script>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+(function (d, w, c) {
+    (w[c] = w[c] || []).push(function() {
+        try {
+            w.yaCounter25227179 = new Ya.Metrika({id:25227179,
+                    clickmap:true,
+                    trackLinks:true,
+                    accurateTrackBounce:true});
+        } catch(e) { }
+    });
+
+    var n = d.getElementsByTagName("script")[0],
+        s = d.createElement("script"),
+        f = function () { n.parentNode.insertBefore(s, n); };
+    s.type = "text/javascript";
+    s.async = true;
+    s.src = (d.location.protocol == "https:" ? "https:" : "http:") + "//mc.yandex.ru/metrika/watch.js";
+
+    if (w.opera == "[object Opera]") {
+        d.addEventListener("DOMContentLoaded", f, false);
+    } else { f(); }
+})(document, window, "yandex_metrika_callbacks");
+</script>
+<noscript><div><img src="//mc.yandex.ru/watch/25227179" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+</body>
+</html>
