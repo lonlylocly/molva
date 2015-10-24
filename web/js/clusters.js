@@ -202,7 +202,7 @@ function getLocalPageTranslateUrl(lang){
     return url;
 }
 
-function loadTopicDebug() {
+function loadTopicV2() {
     
     var request = getApiRequest();
     var offset = getCurUrlIntParam("offset",0);
@@ -278,14 +278,14 @@ function getTweetPositions(tw_len, cols) {
     return tweet_positions;
 }
 
-function loadTopicDebug2() {
+function loadTopicV3() {
     
     var request = getApiRequest();
     var offset = getCurUrlIntParam("offset",0);
     var members_md5 = "";     
     var date = getCurUrlParams()["date"];
     if (date < "2015-10-24 00:16:43") {
-        loadTopicDebug();
+        loadTopicV2();
         console("load version 0.1");
         return;
     }
