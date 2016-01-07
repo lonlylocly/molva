@@ -38,7 +38,9 @@ def main():
     cur = stats.get_cursor(DB_DIR + "/word_cnt.db")
             
     profiles_dict = stats.setup_noun_profiles(cur, {}, {}, 
-        post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = NOUNS_LIMIT, profiles_table = args.profiles_table,
+        post_min_freq = POST_MIN_FREQ, blocked_nouns = BLOCKED_NOUNS, nouns_limit = NOUNS_LIMIT, 
+        db_dir = DB_DIR,
+        profiles_table = args.profiles_table,
         trash_words = settings["trash_words"],
         swear_words = settings["swear_words"]
     )

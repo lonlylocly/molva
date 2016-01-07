@@ -655,8 +655,10 @@ def _filter_swear_words(profiles_dict, swear_words):
 
     return filtered
 
-def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, profiles_table="post_reply_cnt", trash_words=None,
+def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, db_dir, profiles_table="post_reply_cnt", trash_words=None,
     swear_words=None):
+    word_cnt = stats.get_word_cnt(db_dir)
+
     profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table)
 
     #set_noun_profiles_tweet_ids(profiles_dict, tweets_nouns)
@@ -676,12 +678,31 @@ def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, 
 
     set_noun_profiles_total(cur, profiles_dict, post_min_freq, blocked_nouns)
 
-    weight_profiles_with_entropy(cur, profiles_dict, nouns) 
+    #weight_profiles_with_entropy(cur, profiles_dict, nouns) 
+    weight_profiles_with_idf(profiles_dict, word_cnt)
 
     if trash_words is not None:
         _add_total_to_profiles(profiles_dict, trash_words)
    
     return profiles_dict
+
+#
+# profile: w1, w2, cnt
+# Here f(word) = cnt (i.e. freq of w2 in context of w1)
+# d(word) ~= number of tweets with that word
+# in practice, d(word) = freq of all occurences of word
+# N is tot number of tweets, take it 4M
+# formula:
+# tf_idf = (1 + log(f(word)) * (log (N / d(word)))
+#
+@util.time_logger
+def weight_profiles_with_idf(profiles_dict, word_cnt, N=4e6):
+    for k in profiles_dict.keys():
+        p = profiles_dict[k]
+        idf = math.log(float(N) / word_cnt[k]) if word_cnt[k] <= N else 0 
+        for r in p.replys.keys():
+            tf = 1 + math.log(p.replys[r])
+            p.replys[r] = tf * idf
 
 @util.time_logger
 def get_word_cnt(db_dir, utc_now=datetime.utcnow()):
