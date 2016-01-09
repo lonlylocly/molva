@@ -109,7 +109,7 @@ function makeTooltipHandler(labelsLong) {
     }
 }
 
-function addWordAndPlot(wordToPlot, wordSurface, color, plotDataSeries, showApprox, labelsLong) {
+function addWordAndPlot(wordToPlot, wordSurface, color, plotDataSeries, showApprox, labelsLong, normalize) {
     wordToPlot = decodeURIComponent(wordToPlot).trim();
 
     var encodedWord = encodeURIComponent(wordToPlot.toLowerCase().replace('#',''));
@@ -129,6 +129,7 @@ function addWordAndPlot(wordToPlot, wordSurface, color, plotDataSeries, showAppr
             var labels = [];
             var data = [];
             var tickDist = Math.round(dataSeries.length / 5);
+            var maxCnt = 1; //artificial 
             for(var i=0; i<dataSeries.length; i++) {
                 var label = getTimeLabel(dataSeries[i]["hour"]);
                 var unixtime = parseFloat(dataSeries[i]["utc_unixtime"]);
@@ -138,7 +139,28 @@ function addWordAndPlot(wordToPlot, wordSurface, color, plotDataSeries, showAppr
                 }
                 labelsLong[unixtime] = label;
                 data.push([unixtime, dataSeries[i]["count"]]); 
+                if (dataSeries[i]["count"] > maxCnt) {
+                    maxCnt = dataSeries[i]["count"];
+                }
             } 
+            if (normalize) {
+                //var exp_sum = 0;
+                //for(var i=0; i<data.length; i++) {
+                //    exp_sum += Math.exp(data[i][1] / maxCnt)
+                //}
+                //var min_exp = exp_sum;
+                //for(var i=0; i<data.length; i++) {
+                //    data[i][1] = Math.exp(data[i][1] / maxCnt) / exp_sum;
+                //    if (data[i][1] < min_exp) {
+                //        min_exp = data[i][1];
+                //    }
+                //    //data[i][1] = (data[i][1] / maxCnt) * 100;
+                //}
+                for(var i=0; i<data.length; i++) {
+                    //data[i][1] = (data[i][1] - min_exp) * 100;
+                    data[i][1] = (data[i][1] / maxCnt) * 100;
+                }
+            }
             var sumData = sumSeries(data);
             var approx = linear_approx(data, wordToPlot);
             approx["color"] = color;
@@ -215,6 +237,8 @@ function loadGraph() {
 
     var showTrend = "trend" in getCurUrlParams();
     $("#trend-checkbox").prop('checked', showTrend);
+
+    var normalize = "normalize" in getCurUrlParams();
     
     var wordsToPlot = bigWordToPlot.split(' ');
     bigSurfaceWordToPlot = decodeURIComponent(bigSurfaceWordToPlot).trim(); 
@@ -227,7 +251,7 @@ function loadGraph() {
             continue;
         }
         var surface = decodeURIComponent(surfacesToPlot[k]);
-        addWordAndPlot(wordsToPlot[k], surface, k, plotDataSeries, showTrend, labelsLong); 
+        addWordAndPlot(wordsToPlot[k], surface, k, plotDataSeries, showTrend, labelsLong, normalize); 
     }
 
 }
