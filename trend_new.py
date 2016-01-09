@@ -102,11 +102,17 @@ def main():
     hours = sorted(hour_word_cnt.keys())
     for word in word_cnt.keys():
         series = []
+        series_max = 0
         for hour in hours:
             if word in hour_word_cnt[hour]:
                 series.append(hour_word_cnt[hour][word])
+                if hour_word_cnt[hour][word] > series_max:
+                    series_max = hour_word_cnt[hour][word]
             else:
                 series.append(0)
+        # normalize by maxfreq in series 
+        if series_max > 0:
+            series = [ (float(x) / series_max) * 100 for x in series ]
         approx = least_squares(series)
         a, b, app_ser = approx
         word_series.append({
