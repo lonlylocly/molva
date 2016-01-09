@@ -27,6 +27,10 @@ td, th {
 .trend-raise, .trend-raise:hover, .trend-raise:focus {
     color: #5cb85c;
 }
+.trend-raise-important, .trend-raise-important:hover, .trend-raise-important:focus {
+    color: #5cb85c;
+    font-weight: bold;
+}
 .trend-fall {
     color: #d9534f;
 }

@@ -69,8 +69,16 @@ function get_avg_trend(cluster) {
     return avg_trend;
 }
 
-function set_trend_color(cluster) {
-    var avg_trend = get_max_trend(cluster);
+function set_trend_color(cluster, cluster_id) {
+    var avg_trend = get_avg_trend(cluster);
+
+    var threshold_high = 0.5;
+    var threshold_medium = 0.1;
+
+    if (cluster_id < "20160109111303") {
+        threshold_high = 15;
+        threshold_medium = 3;
+    }
 
     var trend_class = "trend-unknown";
     var sign = "";
@@ -80,9 +88,17 @@ function set_trend_color(cluster) {
     } else if (avg_trend < 0) {
         trend_class = "trend-fall";
     }
+    var trend_text = "обычное";
+    if (avg_trend > threshold_high) {
+        trend_text = "важное";
+        trend_class = "trend-raise-important";
+    } else if (avg_trend > threshold_medium ) {
+        trend_text = "новое";
+    }
     
     cluster["avg_trend"] = sign +  avg_trend.toFixed(2);
     cluster["trend_class"] = trend_class;
+    cluster["trend_text"] = trend_text;
 }
 
 function goBackOld() {
@@ -124,7 +140,7 @@ function makeGraphLink(members) {
     return "/graph?word=" + lemmas.join('%20') + "&surface=" + texts.join('%20') + "&trend";
 }
 
-function fill_cluster_properties(cl) {
+function fill_cluster_properties(cl, cluster_id) {
     var cl2= [];
     for(var i=0; i<cl.length; i++) {
         var mems = $.map(cl[i]["members"], function(l) {
@@ -132,7 +148,7 @@ function fill_cluster_properties(cl) {
         })
 
         try {
-            set_trend_color(cl[i]);
+            set_trend_color(cl[i], cluster_id);
         } catch(e) {
             console.log(e);
         }
@@ -186,7 +202,7 @@ function _parseResponse(resp, doFilter){
     } else {
         cl2 = cl;
     }
-    var topics = fill_cluster_properties(cl2); 
+    var topics = fill_cluster_properties(cl2, resp["cluster_id"]); 
 
     return topics;
 }
