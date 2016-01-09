@@ -657,7 +657,7 @@ def _filter_swear_words(profiles_dict, swear_words):
 
 def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, nouns_limit, db_dir, profiles_table="post_reply_cnt", trash_words=None,
     swear_words=None):
-    word_cnt = stats.get_word_cnt(db_dir)
+    word_cnt = get_word_cnt(db_dir)
 
     profiles_dict = get_noun_profiles(cur, post_min_freq, blocked_nouns, profiles_table)
 
@@ -697,12 +697,18 @@ def setup_noun_profiles(cur, tweets_nouns, nouns, post_min_freq, blocked_nouns, 
 #
 @util.time_logger
 def weight_profiles_with_idf(profiles_dict, word_cnt, N=4e6):
+    threshold_errors = 0
     for k in profiles_dict.keys():
         p = profiles_dict[k]
-        idf = math.log(float(N) / word_cnt[k]) if word_cnt[k] <= N else 0 
+        idf = 0
+        if word_cnt[k] <= N:
+            idf = math.log(float(N) / float(word_cnt[k]))   
+        else:
+            threshold_errors += 1
         for r in p.replys.keys():
             tf = 1 + math.log(p.replys[r])
             p.replys[r] = tf * idf
+    logging.info("Threshold errors: %d" % threshold_errors)
 
 @util.time_logger
 def get_word_cnt(db_dir, utc_now=datetime.utcnow()):
