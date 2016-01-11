@@ -17,12 +17,15 @@
 <script id="cluster-template" type="text/x-handlebars-template">
 <h3 class="molva-header">Последние события в Twitter</h3>
 <div class="row molva-header">
-    <div class="col-md-8">
+    <div class="col-md-10">
         <a href="#" class="btn btn-sm btn-default" onClick="goBack()">{{i18n.earlier}}</a> 
         <a href="#" class="btn btn-sm btn-default" onClick="goNow()">{{i18n.now}}</a>
+    </div>
+</div>
+<div class="row molva-header">
+    <div class="col-md-10">
         <span>{{i18n.updated}} <span id="current-timestamp">{{update_time}}</span>.</span>
     </div>
-
 </div>
 <ul class="list-group">
 {{#each groups}}
