@@ -69,6 +69,30 @@ function get_avg_trend(cluster) {
     return avg_trend;
 }
 
+// because of Tomita imperfection same source of word can be with different lemmas
+function filter_duplicates(cluster) {
+    var words = {}
+    var mems = []
+    for(var i=0; i<cluster["members"].length; i++) {
+        if (!(cluster["members"][i]["text"] in words)) {
+            mems.push(cluster["members"][i]);
+            words[cluster["members"][i]["text"]] = true;
+        }
+    }
+    if (mems.length < cluster["members"].length) {
+        console.info("Filtered several words for topic " + cluster["gen_title"])
+        cluster["members"] = mems;
+        var gen_title = ""
+        for(var i=0; i<mems.length ; i++) {
+            gen_title += mems[i]["text"];
+            if (i != mems.length -1 ) {
+                gen_title += " ";
+            }
+        }
+        cluster["gen_title"] = gen_title;
+    }
+}
+
 function set_trend_color(cluster, cluster_id) {
     var avg_trend = get_avg_trend(cluster);
 
@@ -152,6 +176,12 @@ function fill_cluster_properties(cl, cluster_id) {
         } catch(e) {
             console.log(e);
         }
+        try {
+            filter_duplicates(cl[i], cluster_id);
+        } catch(e) {
+            console.log(e);
+        }
+
 
         cl[i]["query_string"] = mems.join("+").replace(/#/g,'');
         cl[i]["title_string"] = mems.join(" ");
