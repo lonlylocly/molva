@@ -4,6 +4,9 @@
     "consumer_secret": "HwJAAiHedpajNYt1Vzb3vXe3gMoFAfQ4ELwS81bRaK0",
     "access_token": "226113374-ONoVUhU4HX4qVTXljAClkmh8kX8rJ8RCCrMo9Vc0",
     "access_token_secret": "YDQuzXypC1WgGMnRw6Ft6iiPR5t96EZifyZqi6TKVX4qh",
+    "knn_trash_threshold": 0.6,
+    "knn_neighbors_threshold": 0.45,
+    "lookup_use_topic_density": false,
     "russian_keywords": [
         "я",
         "у",
@@ -85,7 +88,8 @@
         "время",
         "какая",
         "многий",
-        "но"
+        "но",
+        "вещь"
     ],
     "swear_words": [
         "дерьмо",
