@@ -225,9 +225,9 @@ function _parseResponse(resp, doFilter){
 
     if (doFilter) {
         for(var i=0; i<cl.length; i++) {
-            if (!("topic_density" in cl[i]) || cl[i]["topic_density"] > 3) {
+            //if (!("topic_density" in cl[i]) || cl[i]["topic_density"] > 3) {
                 cl2.push(cl[i]);
-            }
+            //}
         }
     } else {
         cl2 = cl;

@@ -275,8 +275,9 @@ def get_relevant_tweets(cur1, cur2, cluster):
     rel_tw_ids = sorted(tweets.keys(), key=lambda x: (len(tweets[x].words), tweets[x].created_at), reverse=True)[:10]
     rel_tw = [tweets[x] for x in rel_tw_ids]
 
-    if len(tweets_density) > 3:
-        [get_embed_html(x) for x in rel_tw]
+    # try to avoid this due to the new KNN clustering
+    #if len(tweets_density) > 3:
+    [get_embed_html(x) for x in rel_tw]
 
     return {
         "tweets": [x.to_json() for x in rel_tw], 
@@ -320,7 +321,7 @@ def main():
     filtered_cl = [x for x in cl if x["trend"] > 0.0]
     logging.info("Filtered out %d of %d (trend > 0.0)" % (len(cl) - len(filtered_cl), len(cl)))
     
-    top_cl = sorted(cl, key=lambda x: x["trend"], reverse=True)
+    top_cl = sorted(cl, key=lambda x: x["trend"], reverse=True)[:15]
     tw_with_embed_cnt = 0
     for cluster in top_cl:
         r = get_relevant_tweets(cur1, cur2, cluster)
