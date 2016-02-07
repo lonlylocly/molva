@@ -4,6 +4,7 @@ import os
 import logging, logging.config
 import json
 from datetime import datetime, timedelta, date
+import math
 
 import molva.stats as stats
 from molva.Indexer import Indexer
@@ -137,7 +138,21 @@ class WordCombinedRank:
 
     def __str__(self):
         return "%s; cnt: %s; trend: %s" % (self.word, self.cnt, self.trend)
-        
+
+@util.time_logger
+def make_tf_idf_ranks(word_cnt_tuples):
+    word_ranks = {}
+    N = 4e6
+    #for (word, cnt) in word_cnt_tuples:
+    #    N += cnt
+    logging.info("TF-IDF scoring  N=%d" % N)
+    for w in word_cnt_tuples:
+        word, cnt = w
+        idf = math.log(float(N) / float(cnt))
+        tf = 1 + math.log(cnt)
+        word_ranks[word] = WordCombinedRank(word, cnt=tf*idf)     
+
+    return word_ranks
 
 @util.time_logger
 def get_trending_words(db_dir, word_cnt_tuples):
@@ -152,10 +167,7 @@ def get_trending_words(db_dir, word_cnt_tuples):
     """)
     word_trends = map(lambda x: (int(x[0]), float(x[1])), cur.fetchall())
 
-    word_ranks = {}
-    for w in word_cnt_tuples:
-        word, cnt = w
-        word_ranks[word] = WordCombinedRank(word, cnt=cnt)
+    word_ranks = make_tf_idf_ranks(word_cnt_tuples)
 
     for w in word_trends:
         word, trend = w
