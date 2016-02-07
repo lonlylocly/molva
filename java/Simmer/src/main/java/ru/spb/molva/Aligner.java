@@ -65,8 +65,8 @@ public class Aligner {
 
         log.info("Align clusters");
         List<Cluster> alignedClusters = new ArrayList<>();
-
-        for (Cluster cluster : aligner.getClusters().subList(0, MAX_CLUSTERS)) {
+        List<Cluster> shortList = aligner.getClusters().size() > MAX_CLUSTERS ? aligner.getClusters().subList(0, MAX_CLUSTERS) : aligner.getClusters(); 
+        for (Cluster cluster : shortList) {
             try {
                 Cluster aligned = new ClusterAligner(aligner, cluster).align();
                 if (aligned != null) {
