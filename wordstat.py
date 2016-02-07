@@ -28,6 +28,7 @@ DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 def get_cluster_nouns(clusters):
     cl_nouns = []
     for c in clusters:
+        print c
         for m in c["members"]:
             cl_nouns.append(int(m["id"]))
 
