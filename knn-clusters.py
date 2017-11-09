@@ -23,7 +23,7 @@ except Exception as e:
 DB_DIR = settings["db_dir"] if "db_dir" in settings else os.environ["MOLVA_DIR"]
 
 total_md5 = util.digest("__total__")
-
+trash_words = [util.digest(x) for x in settings["trash_words"]]
 
 def get_sims(cur):
     res = cur.execute("select post1_md5, post2_md5, sim from noun_similarity")
@@ -103,10 +103,13 @@ def get_clusters(sim_dict, nouns, noun_trend):
     trendy = sorted(trendy, key=lambda x: noun_trend[x], reverse=True)
     clusters = {}
     non_centroids = {total_md5: 1}    
+    # explicitly forbid stopwords from becoming centroids
+    #for x in trash_words:
+    #    non_centroids[x] = 1 
     # threshold to filter trashlike from being centroids
     l = find_knn(total_md5, sim_dict, l=2000, threshold=settings["knn_trash_threshold"], do_print=False)
     for x in l:
-        non_centroids[x[1]] = 1
+        non_centroids[x[0]] = 1
     for t in trendy:
         if t in non_centroids:
             continue

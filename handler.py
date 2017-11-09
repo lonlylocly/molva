@@ -30,7 +30,9 @@ class ClusterHandler(tornado.web.RequestHandler):
             cur.execute("""
                 select cluster 
                 from clusters 
-                where cluster_date = '%(date)s'
+                where cluster_date <= '%(date)s'
+                order by cluster_date desc
+                limit 1
             """  % ({'date': date}))
         elif before is not None:
             cur.execute("""
